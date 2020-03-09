@@ -1,0 +1,25 @@
+{
+  "name": "new-cms",
+  "version": "1.0.0",
+  "description": "A new CMS Module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/methompson/new-cms.git"
+  },
+  "keywords": [
+    "cms"
+  ],
+  "author": "Mat Thompson",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.17.1"
+  },
+  "bugs": {
+    "url": "https://github.com/methompson/new-cms/issues"
+  },
+  "homepage": "https://github.com/methompson/new-cms#readme"
+}
