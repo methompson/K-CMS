@@ -49,7 +49,7 @@ typings/
 
 # Optional npm cache directory
 .npm
-#package-lock.json
+package-lock.json
 
 # Optional eslint cache
 .eslintcache
@@ -103,3 +103,6 @@ dist
 
 # TernJS port file
 .tern-port
+
+# Trash Files
+.DS_Store
