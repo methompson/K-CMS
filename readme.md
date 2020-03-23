@@ -18,7 +18,7 @@ Currently K-CMS uses MongoDB to store web and user data. MySQL support is planne
 
 # Basic Usage
 
-```
+```js
 const CMS = require("k-cms");
 
 // Create a CMS object. Pass mongodb login information as an option
@@ -56,7 +56,7 @@ Some options allow for a user to customize their CMS, including the URLs of thei
 
 Plugins are meant to further extend the functionality of an application by allowing a user to tap into the lifecycle of the app and adding functionality to those specific functions. Below is an example of creating a simple Plugin.
 
-```
+```js
 // Import the Plugin class from k-cms
 const Plugin = require("k-cms/plugin");
 
@@ -69,7 +69,7 @@ const myPlugin = new Plugin("test", (args) => {
 
 Plugins are added by making an array of Plugins and passing this array to the CMS object when instantiating it:
 
-```
+```js
 const cms = CMS({
   // Db information, etc.
   plugins: [
