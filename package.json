@@ -16,10 +16,20 @@
   "author": "Mat Thompson",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "jsonwebtoken": "^8.5.1",
+    "mongodb": "^3.5.4",
+    "uuid": "^3.3.2"
   },
   "bugs": {
     "url": "https://github.com/methompson/new-cms/issues"
   },
-  "homepage": "https://github.com/methompson/new-cms#readme"
+  "homepage": "https://github.com/methompson/new-cms#readme",
+  "devDependencies": {
+    "eslint": "^6.8.0",
+    "eslint-config-airbnb-base": "^14.1.0",
+    "eslint-plugin-import": "^2.20.1"
+  }
 }
