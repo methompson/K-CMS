@@ -1,0 +1,36 @@
+{
+  "name": "new-cms",
+  "version": "1.0.0",
+  "description": "A new CMS Module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/methompson/new-cms.git"
+  },
+  "keywords": [
+    "cms"
+  ],
+  "author": "Mat Thompson",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "jsonwebtoken": "^8.5.1",
+    "mongodb": "^3.5.4",
+    "uuid": "^3.3.2"
+  },
+  "bugs": {
+    "url": "https://github.com/methompson/new-cms/issues"
+  },
+  "homepage": "https://github.com/methompson/new-cms#readme",
+  "devDependencies": {
+    "eslint": "^6.8.0",
+    "eslint-config-airbnb-base": "^14.1.0",
+    "eslint-plugin-import": "^2.20.1"
+  }
+}
