@@ -30,13 +30,13 @@ class MongoPageController extends PageController {
   }
 
   /**
-   * Gets a MongoDB Document related to the page to be displayed
+   * Gets a MongoDB Document based on the page slug sent.
    *
    * @param {String} slug The slug string with which to find the page.
    * @return {Promise} Returns a promise that resolves with an object.
    */
   async getPageBySlug(slug = "") {
-    const collection = this.db.instance.db("pages").collection("pages");
+    const collection = this.db.instance.db("kcms").collection("pages");
     return collection.findOne({
       slug,
     })
@@ -56,7 +56,7 @@ class MongoPageController extends PageController {
       });
     }
 
-    const db = this.db.instance.db("pages").collection("pages");
+    const db = this.db.instance.db("kcms").collection("pages");
     return db.updateOne(
       {
         slug: pageData.slug,
@@ -95,14 +95,14 @@ class MongoPageController extends PageController {
   }
 
   // eslint-disable-next-line no-unused-vars
-  editPage(id, pageData = {}) {
+  editPage(id, pageData = {}, authData = {}) {
     if (!this.checkAddParameters(pageData)) {
       return Promise.reject({
         msg: "Invalid Parameters sent",
       });
     }
 
-    const db = this.db.instance.db("pages").collection("pages");
+    const db = this.db.instance.db("kcms").collection("pages");
 
     db.findOne({
       _id: ObjectId(id),

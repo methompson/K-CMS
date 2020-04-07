@@ -23,6 +23,7 @@ module.exports = {
         'no-multi-spaces': 'off', // Disabled to let me position long if statements
         'no-underscore-dangle': 'off', // I like to use underscores for module-defined data right now
         'max-len': 'off', // I'm not worried about max-length right now
+        'no-throw-literal': 'off', // I need to be able to throw an object
         'prefer-promise-reject-errors': 'off',
         'comma-dangle' : [
             "error", {

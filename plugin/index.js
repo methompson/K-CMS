@@ -16,7 +16,7 @@ class KCMSPlugin {
     }
 
     this.hooks[lifeCycle].push(action);
-    console.log("Here we are!");
+    // console.log("Here we are!");
   }
 }
 

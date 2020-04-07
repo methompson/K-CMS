@@ -35,7 +35,7 @@ const cms = CMS({
 // Get the Express app object created by the CMS object.
 const app = cms.app;
 
-// Create a serve and start listening on port 3000
+// Create a server and start listening on port 3000
 const server = http.createServer(app);
 server.listen(3000);
 ```
@@ -61,7 +61,7 @@ Plugins are meant to further extend the functionality of an application by allow
 const Plugin = require("k-cms/plugin");
 
 // The first argument is the life cycle hook. The second argument is a
-// function that lets you modify data or perform a task apart
+// function that lets you modify data or perform a task.
 const myPlugin = new Plugin("test", (args) => {
   // Do Something
 });
