@@ -29,6 +29,8 @@ class UserController extends ParamChecker {
     router.get('/login', this.doNothing);
 
     router.post('/add-user', this.errorIfTokenDoesNotExist, this.addUser);
+    router.post('/edit-user', this.errorIfTokenDoesNotExist, this.editUser);
+    router.post('/delete-user', this.errorIfTokenDoesNotExist, this.deleteUser);
 
     this.authenticationRoutes = router;
   }
@@ -208,7 +210,8 @@ class UserController extends ParamChecker {
 
   /**
    * This function does one thing: Check that a token exists. If it does not exist,
-   * the function will send a 401 response to the user.
+   * the function will send a 401 response to the user. This is a streamlined approach
+   * to invalidate users that don't pass an authorization token.
    *
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
@@ -269,6 +272,14 @@ class UserController extends ParamChecker {
     next();
   }
 
+  /**
+   * This function takes the name of the current lifecycle hook. It looks in the plugins
+   * object for that lifeCycle hook and runs each function associated with that lifecycle.
+   * There is no order of operations, so lifecycle hooks should rely on being run in a
+   * specific order.
+   *
+   * @param {String} lifeCycle lifecycle hook name
+   */
   pluginRunner(lifeCycle) {
     if (lifeCycle in this.plugins) {
       for (let x = 0, len = this.plugins[lifeCycle].length; x < len; ++x) {
