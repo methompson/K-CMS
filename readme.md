@@ -58,13 +58,17 @@ Plugins are meant to further extend the functionality of an application by allow
 
 ```js
 // Import the Plugin class from k-cms
-const Plugin = require("k-cms/plugin");
+const KCMSPlugin = require("k-cms/plugin");
 
-// The first argument is the life cycle hook. The second argument is a
-// function that lets you modify data or perform a task.
-const myPlugin = new Plugin("test", (args) => {
+// We make a new object.
+const myPlugin = new KCMSPlugin();
+// We have to add a function for each lifecycle hook.
+// The first argument is the life cycle hook. The second argument is a function that performs an action.
+myPlugin.addHook("test", (args) => {
   // Do Something
 });
+
+// You can add as many lifecycle hooks as you want to an individual plugin
 ```
 
 Plugins are added by making an array of Plugins and passing this array to the CMS object when instantiating it:
