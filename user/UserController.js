@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const { ObjectId } = require("mongodb");
 
 const { endOnError, ParamChecker } = require("../utilities");
 const PluginHandler = require("../plugin-handler");
@@ -251,7 +252,7 @@ class UserController extends ParamChecker {
    * @param {Object} authToken The jwt token of the user.
    * @return {Boolean} Whether the user is verified
    */
-  checkAllowedUsersForPageMod(authToken) {
+  checkAllowedUsersForSiteMod(authToken) {
     const allowedUserTypes = [
       'superAdmin',
       'admin',
@@ -297,7 +298,7 @@ class UserController extends ParamChecker {
   addUser(req, res) {
     const user = req._authData;
 
-    if (!this.checkAllowedUsersForPageMod(user)) {
+    if (!this.checkAllowedUsersForSiteMod(user)) {
       this.send401Error("User Not Allowed", res);
       return;
     }
@@ -376,21 +377,49 @@ class UserController extends ParamChecker {
    * It also expects that errorIfTokenDoesNotExist has been run to check that a token
    * exists. We will not have reached this point if a token didn't exist.
    *
+   * This method relies on an id being sent.
+   *
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
    */
   deleteUser(req, res) {
     const user = req._authData;
 
-    if (!this.checkAllowedUsersForPageMod(user)) {
+    // Check that the user is allowed to perform this work
+    if (!this.checkAllowedUsersForSiteMod(user)) {
       this.send401Error("User Not Allowed", res);
       return;
     }
 
-    console.log("Deleting User");
-    res.status(200).json({
-      message: "User Deleted Successfully",
-    });
+    // Check that the appropriate data was sent to the function
+    if ( !('deletedUser' in req.body)
+      || !('id' in req.body.deletedUser)
+    ) {
+      this.send401Error("User Data Not Provided", res);
+      return;
+    }
+
+    // Check that the user isn't trying to delete themself and causing an issue
+    if (req.body.deletedUser.id === req._authData._id) {
+      this.send401Error("Cannot Delete Yourself", res);
+      return;
+    }
+
+    const collection = this.db.instance.db("kcms").collection("users");
+
+    collection.deleteOne({
+      _id: ObjectId(req.body.deletedUser.id),
+    })
+      .then((result) => {
+        console.log("Deleting User", result);
+        res.status(200).json({
+          message: "User Deleted Successfully",
+        });
+      })
+      .catch((err) => {
+        console.log("Error Deleting User", err);
+        this.send401Error("Error Deleting User", res);
+      });
   }
 
   /**
@@ -405,23 +434,21 @@ class UserController extends ParamChecker {
   editUser(req, res) {
     const currentUser = req._authData;
 
-    if (!this.checkAllowedUsersForPageMod(currentUser)) {
+    if (!this.checkAllowedUsersForSiteMod(currentUser)) {
       this.send401Error("User Not Allowed", res);
       return;
     }
 
     if ( !('updatedUser' in req.body)
-      || !('username' in req.body.updatedUser)
+      || !('id' in req.body.updatedUser)
+      || !('data' in req.body.updatedUser)
     ) {
-      console.log("Here");
-      console.log(!('updatedUser' in req.body));
-      console.log(!('username' in req.body.updatedUser));
       this.send401Error("User Data Not Provided", res);
       return;
     }
 
     const updatedUser = {
-      ...req.body.updatedUser,
+      ...req.body.updatedUser.data,
     };
 
     // We either use bcrypt to make a promise or manually make a promise.
@@ -443,9 +470,9 @@ class UserController extends ParamChecker {
     const collection = this.db.instance.db("kcms").collection("users");
     p.then(() => {
       console.log(collection);
-      collection.updateOne(
+      return collection.updateOne(
         {
-          username: updatedUser.username,
+          _id: ObjectId(req.body.updatedUser.id),
         },
         {
           $set: {
@@ -466,7 +493,7 @@ class UserController extends ParamChecker {
       })
       .catch((err) => {
         console.log(err);
-        this.send401Error("Error Adding New User", res);
+        this.send401Error("Error Updating User");
       });
   }
 }
