@@ -1,5 +1,5 @@
 const UserController = require('./UserController');
 
-exports.makeUserController = function makeUserController(db, plugins) {
-  return new UserController(db, plugins);
+exports.makeUserController = function makeUserController(db, pluginHandler) {
+  return new UserController(db, pluginHandler);
 };

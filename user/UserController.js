@@ -3,34 +3,41 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 const { endOnError, ParamChecker } = require("../utilities");
+const PluginHandler = require("../plugin-handler");
 
 class UserController extends ParamChecker {
   // TODO set up database and plugins
   // eslint-disable-next-line no-unused-vars
-  constructor(database, plugins = []) {
-    console.log("UserController, plugins:", plugins);
-    // Does nothing, but required nonetheless...
+  constructor(database, pluginHandler) {
+    // This does nothing, but it's required nonetheless...
     super();
+    this.jwtAlg = "HS256";
+    this.passwordLengthMin = 8;
+
+    if (pluginHandler instanceof PluginHandler) {
+      this.pluginHandler = pluginHandler;
+    } else {
+      this.pluginHandler = new PluginHandler();
+    }
 
     if (!database) {
       endOnError("Database required for Authenticator");
     }
     this.db = database;
 
-    if (plugins && typeof plugins === typeof {}) {
-      this.plugins = plugins;
-    } else {
-      this.plugins = [];
-    }
+    this.additionalUserRoles = {};
 
     router.post('/login', (req, res) => {
       this.authenticateUserCredentials(req, res);
     });
     router.get('/login', this.doNothing);
 
-    router.post('/add-user', this.errorIfTokenDoesNotExist, this.addUser);
-    router.post('/edit-user', this.errorIfTokenDoesNotExist, this.editUser);
-    router.post('/delete-user', this.errorIfTokenDoesNotExist, this.deleteUser);
+    // We don't pass the methods as variables because we still need to access the variables of
+    // the UserController object. If we were to pass the methods as variables, the scope would
+    // change and the UserController variables would be inaccessible.
+    router.post('/add-user', this.errorIfTokenDoesNotExist, (req, res, next) => { this.addUser(req, res, next); });
+    router.post('/edit-user', this.errorIfTokenDoesNotExist, (req, res, next) => { this.editUser(req, res, next); });
+    router.post('/delete-user', this.errorIfTokenDoesNotExist, (req, res, next) => { this.deleteUser(req, res, next); });
 
     this.authenticationRoutes = router;
   }
@@ -44,7 +51,17 @@ class UserController extends ParamChecker {
       doNothing: this.doNothing,
       passThrough: this.passThrough,
       authenticateUserCredentials: this.authenticateUserCredentials,
-      authorizeUser: this.authorizeUser,
+      getUserRequestToken: this.getUserRequestToken,
+    };
+  }
+
+  get userTypes() {
+    return {
+      superAdmin: {},
+      admin: {},
+      editor: {},
+      subscriber: {},
+      ...this.additionalUserRoles,
     };
   }
 
@@ -75,7 +92,7 @@ class UserController extends ParamChecker {
   }
 
   /**
-   * This function authenticate's a user's credentials. The user sends a JSON string
+   * This function authenticates a user's credentials. The user sends a JSON string
    * with user and password in the body of a POST request to this route. This function
    * extracts the JSON string from the body and checks the user credentials to determine
    * their validity.
@@ -88,23 +105,23 @@ class UserController extends ParamChecker {
    * @param {Function} next Express Next Function
    */
   authenticateUserCredentials(req, res) {
-    this.pluginRunner("beforeLoggingIn");
+    this.pluginHandler.runLifecycleHook("beforeLoggingIn");
 
-    if ( !('user' in req.body)
+    if ( !('username' in req.body)
       || !('password' in req.body)
     ) {
-      this.pluginRunner('loginFailed');
+      this.pluginHandler.runLifecycleHook('loginFailed');
       res.status(401).json({
         error: "User Data Not Provided",
       });
       return;
     }
-    const { user, password } = req.body;
+    const { username, password } = req.body;
     const userData = {};
 
     const collection = this.db.instance.db("kcms").collection("users");
     collection.findOne({
-      user,
+      username,
     })
       .then((result) => {
         if (!result) {
@@ -115,7 +132,8 @@ class UserController extends ParamChecker {
         }
 
         userData._id = result._id;
-        userData.user = result.user;
+        userData.username = result.username;
+        userData.userType = result.userType;
 
         return bcrypt.compare(password, result.password);
       })
@@ -127,7 +145,7 @@ class UserController extends ParamChecker {
           };
         }
 
-        this.pluginRunner('loginSucceeded');
+        this.pluginHandler.runLifecycleHook('loginSucceeded');
 
         const token = jwt.sign(
           {
@@ -136,6 +154,7 @@ class UserController extends ParamChecker {
           global.jwtSecret,
           {
             expiresIn: '4h',
+            algorithm: this.jwtAlg,
           }
         );
 
@@ -145,7 +164,7 @@ class UserController extends ParamChecker {
         });
       })
       .catch((err) => {
-        this.pluginRunner('loginFailed');
+        this.pluginHandler.runLifecycleHook('loginFailed');
         if ( err.status && err.error ) {
           res.status(err.status).json({
             error: err.error,
@@ -172,9 +191,7 @@ class UserController extends ParamChecker {
    * @param {Object} res Express Response Object
    * @param {Function} next Express Next Function
    */
-  authorizeUser(req, res, next) {
-    console.log("Authorizing User");
-
+  getUserRequestToken(req, res, next) {
     // Check the headers for an authorization token
     if ( !('authorization' in req.headers) ) {
       req._authData = null;
@@ -196,10 +213,9 @@ class UserController extends ParamChecker {
     }
 
     const token = split[1];
-    jwt.verify(token, global.jwtSecret, (err, decoded) => {
+    jwt.verify(token, global.jwtSecret, { alg: this.jwtAlg }, (err, decoded) => {
       if (err) {
         req._authData = null;
-        // console.log(err);
       } else {
         req._authData = decoded;
       }
@@ -230,62 +246,228 @@ class UserController extends ParamChecker {
   }
 
   /**
+   * Checks that the user type is included in the allowed user types for modifying users
+   *
+   * @param {Object} authToken The jwt token of the user.
+   * @return {Boolean} Whether the user is verified
+   */
+  checkAllowedUsersForPageMod(authToken) {
+    const allowedUserTypes = [
+      'superAdmin',
+      'admin',
+    ];
+
+    // Check that the usertype is in the allowedUserTypes array.
+    // Only admin and superAdmin users can add new users.
+    if (allowedUserTypes.indexOf(authToken.userType) < 0) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Send a 401 error to the user. A lot of problematic requests result in 401 not authorized
+   * error messages. This performs the task without having to duplicate the same task
+   * over and over again.
+   *
+   * @param {String} msg The message that is displayed to the user
+   * @param {Object} res Express Response Object
+   */
+  send401Error(msg, res) {
+    res.status(401).json({
+      error: msg,
+    });
+  }
+
+  /**
    * This function will add a user to the current database. The method expects that
-   * authorizeUser has already been run and that the user's token has been decoded.
+   * getUserRequestToken has already been run and that the user's token has been decoded.
    * It also expects that errorIfTokenDoesNotExist has been run to check that a token
-   * exists.
+   * exists. We will not have reached this point if a token didn't exist.
+   *
+   * Data required to add a user:
+   * username (must be Unique)
+   * userType
+   * password
    *
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
-   * @param {Function} next Express Next Function
    */
-  addUser(req, res, next) {
-    console.log("Adding User");
-    next();
+  addUser(req, res) {
+    const user = req._authData;
+
+    if (!this.checkAllowedUsersForPageMod(user)) {
+      this.send401Error("User Not Allowed", res);
+      return;
+    }
+
+    if (!('newUser' in req.body)) {
+      this.send401Error("User Data Not Provided", res);
+      return;
+    }
+
+    const newUser = {
+      ...req.body.newUser,
+    };
+
+    if ( !('username' in newUser)
+      || !('password' in newUser)
+    ) {
+      this.send401Error("User Data Not Provided", res);
+      return;
+    }
+
+    if (newUser.password.length < this.passwordLengthMin) {
+      this.send401Error("Password length is too short", res);
+      return;
+    }
+
+    if (!('userType' in newUser)) {
+      newUser.userType = 'subscriber';
+    }
+
+    if ( !('enabled' in newUser)) {
+      newUser.enabled = true;
+    }
+
+    const collection = this.db.instance.db("kcms").collection("users");
+
+    // We've set a unique constraint on the username field, so we can't add a username
+    // that already exists.
+    bcrypt.hash(newUser.password, 12)
+      .then((result) => {
+        return collection.insertOne(
+          {
+            ...newUser,
+            password: result,
+          }
+        );
+      })
+      .then((result) => {
+        if (result.upsertedCount > 0) {
+          const userId = result.upsertedId._id.toString();
+          console.log(userId);
+        }
+        console.log(result);
+        // console.log(result.result.toString());
+        res.status(200).json({
+          message: "User Added Successfully",
+        });
+      })
+      .catch((err) => {
+        // Do Something;
+        if (err.errmsg.indexOf("E1100" >= 0)) {
+          this.send401Error("Username Already Exists", res);
+          return;
+        }
+
+        this.send401Error("Error Adding New User", res);
+
+        // console.log("Add User Error");
+        // console.log(err);
+        // console.log(err.errmsg);
+      });
   }
 
   /**
    * This function will delete a user from the current database. The method expects that
-   * authorizeUser has already been run and that the user's token has been decoded.
+   * getUserRequestToken has already been run and that the user's token has been decoded.
    * It also expects that errorIfTokenDoesNotExist has been run to check that a token
+   * exists. We will not have reached this point if a token didn't exist.
    *
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
-   * @param {Function} next Express Next Function
    */
-  deleteUser(req, res, next) {
+  deleteUser(req, res) {
+    const user = req._authData;
+
+    if (!this.checkAllowedUsersForPageMod(user)) {
+      this.send401Error("User Not Allowed", res);
+      return;
+    }
+
     console.log("Deleting User");
-    next();
+    res.status(200).json({
+      message: "User Deleted Successfully",
+    });
   }
 
   /**
    * This function will edit a user currently in the database. The method expects that
-   * authorizeUser has already been run and that the user's token has been decoded.
+   * getUserRequestToken has already been run and that the user's token has been decoded.
    * It also expects that errorIfTokenDoesNotExist has been run to check that a token
+   * exists. We will not have reached this point if a token didn't exist.
    *
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
-   * @param {Function} next Express Next Function
    */
-  editUser(req, res, next) {
-    console.log("Editing User");
-    next();
-  }
+  editUser(req, res) {
+    const currentUser = req._authData;
 
-  /**
-   * This function takes the name of the current lifecycle hook. It looks in the plugins
-   * object for that lifeCycle hook and runs each function associated with that lifecycle.
-   * There is no order of operations, so lifecycle hooks should rely on being run in a
-   * specific order.
-   *
-   * @param {String} lifeCycle lifecycle hook name
-   */
-  pluginRunner(lifeCycle) {
-    if (lifeCycle in this.plugins) {
-      for (let x = 0, len = this.plugins[lifeCycle].length; x < len; ++x) {
-        this.plugins[lifeCycle][x]();
-      }
+    if (!this.checkAllowedUsersForPageMod(currentUser)) {
+      this.send401Error("User Not Allowed", res);
+      return;
     }
+
+    if ( !('updatedUser' in req.body)
+      || !('username' in req.body.updatedUser)
+    ) {
+      console.log("Here");
+      console.log(!('updatedUser' in req.body));
+      console.log(!('username' in req.body.updatedUser));
+      this.send401Error("User Data Not Provided", res);
+      return;
+    }
+
+    const updatedUser = {
+      ...req.body.updatedUser,
+    };
+
+    // We either use bcrypt to make a promise or manually make a promise.
+    let p;
+    if ('password' in updatedUser) {
+      if (updatedUser.password.length < 8) {
+        this.send401Error("Password length is too short", res);
+        return;
+      }
+
+      p = bcrypt.hash(updatedUser.password, 12)
+        .then((result) => {
+          updatedUser.password = result;
+        });
+    } else {
+      p = Promise.resolve();
+    }
+
+    const collection = this.db.instance.db("kcms").collection("users");
+    p.then(() => {
+      console.log(collection);
+      collection.updateOne(
+        {
+          username: updatedUser.username,
+        },
+        {
+          $set: {
+            ...updatedUser,
+          },
+        },
+        {
+          upsert: true,
+        }
+      );
+    })
+      .then((result) => {
+        console.log(result);
+        console.log("Editing User");
+        res.status(200).json({
+          message: "User Updated Successfully",
+        });
+      })
+      .catch((err) => {
+        console.log(err);
+        this.send401Error("Error Adding New User", res);
+      });
   }
 }
 

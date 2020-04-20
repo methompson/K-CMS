@@ -7,12 +7,12 @@ const express = require('express');
 const { ParamChecker } = require("../utilities");
 
 class PageController extends ParamChecker {
-  constructor(authenticator, database, plugins) {
+  constructor(authenticator, database, pluginHandler) {
     // Does nothing, but required nonetheless...
     super();
 
     this.db = database;
-    this.plugins = plugins;
+    this.pluginHandler = pluginHandler;
     this.authenticator = authenticator;
     const authController = this.authenticator.controller;
 
@@ -79,8 +79,6 @@ class PageController extends ParamChecker {
 
     this.router.get('/:slug',
       (req, res) => {
-        console.log(this.plugins.length);
-        console.log('request', req.params);
         this.getPageBySlug(req.params.slug)
           .then((docs) => {
             res.status(200).json(docs);

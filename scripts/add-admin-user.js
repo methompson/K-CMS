@@ -20,18 +20,27 @@ bcrypt.hash("password", 12)
     console.log(result);
     return collection.updateOne(
       {
-        user: adminUser,
+        username: adminUser,
       },
       {
         $set: {
-          user: adminUser,
+          username: adminUser,
           password: result,
+          userType: 'superAdmin',
+          enabled: true,
         },
       },
       {
         upsert: true,
       }
     );
+  })
+  .then(() => {
+    try {
+      collection.createIndex( { username: 1 }, { unique: true });
+    } catch (e) {
+      console.log(e);
+    }
   })
   .then(() => {
     process.exit();
