@@ -11,7 +11,7 @@ class PluginHandler {
    */
   constructor(database, plugins) {
     this.plugins = [];
-    this.db = database
+    this.db = database;
     if (Array.isArray(plugins)) {
       for (let x = 0, len = plugins.length; x < len; ++x) {
         if (plugins[x] instanceof KCMSPlugin) {
