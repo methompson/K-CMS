@@ -14,6 +14,7 @@ class UserController extends ParamChecker {
     super();
     this.jwtAlg = "HS256";
     this.passwordLengthMin = 8;
+    this.pagination = 30;
 
     if (pluginHandler instanceof PluginHandler) {
       this.pluginHandler = pluginHandler;
@@ -39,6 +40,8 @@ class UserController extends ParamChecker {
     router.post('/add-user', this.errorIfTokenDoesNotExist, (req, res, next) => { this.addUser(req, res, next); });
     router.post('/edit-user', this.errorIfTokenDoesNotExist, (req, res, next) => { this.editUser(req, res, next); });
     router.post('/delete-user', this.errorIfTokenDoesNotExist, (req, res, next) => { this.deleteUser(req, res, next); });
+    router.get('/get-user/:id', this.errorIfTokenDoesNotExist, (req, res, next) => { this.getUser(req, res, next); });
+    router.get('/get-all-users/:page*?', this.errorIfTokenDoesNotExist, (req, res, next) => { this.getAllUsers(req, res, next); });
 
     this.authenticationRoutes = router;
   }
@@ -268,6 +271,28 @@ class UserController extends ParamChecker {
   }
 
   /**
+   * Checks that the user type is included in the allowed user types for viewing users
+   *
+   * @param {Object} authToken The jwt token of the user.
+   * @return {Boolean} Whether the user is verified
+   */
+  checkAllowedUsersForSiteInfo(authToken) {
+    const allowedUserTypes = [
+      'superAdmin',
+      'admin',
+      'editor',
+    ];
+
+    // Check that the usertype is in the allowedUserTypes array.
+    // Only admin and superAdmin users can add new users.
+    if (allowedUserTypes.indexOf(authToken.userType) < 0) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
    * Send a 401 error to the user. A lot of problematic requests result in 401 not authorized
    * error messages. This performs the task without having to duplicate the same task
    * over and over again.
@@ -279,6 +304,89 @@ class UserController extends ParamChecker {
     res.status(401).json({
       error: msg,
     });
+  }
+
+  getUser(req, res) {
+    const user = req._authData;
+
+    // Check that the user is allowed to perform this work
+    if (!this.checkAllowedUsersForSiteMod(user)) {
+      this.send401Error("User Not Allowed", res);
+      return;
+    }
+
+    if (!('id' in req.params)) {
+      this.send401Error("User Id Not Provided", res);
+      return;
+    }
+
+    let id;
+    try {
+      id = ObjectId(req.params.id);
+    } catch (err) {
+      this.send401Error("Invalid User Id", res);
+      return;
+    }
+
+    const collection = this.db.instance.db("kcms").collection("users");
+    collection.findOne({
+      _id: id,
+    })
+      .then((result) => {
+        if (!result) {
+          this.send401Error("Invalid User Id", res);
+          return;
+        }
+
+        const userData = {
+          ...result,
+        };
+
+        // Let's remove the password field from the output so that we don't allow an attack against their hash
+        if ('password' in userData) {
+          delete userData.password;
+        }
+
+        res.status(200).json(userData);
+      })
+      .catch((err) => {
+        console.log(err);
+        this.send401Error("Database Error", res);
+      });
+  }
+
+  getAllUsers(req, res) {
+    const user = req._authData;
+
+    // Check that the user is allowed to perform this work
+    if (!this.checkAllowedUsersForSiteMod(user)) {
+      this.send401Error("User Not Allowed", res);
+      return;
+    }
+
+    console.log(req.params.page);
+    const page = req.params.page ? req.params.page : 1;
+    console.log(page);
+
+    const collection = this.db.instance.db("kcms").collection("users");
+    collection.find(
+      {},
+      {
+        projection: { password: 0 },
+        skip: ((page - 1) * this.pagination),
+        limit: this.pagination,
+      }
+    )
+      .toArray()
+      .then((result) => {
+        res.status(200).json({
+          users: result,
+        });
+      })
+      .catch((err) => {
+        console.log(err);
+        this.send401Error("Database Error", res);
+      });
   }
 
   /**
@@ -493,7 +601,7 @@ class UserController extends ParamChecker {
       })
       .catch((err) => {
         console.log(err);
-        this.send401Error("Error Updating User");
+        this.send401Error("Error Updating User", res);
       });
   }
 }
