@@ -4,86 +4,28 @@
 // with variable parameters that are used as interfaces.
 const express = require('express');
 
-const { ParamChecker } = require("../utilities");
+const { errorIfTokenDoesNotExist } = require("../utilities");
 
-class PageController extends ParamChecker {
+class PageController {
   constructor(authenticator, database, pluginHandler) {
-    // Does nothing, but required nonetheless...
-    super();
-
     this.db = database;
     this.pluginHandler = pluginHandler;
     this.authenticator = authenticator;
-    const authController = this.authenticator.controller;
+
+    this.editors = [
+      'editor',
+      'admin',
+      'superAdmin',
+    ];
 
     this.router = express.Router();
 
-    this.router.get('/addtest', (req, res) => {
-      this.addPage();
-      res.status(200).send("<h1>Adding Page</h1>");
-    });
+    this.router.post('/add-page', errorIfTokenDoesNotExist, (req, res) => { this.addPage(req, res); });
+    this.router.post('/edit-page', errorIfTokenDoesNotExist, (req, res) => { this.editPage(req, res); });
+    this.router.post('/delete-page', errorIfTokenDoesNotExist, (req, res) => { this.deletePage(req, res); });
 
-    this.router.post('/add-page',
-      (req, res) => {
-        if ( !('body' in req)
-          || !('page' in req.body)
-        ) {
-          res.status(400).json({
-            msg: "Invalid page object",
-          });
-          return;
-        }
-
-        this.addPage(req.body.page)
-          .then((data) => {
-            res.status(200).json({});
-          })
-          .catch((err) => {
-            const msg = err.msg || err.message;
-            res.status(400).json({
-              msg,
-            });
-          });
-      });
-
-    this.router.post('/edit-page',
-      (req, res) => {
-        console.log("Editing Page");
-        if ( !('body' in req)
-          || !('page' in req.body)
-          || !('id' in req.body)
-        ) {
-          res.status(400).json({
-            msg: "Invalid page object",
-          });
-        }
-
-        if (!req._authData) {
-          res.status(401).json({
-            msg: "Invalid User",
-          });
-          return;
-        }
-
-        this.editPage(req.body.id, req.body.page, req._authData)
-          .then((data) => {
-            res.status(200).json({});
-          })
-          .catch((err) => {
-            const msg = err.msg || err.message;
-            res.status(400).json({
-              msg,
-            });
-          });
-      });
-
-    this.router.get('/:slug',
-      (req, res) => {
-        this.getPageBySlug(req.params.slug)
-          .then((docs) => {
-            res.status(200).json(docs);
-          });
-      });
+    this.router.get('/all-pages', (req, res) => { this.getAllPages(req, res); });
+    this.router.get('/:slug', (req, res) => { this.getPageBySlug(req, res); });
   }
 
   get pageTypes() {
@@ -95,12 +37,11 @@ class PageController extends ParamChecker {
   }
 
   // Interfaces to be defined on a per-database basis
-  getPageBySlug(slug = "") {}
-  getPublicPageList() {}
-  getFullPageList() {}
-  addPage(pageData = {}) {}
-  editPage(id, pageData = {}) {}
-  deletePage(pageData = {}) {}
+  getPageBySlug(req, res) {}
+  getAllPages(req, res) {}
+  addPage(req, res) {}
+  editPage(req, res) {}
+  deletePage(req, res) {}
 }
 
 module.exports = PageController;

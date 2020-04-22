@@ -3,15 +3,13 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { ObjectId } = require("mongodb");
 
-const { endOnError, ParamChecker } = require("../utilities");
+const { endOnError, errorIfTokenDoesNotExist, send401Error } = require("../utilities");
 const PluginHandler = require("../plugin-handler");
 
-class UserController extends ParamChecker {
+class UserController {
   // TODO set up database and plugins
   // eslint-disable-next-line no-unused-vars
   constructor(database, pluginHandler) {
-    // This does nothing, but it's required nonetheless...
-    super();
     this.jwtAlg = "HS256";
     this.passwordLengthMin = 8;
     this.pagination = 30;
@@ -37,11 +35,11 @@ class UserController extends ParamChecker {
     // We don't pass the methods as variables because we still need to access the variables of
     // the UserController object. If we were to pass the methods as variables, the scope would
     // change and the UserController variables would be inaccessible.
-    router.post('/add-user', this.errorIfTokenDoesNotExist, (req, res, next) => { this.addUser(req, res, next); });
-    router.post('/edit-user', this.errorIfTokenDoesNotExist, (req, res, next) => { this.editUser(req, res, next); });
-    router.post('/delete-user', this.errorIfTokenDoesNotExist, (req, res, next) => { this.deleteUser(req, res, next); });
-    router.get('/get-user/:id', this.errorIfTokenDoesNotExist, (req, res, next) => { this.getUser(req, res, next); });
-    router.get('/get-all-users/:page*?', this.errorIfTokenDoesNotExist, (req, res, next) => { this.getAllUsers(req, res, next); });
+    router.post('/add-user', errorIfTokenDoesNotExist, (req, res, next) => { this.addUser(req, res, next); });
+    router.post('/edit-user', errorIfTokenDoesNotExist, (req, res, next) => { this.editUser(req, res, next); });
+    router.post('/delete-user', errorIfTokenDoesNotExist, (req, res, next) => { this.deleteUser(req, res, next); });
+    router.get('/get-user/:id', errorIfTokenDoesNotExist, (req, res, next) => { this.getUser(req, res, next); });
+    router.get('/get-all-users/:page*?', errorIfTokenDoesNotExist, (req, res, next) => { this.getAllUsers(req, res, next); });
 
     this.authenticationRoutes = router;
   }
@@ -229,27 +227,6 @@ class UserController extends ParamChecker {
   }
 
   /**
-   * This function does one thing: Check that a token exists. If it does not exist,
-   * the function will send a 401 response to the user. This is a streamlined approach
-   * to invalidate users that don't pass an authorization token.
-   *
-   * @param {Object} req Express Request Object
-   * @param {Object} res Express Response Object
-   * @param {Function} next Express Next Function
-   */
-  errorIfTokenDoesNotExist(req, res, next) {
-    // check the user's token.
-    if (req._authData) {
-      next();
-      return;
-    }
-
-    res.status(401).json({
-      error: "Invalid User Token",
-    });
-  }
-
-  /**
    * Checks that the user type is included in the allowed user types for modifying users
    *
    * @param {Object} authToken The jwt token of the user.
@@ -292,31 +269,17 @@ class UserController extends ParamChecker {
     return true;
   }
 
-  /**
-   * Send a 401 error to the user. A lot of problematic requests result in 401 not authorized
-   * error messages. This performs the task without having to duplicate the same task
-   * over and over again.
-   *
-   * @param {String} msg The message that is displayed to the user
-   * @param {Object} res Express Response Object
-   */
-  send401Error(msg, res) {
-    res.status(401).json({
-      error: msg,
-    });
-  }
-
   getUser(req, res) {
     const user = req._authData;
 
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteMod(user)) {
-      this.send401Error("User Not Allowed", res);
+      send401Error("User Not Allowed", res);
       return;
     }
 
     if (!('id' in req.params)) {
-      this.send401Error("User Id Not Provided", res);
+      send401Error("User Id Not Provided", res);
       return;
     }
 
@@ -324,7 +287,7 @@ class UserController extends ParamChecker {
     try {
       id = ObjectId(req.params.id);
     } catch (err) {
-      this.send401Error("Invalid User Id", res);
+      send401Error("Invalid User Id", res);
       return;
     }
 
@@ -334,7 +297,7 @@ class UserController extends ParamChecker {
     })
       .then((result) => {
         if (!result) {
-          this.send401Error("Invalid User Id", res);
+          send401Error("Invalid User Id", res);
           return;
         }
 
@@ -351,7 +314,7 @@ class UserController extends ParamChecker {
       })
       .catch((err) => {
         console.log(err);
-        this.send401Error("Database Error", res);
+        send401Error("Database Error", res);
       });
   }
 
@@ -360,7 +323,7 @@ class UserController extends ParamChecker {
 
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteMod(user)) {
-      this.send401Error("User Not Allowed", res);
+      send401Error("User Not Allowed", res);
       return;
     }
 
@@ -385,7 +348,7 @@ class UserController extends ParamChecker {
       })
       .catch((err) => {
         console.log(err);
-        this.send401Error("Database Error", res);
+        send401Error("Database Error", res);
       });
   }
 
@@ -407,12 +370,12 @@ class UserController extends ParamChecker {
     const user = req._authData;
 
     if (!this.checkAllowedUsersForSiteMod(user)) {
-      this.send401Error("User Not Allowed", res);
+      send401Error("User Not Allowed", res);
       return;
     }
 
     if (!('newUser' in req.body)) {
-      this.send401Error("User Data Not Provided", res);
+      send401Error("User Data Not Provided", res);
       return;
     }
 
@@ -420,15 +383,13 @@ class UserController extends ParamChecker {
       ...req.body.newUser,
     };
 
-    if ( !('username' in newUser)
-      || !('password' in newUser)
-    ) {
-      this.send401Error("User Data Not Provided", res);
+    if ( !('username' in newUser) || !('password' in newUser) ) {
+      send401Error("User Data Not Provided", res);
       return;
     }
 
     if (newUser.password.length < this.passwordLengthMin) {
-      this.send401Error("Password length is too short", res);
+      send401Error("Password length is too short", res);
       return;
     }
 
@@ -467,11 +428,11 @@ class UserController extends ParamChecker {
       .catch((err) => {
         // Do Something;
         if (err.errmsg.indexOf("E1100" >= 0)) {
-          this.send401Error("Username Already Exists", res);
+          send401Error("Username Already Exists", res);
           return;
         }
 
-        this.send401Error("Error Adding New User", res);
+        send401Error("Error Adding New User", res);
 
         // console.log("Add User Error");
         // console.log(err);
@@ -495,7 +456,7 @@ class UserController extends ParamChecker {
 
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteMod(user)) {
-      this.send401Error("User Not Allowed", res);
+      send401Error("User Not Allowed", res);
       return;
     }
 
@@ -503,13 +464,13 @@ class UserController extends ParamChecker {
     if ( !('deletedUser' in req.body)
       || !('id' in req.body.deletedUser)
     ) {
-      this.send401Error("User Data Not Provided", res);
+      send401Error("User Data Not Provided", res);
       return;
     }
 
     // Check that the user isn't trying to delete themself and causing an issue
     if (req.body.deletedUser.id === req._authData._id) {
-      this.send401Error("Cannot Delete Yourself", res);
+      send401Error("Cannot Delete Yourself", res);
       return;
     }
 
@@ -526,7 +487,7 @@ class UserController extends ParamChecker {
       })
       .catch((err) => {
         console.log("Error Deleting User", err);
-        this.send401Error("Error Deleting User", res);
+        send401Error("Error Deleting User", res);
       });
   }
 
@@ -543,7 +504,7 @@ class UserController extends ParamChecker {
     const currentUser = req._authData;
 
     if (!this.checkAllowedUsersForSiteMod(currentUser)) {
-      this.send401Error("User Not Allowed", res);
+      send401Error("User Not Allowed", res);
       return;
     }
 
@@ -551,7 +512,7 @@ class UserController extends ParamChecker {
       || !('id' in req.body.updatedUser)
       || !('data' in req.body.updatedUser)
     ) {
-      this.send401Error("User Data Not Provided", res);
+      send401Error("User Data Not Provided", res);
       return;
     }
 
@@ -563,7 +524,7 @@ class UserController extends ParamChecker {
     let p;
     if ('password' in updatedUser) {
       if (updatedUser.password.length < 8) {
-        this.send401Error("Password length is too short", res);
+        send401Error("Password length is too short", res);
         return;
       }
 
@@ -601,7 +562,7 @@ class UserController extends ParamChecker {
       })
       .catch((err) => {
         console.log(err);
-        this.send401Error("Error Updating User", res);
+        send401Error("Error Updating User", res);
       });
   }
 }

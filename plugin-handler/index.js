@@ -33,17 +33,23 @@ class PluginHandler {
   }
 
   /**
-   * This method will cycle through all plugins, and run the functions for each lifecycle hook.
+   * This method will cycle through all plugins, and run the lifecycle hook functions for each plugin.
    *
-   * @param {String} hook
+   * @param {String} hook the name of the lifecycle hook to be run
+   * @param {Object} args arguments that are passed from the running function to that lifecycle hook.
    */
-  runLifecycleHook(hook) {
+  runLifecycleHook(hook, args = {}) {
     for (let x = 0, len = this.plugins.length; x < len; ++x) {
       const plugin = this.plugins[x];
 
+      const hookArgs = {
+        ...args,
+        database: this.db,
+      };
+
       // Run the hook for this plugin.
       if (plugin.isEnabled()) {
-        plugin.runHook(hook);
+        plugin.runHook(hook, hookArgs);
       }
     }
   }
