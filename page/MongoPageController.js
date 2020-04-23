@@ -1,5 +1,5 @@
 const { ObjectId } = require("mongodb");
-const { send401Error, isString, isBoolean } = require("../utilities");
+const { send400Error, send401Error, send500Error } = require("../utilities");
 
 const PageController = require("./PageController");
 
@@ -12,14 +12,14 @@ class MongoPageController extends PageController {
    *
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
-   * @return {Promise} Returns a promise that resolves with an object.
+   * @return {Promise} Returns a promise (for testing purposes)
    */
   async getPageBySlug(req, res) {
     if ( !('params' in req)
       || !('slug' in req.params)
     ) {
       const err = "Invalid Page Data Sent";
-      send401Error(err, res);
+      send400Error(res, err);
       return Promise.reject(err);
     }
 
@@ -43,6 +43,11 @@ class MongoPageController extends PageController {
         }
 
         res.status(404).json();
+      })
+      .catch((err) => {
+        console.log(err);
+        send500Error(res, "Database Error");
+        throw err;
       });
   }
 
@@ -53,6 +58,7 @@ class MongoPageController extends PageController {
    *
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
+   * @returns {Promise} Returns a promise (for testing purposes)
    */
   getAllPages(req, res) {
     const findParams = {};
@@ -75,6 +81,11 @@ class MongoPageController extends PageController {
         }
 
         res.status(401).json();
+      })
+      .catch((err) => {
+        console.log(err);
+        send500Error(res, "Database Error");
+        throw err;
       });
   }
 
@@ -104,18 +115,26 @@ class MongoPageController extends PageController {
    * @returns {Promise}
    */
   addPage(req, res) {
+    if (!this.checkAllowedUsersForSiteMod(req._authData)) {
+      console.log("Access Denied");
+      send401Error(res, "");
+      return Promise.reject("Access Denied");
+    }
+
     const pageData = this.extractPageData(req);
     if (!pageData) {
       const err = "Invalid Page Data Sent";
-      send401Error(err, res);
+      send400Error(res, err);
       return Promise.reject(err);
     }
 
     const pageErr = this.checkPageData(pageData);
     if (pageErr) {
-      send401Error(pageErr, res);
+      send400Error(res, pageErr);
       return Promise.reject(pageErr);
     }
+
+    console.log(res);
 
     const now = new Date().getTime();
 
@@ -130,10 +149,16 @@ class MongoPageController extends PageController {
         res.status(200).json(setData);
       })
       .catch((err) => {
-        const msg = err.msg || err.message;
-        res.status(400).json({
-          msg,
-        });
+        if ( 'errmsg' in err
+          && err.errmsg.indexOf("E11000" >= 0)
+        ) {
+          send401Error(res, "Page Slug Already Exists");
+        } else {
+          send500Error(res, "Error Adding New User");
+        }
+        // const msg = err.msg || err.message;
+        // send500Error(res, msg);
+        throw err;
       });
   }
 
@@ -145,22 +170,27 @@ class MongoPageController extends PageController {
    * @returns {Promise}
    */
   editPage(req, res) {
+    if (!this.checkAllowedUsersForSiteMod(req._authData)) {
+      send401Error(res, "");
+      return Promise.reject("Access Denied");
+    }
+
     const pageData = this.extractPageData(req);
     if (!pageData) {
       const err = "Invalid Page Data Sent";
-      send401Error(err, res);
+      send400Error(res, err);
       return Promise.reject(err);
     }
 
     if (!('id' in pageData)) {
       const err = "Invalid Page Data. No Id Provided.";
-      send401Error(err, res);
+      send400Error(res, err);
       return Promise.reject(err);
     }
 
     const pageErr = this.checkPageData(pageData);
     if (pageErr) {
-      send401Error(pageErr, res);
+      send400Error(res, pageErr);
       return Promise.reject(pageErr);
     }
 
@@ -186,80 +216,37 @@ class MongoPageController extends PageController {
       })
       .catch((err) => {
         console.log(err);
-        res.status(401).json({});
+        if ( 'errmsg' in err
+          && err.errmsg.indexOf("E11000" >= 0)
+        ) {
+          send401Error(res, "Page Slug Already Exists");
+        } else {
+          send500Error(res, "Error Adding New User");
+        }
+
+        throw err;
       });
   }
 
   /**
-   * Checks the request for page data and extracts the page data from the
-   * Express Request object.
-   *
-   * @param {Object} req Express Request Object
-   * @returns {(null|Object)} Returns null if a request exists and null otherwise
-   */
-  extractPageData(req) {
-    if ( !('body' in req)
-      || !('page' in req.body)
-    ) {
-      return null;
-    }
-
-    return req.body.page;
-  }
-
-  /**
-   * Checks that the data that was sent to the addPage or editPage functions are
-   * valid.
-   *
-   * @param {Object} pageData Data sent to the addPage function that's to be added to a document
-   * @returns {(null|String)} Returns null if everything is valid or a string containing an error
-   */
-  checkPageData(pageData) {
-    // First we'll check that the required parameters actually exist.
-    if (!pageData
-      || typeof pageData !== typeof {}
-      || !('name' in pageData)
-      || !('enabled' in pageData)
-      || !('slug' in pageData)
-      || !('content' in pageData)
-    ) {
-      return "Invalid Parameters sent";
-    }
-
-    // Then we'll check that the slug is correct:
-    if (!this.checkSlug(pageData.slug)) {
-      return "Invalid Page Slug";
-    }
-
-    if (!isString(pageData.name) || pageData.name.length < 1) {
-      return "Invalid Page Name";
-    }
-
-    if (!isBoolean(pageData.enabled)) {
-      return "Invalid Page Data (Enabled)";
-    }
-
-    if (!Array.isArray(pageData.content)) {
-      return "Invalid Page Data";
-    }
-
-    return null;
-  }
-
-  /**
-   * Edits a page in the database.
+   * Deletes a page in the database.
    *
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
    * @returns {Promise}
    */
   deletePage(req, res) {
+    if (!this.checkAllowedUsersForSiteMod(req._authData)) {
+      send401Error(res, "");
+      return Promise.reject("Access Denied");
+    }
+
     if ( !('body' in req)
       || !('page' in req.body)
       || !('id' in req.body.page)
     ) {
       const err = "Invalid Page Data. No Id Provided.";
-      send401Error(err, res);
+      send400Error(res, err);
       return Promise.reject(err);
     }
 
@@ -272,7 +259,8 @@ class MongoPageController extends PageController {
       })
       .catch((err) => {
         console.log(err);
-        res.status(401).json();
+        send500Error(res, "");
+        throw err;
       });
   }
 }

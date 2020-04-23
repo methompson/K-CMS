@@ -3,8 +3,16 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { ObjectId } = require("mongodb");
 
-const { endOnError, errorIfTokenDoesNotExist, send401Error } = require("../utilities");
+const {
+  endOnError,
+  errorIfTokenDoesNotExist,
+  send400Error,
+  send401Error,
+  send500Error,
+} = require("../utilities");
 const PluginHandler = require("../plugin-handler");
+
+const invalidCredentials = "Invalid Credentials";
 
 class UserController {
   // TODO set up database and plugins
@@ -13,6 +21,16 @@ class UserController {
     this.jwtAlg = "HS256";
     this.passwordLengthMin = 8;
     this.pagination = 30;
+    this.userEditors = [
+      'superAdmin',
+      'admin',
+    ];
+
+    this.userViewers = [
+      'superAdmin',
+      'admin',
+      'editor',
+    ];
 
     if (pluginHandler instanceof PluginHandler) {
       this.pluginHandler = pluginHandler;
@@ -105,6 +123,7 @@ class UserController {
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
    * @param {Function} next Express Next Function
+   * @returns {Promise} For testing purposes
    */
   authenticateUserCredentials(req, res) {
     this.pluginHandler.runLifecycleHook("beforeLoggingIn");
@@ -112,25 +131,22 @@ class UserController {
     if ( !('username' in req.body)
       || !('password' in req.body)
     ) {
+      const err = "User Data Not Provided";
       this.pluginHandler.runLifecycleHook('loginFailed');
-      res.status(401).json({
-        error: "User Data Not Provided",
-      });
-      return;
+      send401Error(res, err);
+      return Promise.reject(err);
     }
     const { username, password } = req.body;
     const userData = {};
 
     const collection = this.db.instance.db("kcms").collection("users");
-    collection.findOne({
+    return collection.findOne({
       username,
     })
       .then((result) => {
         if (!result) {
-          throw {
-            status: 401,
-            error: "Invalid Credentials",
-          };
+          send401Error(res, invalidCredentials);
+          throw invalidCredentials;
         }
 
         userData._id = result._id;
@@ -141,10 +157,8 @@ class UserController {
       })
       .then((result) => {
         if (!result) {
-          throw {
-            status: 401,
-            error: "Invalid Credentials",
-          };
+          send401Error(res, invalidCredentials);
+          throw invalidCredentials;
         }
 
         this.pluginHandler.runLifecycleHook('loginSucceeded');
@@ -167,15 +181,11 @@ class UserController {
       })
       .catch((err) => {
         this.pluginHandler.runLifecycleHook('loginFailed');
-        if ( err.status && err.error ) {
-          res.status(err.status).json({
-            error: err.error,
-          });
-        } else {
-          res.status(500).json({
-            error: "Server Error",
-          });
+        if (err !== invalidCredentials) {
+          send500Error(res, err);
         }
+
+        throw err;
       });
   }
 
@@ -192,13 +202,14 @@ class UserController {
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
    * @param {Function} next Express Next Function
+   * @returns {Promise} For testing purposes
    */
   getUserRequestToken(req, res, next) {
     // Check the headers for an authorization token
     if ( !('authorization' in req.headers) ) {
       req._authData = null;
       next();
-      return;
+      return Promise.resolve();
     }
 
     // Split the authorization header
@@ -211,11 +222,11 @@ class UserController {
     ) {
       req._authData = null;
       next();
-      return;
+      return Promise.resolve();
     }
 
     const token = split[1];
-    jwt.verify(token, global.jwtSecret, { alg: this.jwtAlg }, (err, decoded) => {
+    return jwt.verify(token, global.jwtSecret, { alg: this.jwtAlg }, (err, decoded) => {
       if (err) {
         req._authData = null;
       } else {
@@ -230,75 +241,59 @@ class UserController {
    * Checks that the user type is included in the allowed user types for modifying users
    *
    * @param {Object} authToken The jwt token of the user.
-   * @return {Boolean} Whether the user is verified
+   * @returns {Boolean} Whether the user is verified
    */
   checkAllowedUsersForSiteMod(authToken) {
-    const allowedUserTypes = [
-      'superAdmin',
-      'admin',
-    ];
-
-    // Check that the usertype is in the allowedUserTypes array.
-    // Only admin and superAdmin users can add new users.
-    if (allowedUserTypes.indexOf(authToken.userType) < 0) {
-      return false;
-    }
-
-    return true;
+    return this.userEditors.includes(authToken.userType);
   }
 
   /**
    * Checks that the user type is included in the allowed user types for viewing users
    *
    * @param {Object} authToken The jwt token of the user.
-   * @return {Boolean} Whether the user is verified
+   * @returns {Boolean} Whether the user is verified
    */
   checkAllowedUsersForSiteInfo(authToken) {
-    const allowedUserTypes = [
-      'superAdmin',
-      'admin',
-      'editor',
-    ];
-
-    // Check that the usertype is in the allowedUserTypes array.
-    // Only admin and superAdmin users can add new users.
-    if (allowedUserTypes.indexOf(authToken.userType) < 0) {
-      return false;
-    }
-
-    return true;
+    return this.userViewers.includes(authToken.userType);
   }
 
+  /**
+   * Gets user data about a single user
+   *
+   * @param {Object} req Express Request Object
+   * @param {Object} res Express Response Object
+   * @returns {Promise} For testing purposes
+   */
   getUser(req, res) {
-    const user = req._authData;
-
+    const invalidUserId = "Invalid User Id";
     // Check that the user is allowed to perform this work
-    if (!this.checkAllowedUsersForSiteMod(user)) {
-      send401Error("User Not Allowed", res);
-      return;
+    if (!this.checkAllowedUsersForSiteMod(req._authData)) {
+      send401Error(res, "");
+      return Promise.reject("Invalid User");
     }
 
     if (!('id' in req.params)) {
-      send401Error("User Id Not Provided", res);
-      return;
+      const err = "User Id Not Provided";
+      send400Error(res, err);
+      return Promise.reject(err);
     }
 
     let id;
     try {
       id = ObjectId(req.params.id);
     } catch (err) {
-      send401Error("Invalid User Id", res);
-      return;
+      send400Error(res, invalidUserId);
+      return Promise.reject(invalidUserId);
     }
 
     const collection = this.db.instance.db("kcms").collection("users");
-    collection.findOne({
+    return collection.findOne({
       _id: id,
     })
       .then((result) => {
         if (!result) {
-          send401Error("Invalid User Id", res);
-          return;
+          send400Error(res, invalidUserId);
+          throw invalidUserId;
         }
 
         const userData = {
@@ -314,17 +309,27 @@ class UserController {
       })
       .catch((err) => {
         console.log(err);
-        send401Error("Database Error", res);
+        if (err !== invalidUserId) {
+          send500Error(res, "Database Error");
+        }
+
+        throw err;
       });
   }
 
+  /**
+   * Gets an array of all users. The function requires that a user have sufficient
+   * permissions to view this list of users.
+   *
+   * @param {Object} req Express Request Object
+   * @param {Object} res Express Response Object
+   * @returns {Promise} For testing purposes
+   */
   getAllUsers(req, res) {
-    const user = req._authData;
-
     // Check that the user is allowed to perform this work
-    if (!this.checkAllowedUsersForSiteMod(user)) {
-      send401Error("User Not Allowed", res);
-      return;
+    if (!this.checkAllowedUsersForSiteMod(req._authData)) {
+      send401Error(res, "");
+      return Promise.reject("Permission Denied");
     }
 
     console.log(req.params.page);
@@ -332,7 +337,7 @@ class UserController {
     console.log(page);
 
     const collection = this.db.instance.db("kcms").collection("users");
-    collection.find(
+    return collection.find(
       {},
       {
         projection: { password: 0 },
@@ -348,7 +353,7 @@ class UserController {
       })
       .catch((err) => {
         console.log(err);
-        send401Error("Database Error", res);
+        send500Error(res, "Database Error");
       });
   }
 
@@ -365,18 +370,20 @@ class UserController {
    *
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
+   * @returns {Promise} For testing purposes
    */
   addUser(req, res) {
+    const userDataNotProvided = "User Data Not Provided";
     const user = req._authData;
 
     if (!this.checkAllowedUsersForSiteMod(user)) {
-      send401Error("User Not Allowed", res);
-      return;
+      send401Error(res, "");
+      return Promise.reject("Access Denied");
     }
 
     if (!('newUser' in req.body)) {
-      send401Error("User Data Not Provided", res);
-      return;
+      send400Error(res, userDataNotProvided);
+      return Promise.reject(userDataNotProvided);
     }
 
     const newUser = {
@@ -384,13 +391,14 @@ class UserController {
     };
 
     if ( !('username' in newUser) || !('password' in newUser) ) {
-      send401Error("User Data Not Provided", res);
-      return;
+      send400Error(res, userDataNotProvided);
+      return Promise.reject(userDataNotProvided);
     }
 
     if (newUser.password.length < this.passwordLengthMin) {
-      send401Error("Password length is too short", res);
-      return;
+      const err = "Password length is too short";
+      send400Error(res, err);
+      return Promise.reject(err);
     }
 
     if (!('userType' in newUser)) {
@@ -405,7 +413,7 @@ class UserController {
 
     // We've set a unique constraint on the username field, so we can't add a username
     // that already exists.
-    bcrypt.hash(newUser.password, 12)
+    return bcrypt.hash(newUser.password, 12)
       .then((result) => {
         return collection.insertOne(
           {
@@ -427,12 +435,15 @@ class UserController {
       })
       .catch((err) => {
         // Do Something;
-        if (err.errmsg.indexOf("E1100" >= 0)) {
-          send401Error("Username Already Exists", res);
-          return;
+        if ( 'errmsg' in err
+          && err.errmsg.indexOf("E11000" >= 0)
+        ) {
+          send401Error(res, "Username Already Exists");
+        } else {
+          send500Error(res, "Error Adding New User");
         }
 
-        send401Error("Error Adding New User", res);
+        throw err;
 
         // console.log("Add User Error");
         // console.log(err);
@@ -450,33 +461,36 @@ class UserController {
    *
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
+   * @returns {Promise} For testing purposes
    */
   deleteUser(req, res) {
     const user = req._authData;
 
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteMod(user)) {
-      send401Error("User Not Allowed", res);
-      return;
+      send401Error(res, "");
+      return Promise.reject("Permission Denied");
     }
 
     // Check that the appropriate data was sent to the function
     if ( !('deletedUser' in req.body)
       || !('id' in req.body.deletedUser)
     ) {
-      send401Error("User Data Not Provided", res);
-      return;
+      const err = "User Data Not Provided";
+      send400Error(res, err);
+      return Promise.reject(err);
     }
 
     // Check that the user isn't trying to delete themself and causing an issue
     if (req.body.deletedUser.id === req._authData._id) {
-      send401Error("Cannot Delete Yourself", res);
-      return;
+      const err = "Cannot Delete Yourself";
+      send400Error(res, err);
+      return Promise.reject(err);
     }
 
     const collection = this.db.instance.db("kcms").collection("users");
 
-    collection.deleteOne({
+    return collection.deleteOne({
       _id: ObjectId(req.body.deletedUser.id),
     })
       .then((result) => {
@@ -487,7 +501,8 @@ class UserController {
       })
       .catch((err) => {
         console.log("Error Deleting User", err);
-        send401Error("Error Deleting User", res);
+        send500Error(res, "Error Deleting User");
+        throw err;
       });
   }
 
@@ -499,21 +514,23 @@ class UserController {
    *
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
+   * @returns {Promise} For testing purposes
    */
   editUser(req, res) {
     const currentUser = req._authData;
 
     if (!this.checkAllowedUsersForSiteMod(currentUser)) {
-      send401Error("User Not Allowed", res);
-      return;
+      send401Error(res, "");
+      return Promise.reject("Access Denied");
     }
 
     if ( !('updatedUser' in req.body)
       || !('id' in req.body.updatedUser)
       || !('data' in req.body.updatedUser)
     ) {
-      send401Error("User Data Not Provided", res);
-      return;
+      const err = "User Data Not Provided";
+      send400Error(res, err);
+      return Promise.reject(err);
     }
 
     const updatedUser = {
@@ -524,8 +541,9 @@ class UserController {
     let p;
     if ('password' in updatedUser) {
       if (updatedUser.password.length < 8) {
-        send401Error("Password length is too short", res);
-        return;
+        const err = "Password length is too short";
+        send400Error(res, err);
+        return Promise.reject(err);
       }
 
       p = bcrypt.hash(updatedUser.password, 12)
@@ -537,7 +555,7 @@ class UserController {
     }
 
     const collection = this.db.instance.db("kcms").collection("users");
-    p.then(() => {
+    return p.then(() => {
       console.log(collection);
       return collection.updateOne(
         {
@@ -561,8 +579,14 @@ class UserController {
         });
       })
       .catch((err) => {
-        console.log(err);
-        send401Error("Error Updating User", res);
+        if ( 'errmsg' in err
+          && err.errmsg.indexOf("E11000" >= 0)
+        ) {
+          send401Error(res, "Username Already Exists");
+        } else {
+          send500Error(res, "Error Adding New User");
+        }
+        throw err;
       });
   }
 }

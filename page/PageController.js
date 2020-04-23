@@ -4,7 +4,7 @@
 // with variable parameters that are used as interfaces.
 const express = require('express');
 
-const { errorIfTokenDoesNotExist } = require("../utilities");
+const { errorIfTokenDoesNotExist, isString, isBoolean } = require("../utilities");
 
 class PageController {
   constructor(authenticator, database, pluginHandler) {
@@ -36,6 +36,70 @@ class PageController {
     return this.router;
   }
 
+  /**
+   * Checks whether a user is in the list of user types that are alowed to
+   * add or modify pages.
+   * @param {Object} authToken The decoded JWT authorization token
+   */
+  checkAllowedUsersForSiteMod(authToken) {
+    return this.editors.includes(authToken.userType);
+  }
+
+  /**
+   * Checks the request for page data and extracts the page data from the
+   * Express Request object.
+   *
+   * @param {Object} req Express Request Object
+   * @returns {(null|Object)} Returns null if a request exists and null otherwise
+   */
+  extractPageData(req) {
+    if ( !('body' in req)
+      || !('page' in req.body)
+    ) {
+      return null;
+    }
+
+    return req.body.page;
+  }
+
+  /**
+   * Checks that the data that was sent to the addPage or editPage functions are
+   * valid.
+   *
+   * @param {Object} pageData Data sent to the addPage function that's to be added to a document
+   * @returns {(null|String)} Returns null if everything is valid or a string containing an error
+   */
+  checkPageData(pageData) {
+    // First we'll check that the required parameters actually exist.
+    if (!pageData
+      || typeof pageData !== typeof {}
+      || !('name' in pageData)
+      || !('enabled' in pageData)
+      || !('slug' in pageData)
+      || !('content' in pageData)
+    ) {
+      return "Invalid Parameters sent";
+    }
+
+    // Then we'll check that the slug is correct:
+    if (!this.checkSlug(pageData.slug)) {
+      return "Invalid Page Slug";
+    }
+
+    if (!isString(pageData.name) || pageData.name.length < 1) {
+      return "Invalid Page Name";
+    }
+
+    if (!isBoolean(pageData.enabled)) {
+      return "Invalid Page Data (Enabled)";
+    }
+
+    if (!Array.isArray(pageData.content)) {
+      return "Invalid Page Data";
+    }
+
+    return null;
+  }
   // Interfaces to be defined on a per-database basis
   getPageBySlug(req, res) {}
   getAllPages(req, res) {}
