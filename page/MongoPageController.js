@@ -27,6 +27,8 @@ class MongoPageController extends PageController {
       slug: req.params.slug,
     };
 
+    // This section determines if the user is an editor (someone who can see
+    // non-enabled pages). If they are not an admin, enabled is set to true
     if ( !('_authData' in req)
       || !req._authData
       || !this.editors.includes(req._authData.userType)
@@ -39,10 +41,11 @@ class MongoPageController extends PageController {
       .then((result) => {
         if (result) {
           res.status(200).json(result);
-          return;
+          return result;
         }
 
         res.status(404).json();
+        return 404;
       })
       .catch((err) => {
         console.log(err);
@@ -77,34 +80,17 @@ class MongoPageController extends PageController {
       .then((result) => {
         if (result) {
           res.status(200).json(result);
-          return;
+          return result;
         }
 
-        res.status(401).json();
+        res.status(200).json();
+        return 200;
       })
       .catch((err) => {
         console.log(err);
         send500Error(res, "Database Error");
         throw err;
       });
-  }
-
-  /**
-   * Check that the slug provided fulfills the requirements of the application.
-   *
-   * Slug Requirements:
-   * All lower case
-   * No spaces or special characters except for hyphen
-   *
-   * @param {String} slug the slug string to check
-   */
-  checkSlug(slug) {
-    const regex = RegExp(/[^a-z0-9-]+/g);
-
-    // We return not regex.test because if the regular expression is set up to return true if it
-    // finds any illegal characters. We want checkSlug to return true if the slug is valid.
-    // Thus, if regex.test returns true, the slug is not valid.
-    return !regex.test(slug);
   }
 
   /**
@@ -138,13 +124,13 @@ class MongoPageController extends PageController {
 
     const now = new Date().getTime();
 
-    const db = this.db.instance.db("kcms").collection("pages");
+    const collection = this.db.instance.db("kcms").collection("pages");
     const setData = {
       ...pageData,
       dateAdded: now,
       dateUpdated: now,
     };
-    return db.insertOne(setData)
+    return collection.insertOne(setData)
       .then(() => {
         res.status(200).json(setData);
       })
@@ -156,8 +142,6 @@ class MongoPageController extends PageController {
         } else {
           send500Error(res, "Error Adding New User");
         }
-        // const msg = err.msg || err.message;
-        // send500Error(res, msg);
         throw err;
       });
   }
@@ -202,8 +186,8 @@ class MongoPageController extends PageController {
     const { id } = pageData;
     delete setData.id;
 
-    const db = this.db.instance.db("kcms").collection("pages");
-    return db.updateOne(
+    const collection = this.db.instance.db("kcms").collection("pages");
+    return collection.updateOne(
       {
         _id: ObjectId(id),
       },
@@ -250,8 +234,8 @@ class MongoPageController extends PageController {
       return Promise.reject(err);
     }
 
-    const db = this.db.instance.db("kcms").collection("pages");
-    return db.deleteOne({
+    const collection = this.db.instance.db("kcms").collection("pages");
+    return collection.deleteOne({
       _id: ObjectId(req.body.page.id),
     })
       .then(() => {

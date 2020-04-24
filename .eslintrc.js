@@ -35,5 +35,6 @@ module.exports = {
                 "functions": "never"
             }
         ],
+        'padded-blocks': 'off', // Padded blocks help separate functions
     }
 };
