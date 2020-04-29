@@ -4,7 +4,12 @@
 // with variable parameters that are used as interfaces.
 const express = require('express');
 
-const { errorIfTokenDoesNotExist, isString, isBoolean } = require("../utilities");
+const {
+  errorIfTokenDoesNotExist,
+  isString,
+  isBoolean,
+  isObject,
+} = require("../utilities");
 
 class PageController {
   constructor(authenticator, database, pluginHandler) {
@@ -53,7 +58,8 @@ class PageController {
    * @returns {(null|Object)} Returns null if a request exists and null otherwise
    */
   extractPageData(req) {
-    if ( !('body' in req)
+    if ( !isObject(req)
+      || !('body' in req)
       || !('page' in req.body)
     ) {
       return null;
@@ -71,7 +77,7 @@ class PageController {
    */
   checkPageData(pageData) {
     // First we'll check that the required parameters actually exist.
-    if (!pageData
+    if ( !isObject(pageData)
       || typeof pageData !== typeof {}
       || !('name' in pageData)
       || !('enabled' in pageData)

@@ -1,5 +1,10 @@
 const { ObjectId } = require("mongodb");
-const { send400Error, send401Error, send500Error } = require("../utilities");
+const {
+  send400Error,
+  send401Error,
+  send500Error,
+  isObject,
+} = require("../utilities");
 
 const PageController = require("./PageController");
 
@@ -120,8 +125,6 @@ class MongoPageController extends PageController {
       return Promise.reject(pageErr);
     }
 
-    console.log(res);
-
     const now = new Date().getTime();
 
     const collection = this.db.instance.db("kcms").collection("pages");
@@ -135,13 +138,15 @@ class MongoPageController extends PageController {
         res.status(200).json(setData);
       })
       .catch((err) => {
-        if ( 'errmsg' in err
+        if ( isObject(err)
+          && 'errmsg' in err
           && err.errmsg.indexOf("E11000" >= 0)
         ) {
           send401Error(res, "Page Slug Already Exists");
         } else {
-          send500Error(res, "Error Adding New User");
+          send500Error(res, "Error Adding New Page");
         }
+
         throw err;
       });
   }
@@ -200,12 +205,13 @@ class MongoPageController extends PageController {
       })
       .catch((err) => {
         console.log(err);
-        if ( 'errmsg' in err
+        if ( isObject(err)
+          && 'errmsg' in err
           && err.errmsg.indexOf("E11000" >= 0)
         ) {
           send401Error(res, "Page Slug Already Exists");
         } else {
-          send500Error(res, "Error Adding New User");
+          send500Error(res, "Error Editing Page");
         }
 
         throw err;
@@ -225,10 +231,14 @@ class MongoPageController extends PageController {
       return Promise.reject("Access Denied");
     }
 
-    if ( !('body' in req)
-      || !('page' in req.body)
-      || !('id' in req.body.page)
-    ) {
+    const pageData = this.extractPageData(req);
+    if (!pageData) {
+      const err = "Invalid Page Data Sent";
+      send400Error(res, err);
+      return Promise.reject(err);
+    }
+
+    if (!('id' in pageData)) {
       const err = "Invalid Page Data. No Id Provided.";
       send400Error(res, err);
       return Promise.reject(err);
@@ -236,14 +246,14 @@ class MongoPageController extends PageController {
 
     const collection = this.db.instance.db("kcms").collection("pages");
     return collection.deleteOne({
-      _id: ObjectId(req.body.page.id),
+      _id: ObjectId(pageData.id),
     })
       .then(() => {
         res.status(200).json();
       })
       .catch((err) => {
         console.log(err);
-        send500Error(res, "");
+        send500Error(res, "Error Deleting Page");
         throw err;
       });
   }

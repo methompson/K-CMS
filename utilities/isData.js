@@ -1,6 +1,6 @@
 module.exports = {
   isObject(x) {
-    return typeof x === typeof {};
+    return typeof x === typeof {} && !Array.isArray(x);
   },
 
   isArray(x) {
