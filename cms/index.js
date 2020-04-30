@@ -33,15 +33,7 @@ class CMS {
       this.checkPlugins(options.plugins);
     }
 
-    // console.log("Db Created", this.db);
-
     const app = express();
-
-    // app.use('/', (req, res, next) => {
-    //   req.$cms = this;
-    //   console.log("Always Here");
-    //   next();
-    // });
 
     this.userController = makeUserController(this.db, this.pluginHandler);
     this.pageController = makePageController(this.userController, this.db, this.pluginHandler);

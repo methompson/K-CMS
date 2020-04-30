@@ -1,6 +1,12 @@
 const { MongoClient } = require('mongodb');
-const utils = require("../utilities");
+const { endOnError, isObject } = require("../utilities");
 
+/**
+ * Creates a MongoDB client.
+ *
+ * @param {Object} options object of options from which to make a database
+ * @returns {MongoClient}
+ */
 function getMongoDb(options = {}) {
   let mongoUrl = "";
   if ('fullUrl' in options) {
@@ -37,7 +43,25 @@ function getMongoDb(options = {}) {
   return client;
 }
 
-exports.makeDatabaseClient = function makeDatabaseClient(options = {}) {
+/**
+ * Creates a MySQL client (UNFINISHED)
+ * @param {*} options 
+ */
+// eslint-disable-next-line no-unused-vars
+function getMySQLDb(options = {}) {}
+
+/**
+ * Accepts an object of parameters and makes a Database client
+ *
+ * @param {Object} options Options parameters from which to make a database object
+ * @returns {Object} An object containing the actual database object and an identifier of the type of database
+ */
+const makeDatabaseClient = (options = {}) => {
+  if (!isObject(options)) {
+    endOnError("Invalid Options Object Passed to makeDatabaseClient");
+    return false;
+  }
+
   if ("mongodb" in options) {
     const client = getMongoDb(options.mongodb);
     return {
@@ -46,10 +70,8 @@ exports.makeDatabaseClient = function makeDatabaseClient(options = {}) {
     };
   }
 
-  utils.endOnError("No compatible database options were provided");
+  endOnError("No compatible database options were provided");
   return false;
 };
 
-
-// eslint-disable-next-line no-unused-vars
-function getMySQLDb(options = {}) {}
+exports.makeDatabaseClient = makeDatabaseClient;
