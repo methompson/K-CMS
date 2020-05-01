@@ -1,4 +1,5 @@
 const express = require("express");
+const http = require("http");
 const {
   MongoClient,
   findToArray, // Mock Implementation of toArray in MongoDb
@@ -11,25 +12,47 @@ const {
   ObjectId,
 } = require("mongodb");
 
-const MongoPageController = require("../../../page/MongoPageController");
+jest.mock("http", () => {
+  const json = jest.fn(() => {});
+  const status = jest.fn(() => {
+    return { json };
+  });
 
-const expressJson = jest.fn(() => {});
-const status = jest.fn(() => {
+  function ServerResponse() {}
+  ServerResponse.prototype.status = status;
+
   return {
-    json: expressJson,
+    ServerResponse,
+    json,
+    status,
   };
 });
 
-const res = {
-  status,
-};
+const { json, status } = http;
+
+const MongoPageController = require("../../../page/MongoPageController");
+const PluginHandler = require("../../../plugin-handler");
+
+// const expressJson = jest.fn(() => {});
+// const status = jest.fn(() => {
+//   return {
+//     json: expressJson,
+//   };
+// });
+
+// const res = {
+//   status,
+// };
+
+console.log(http);
+
+const res = new http.ServerResponse();
 
 const errorText = "Test Error";
 
 describe("MongoPageController", () => {
   let db;
   let ph;
-  let auth;
   let mpc;
   let req;
   let router;
@@ -41,10 +64,9 @@ describe("MongoPageController", () => {
       instance: mc,
     };
 
-    ph = { pluginHandler: "pluginHandler" };
-    auth = { authenticator: "authenticator" };
+    ph = new PluginHandler();
 
-    mpc = new MongoPageController(auth, db, ph);
+    mpc = new MongoPageController(db, ph);
     router = express.Router();
     router.get.mockClear();
     router.post.mockClear();
@@ -54,7 +76,7 @@ describe("MongoPageController", () => {
     MongoClient.prototype.db.mockClear();
 
     status.mockClear();
-    expressJson.mockClear();
+    json.mockClear();
 
     findOne.mockClear();
     find.mockClear();
@@ -64,13 +86,32 @@ describe("MongoPageController", () => {
     collection.mockClear();
   });
 
-  test("When a new MongoPageController is instantiated, a database, a pluginHandler, editors and an authenticator are added to the object's data. 5 routes are set", () => {
-    mpc = new MongoPageController(auth, db, ph);
-    expect(router.get).toHaveBeenCalledTimes(2);
-    expect(router.post).toHaveBeenCalledTimes(3);
-    expect(mpc.db).toBe(db);
-    expect(mpc.pluginHandler).toBe(ph);
-    expect(mpc.authenticator).toBe(auth);
+  describe("Instantiation", () => {
+    test("When a new MongoPageController is instantiated, a database, a pluginHandler, editors and an authenticator are added to the object's data. 5 routes are set", () => {
+      mpc = new MongoPageController(db, ph);
+      expect(router.get).toHaveBeenCalledTimes(2);
+      expect(router.post).toHaveBeenCalledTimes(3);
+
+      expect(mpc.db).toBe(db);
+      expect(mpc.pluginHandler).toBe(ph);
+    });
+
+    test("When a PageController is instantiated without a database or an improper database, the Node process will exit", () => {
+      const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {});
+      mpc = new MongoPageController();
+
+      expect(mockExit).toHaveBeenCalledTimes(1);
+
+      mockExit.mockClear();
+
+      db = {
+        instance: {},
+        type: "mongodb",
+      };
+
+      mpc = new MongoPageController(db);
+      expect(mockExit).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("getPageBySlug", () => {
@@ -103,8 +144,8 @@ describe("MongoPageController", () => {
           expect(findOne).toHaveBeenCalledWith(req.params);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith(doc);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith(doc);
           done();
         });
     });
@@ -174,8 +215,8 @@ describe("MongoPageController", () => {
           expect(result).toBe(404);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(404);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith();
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith();
           done();
         });
     });
@@ -186,8 +227,8 @@ describe("MongoPageController", () => {
           expect(err).toBe("Invalid Page Data Sent");
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
             error: "Invalid Page Data Sent",
           });
           done();
@@ -201,8 +242,8 @@ describe("MongoPageController", () => {
           expect(err).toBe("Invalid Page Data Sent");
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
             error: "Invalid Page Data Sent",
           });
           done();
@@ -224,8 +265,8 @@ describe("MongoPageController", () => {
           expect(err).toBe(error);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
             error: "Database Error",
           });
           done();
@@ -328,8 +369,8 @@ describe("MongoPageController", () => {
           expect(result).toBe(200);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith();
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith();
           done();
         });
     });
@@ -344,8 +385,8 @@ describe("MongoPageController", () => {
           expect(err).toBe(errorText);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
-          expect(expressJson).toHaveBeenCalledWith({ error: "Database Error" });
-          expect(expressJson).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error: "Database Error" });
+          expect(json).toHaveBeenCalledTimes(1);
           done();
         });
     });
@@ -393,8 +434,8 @@ describe("MongoPageController", () => {
           });
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
             ...newPage,
             dateAdded: expect.any(Number),
             dateUpdated: expect.any(Number),
@@ -435,8 +476,8 @@ describe("MongoPageController", () => {
           expect(insertOne).toHaveBeenCalledTimes(0);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(401);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({ error: "" });
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error: "" });
           done();
         });
     });
@@ -465,8 +506,8 @@ describe("MongoPageController", () => {
           expect(insertOne).toHaveBeenCalledTimes(0);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({ error });
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error });
           done();
         });
     });
@@ -569,15 +610,15 @@ describe("MongoPageController", () => {
           expect(status).toHaveBeenNthCalledWith(7, 400);
           expect(status).toHaveBeenNthCalledWith(8, 400);
 
-          expect(expressJson).toHaveBeenCalledTimes(8);
-          expect(expressJson).toHaveBeenNthCalledWith(1, { error: "Invalid Parameters sent" });
-          expect(expressJson).toHaveBeenNthCalledWith(2, { error: "Invalid Parameters sent" });
-          expect(expressJson).toHaveBeenNthCalledWith(3, { error: "Invalid Parameters sent" });
-          expect(expressJson).toHaveBeenNthCalledWith(4, { error: "Invalid Parameters sent" });
-          expect(expressJson).toHaveBeenNthCalledWith(5, { error: "Invalid Page Slug" });
-          expect(expressJson).toHaveBeenNthCalledWith(6, { error: "Invalid Page Name" });
-          expect(expressJson).toHaveBeenNthCalledWith(7, { error: "Invalid Page Data (Enabled)" });
-          expect(expressJson).toHaveBeenNthCalledWith(8, { error: "Invalid Page Data" });
+          expect(json).toHaveBeenCalledTimes(8);
+          expect(json).toHaveBeenNthCalledWith(1, { error: "Invalid Parameters sent" });
+          expect(json).toHaveBeenNthCalledWith(2, { error: "Invalid Parameters sent" });
+          expect(json).toHaveBeenNthCalledWith(3, { error: "Invalid Parameters sent" });
+          expect(json).toHaveBeenNthCalledWith(4, { error: "Invalid Parameters sent" });
+          expect(json).toHaveBeenNthCalledWith(5, { error: "Invalid Page Slug" });
+          expect(json).toHaveBeenNthCalledWith(6, { error: "Invalid Page Name" });
+          expect(json).toHaveBeenNthCalledWith(7, { error: "Invalid Page Data (Enabled)" });
+          expect(json).toHaveBeenNthCalledWith(8, { error: "Invalid Page Data" });
           done();
         });
     });
@@ -627,8 +668,8 @@ describe("MongoPageController", () => {
           });
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
             error: "Error Adding New Page",
           });
           done();
@@ -682,8 +723,8 @@ describe("MongoPageController", () => {
           });
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(401);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
             error: "Page Slug Already Exists",
           });
           done();
@@ -747,8 +788,8 @@ describe("MongoPageController", () => {
           );
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
             ...editPage,
             dateUpdated: expect.any(Number),
           });
@@ -790,8 +831,8 @@ describe("MongoPageController", () => {
           expect(insertOne).toHaveBeenCalledTimes(0);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(401);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({ error: "" });
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error: "" });
           done();
         });
     });
@@ -820,8 +861,8 @@ describe("MongoPageController", () => {
           expect(insertOne).toHaveBeenCalledTimes(0);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({ error });
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error });
           done();
         });
     });
@@ -860,8 +901,8 @@ describe("MongoPageController", () => {
           expect(insertOne).toHaveBeenCalledTimes(0);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({ error });
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error });
           done();
         });
     });
@@ -970,15 +1011,15 @@ describe("MongoPageController", () => {
           expect(status).toHaveBeenNthCalledWith(7, 400);
           expect(status).toHaveBeenNthCalledWith(8, 400);
 
-          expect(expressJson).toHaveBeenCalledTimes(8);
-          expect(expressJson).toHaveBeenNthCalledWith(1, { error: "Invalid Parameters sent" });
-          expect(expressJson).toHaveBeenNthCalledWith(2, { error: "Invalid Parameters sent" });
-          expect(expressJson).toHaveBeenNthCalledWith(3, { error: "Invalid Parameters sent" });
-          expect(expressJson).toHaveBeenNthCalledWith(4, { error: "Invalid Parameters sent" });
-          expect(expressJson).toHaveBeenNthCalledWith(5, { error: "Invalid Page Slug" });
-          expect(expressJson).toHaveBeenNthCalledWith(6, { error: "Invalid Page Name" });
-          expect(expressJson).toHaveBeenNthCalledWith(7, { error: "Invalid Page Data (Enabled)" });
-          expect(expressJson).toHaveBeenNthCalledWith(8, { error: "Invalid Page Data" });
+          expect(json).toHaveBeenCalledTimes(8);
+          expect(json).toHaveBeenNthCalledWith(1, { error: "Invalid Parameters sent" });
+          expect(json).toHaveBeenNthCalledWith(2, { error: "Invalid Parameters sent" });
+          expect(json).toHaveBeenNthCalledWith(3, { error: "Invalid Parameters sent" });
+          expect(json).toHaveBeenNthCalledWith(4, { error: "Invalid Parameters sent" });
+          expect(json).toHaveBeenNthCalledWith(5, { error: "Invalid Page Slug" });
+          expect(json).toHaveBeenNthCalledWith(6, { error: "Invalid Page Name" });
+          expect(json).toHaveBeenNthCalledWith(7, { error: "Invalid Page Data (Enabled)" });
+          expect(json).toHaveBeenNthCalledWith(8, { error: "Invalid Page Data" });
           done();
         });
     });
@@ -1037,8 +1078,8 @@ describe("MongoPageController", () => {
           );
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
             error: "Error Editing Page",
           });
           done();
@@ -1101,8 +1142,8 @@ describe("MongoPageController", () => {
           );
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(401);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
             error: "Page Slug Already Exists",
           });
           done();
@@ -1149,8 +1190,8 @@ describe("MongoPageController", () => {
           });
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith();
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith();
           done();
         });
     });
@@ -1186,8 +1227,8 @@ describe("MongoPageController", () => {
           expect(insertOne).toHaveBeenCalledTimes(0);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(401);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({ error: "" });
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error: "" });
           done();
         });
     });
@@ -1219,8 +1260,8 @@ describe("MongoPageController", () => {
           expect(insertOne).toHaveBeenCalledTimes(0);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({ error });
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error });
           done();
         });
     });
@@ -1257,8 +1298,8 @@ describe("MongoPageController", () => {
           expect(insertOne).toHaveBeenCalledTimes(0);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({ error });
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error });
           done();
         });
     });
@@ -1305,8 +1346,8 @@ describe("MongoPageController", () => {
           });
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
-          expect(expressJson).toHaveBeenCalledTimes(1);
-          expect(expressJson).toHaveBeenCalledWith({
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
             error: "Error Deleting Page",
           });
           done();

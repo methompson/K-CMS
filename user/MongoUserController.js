@@ -1,11 +1,13 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { ObjectId } = require("mongodb");
+const { ObjectId, MongoClient } = require("mongodb");
 
 const {
   send400Error,
   send401Error,
   send500Error,
+  isObject,
+  endOnError,
 } = require("../utilities");
 
 const UserController = require("./UserController");
@@ -13,6 +15,24 @@ const UserController = require("./UserController");
 const invalidCredentials = "Invalid Credentials";
 
 class MongoUserController extends UserController {
+  constructor(database, pluginHandler) {
+    super(pluginHandler);
+
+    if ( !isObject(database)
+      || !('instance' in database)
+    ) {
+      endOnError("Invalid Database Object Sent");
+      return;
+    }
+
+    if (!(database.instance instanceof MongoClient)) {
+      endOnError("Database instance is not a MongoDB Client");
+      return;
+    }
+
+    this.db = database;
+  }
+
   /**
    * This function authenticates a user's credentials. The user sends a JSON string
    * with user and password in the body of a POST request to this route. This function
@@ -23,7 +43,7 @@ class MongoUserController extends UserController {
    * in the body. Upon failure, an error will be sent back to the user.
    *
    * @param {Object} req Express Request Object
-   * @param {Object} res Express Response Object
+   * @param {http.ServerResponse} res Express Response Object
    * @param {Function} next Express Next Function
    * @returns {Promise} For testing purposes
    */
@@ -36,7 +56,7 @@ class MongoUserController extends UserController {
       const err = "User Data Not Provided";
       this.pluginHandler.runLifecycleHook('loginFailed');
       send401Error(res, err);
-      return Promise.reject(err);
+      return Promise.resolve(err);
     }
     const { username, password } = req.body;
     const userData = {};
@@ -87,7 +107,7 @@ class MongoUserController extends UserController {
           send500Error(res, err);
         }
 
-        throw err;
+        return err;
       });
   }
 

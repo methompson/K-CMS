@@ -1,5 +1,6 @@
-const { ObjectId } = require("mongodb");
+const { ObjectId, MongoClient } = require("mongodb");
 const {
+  endOnError,
   send400Error,
   send401Error,
   send500Error,
@@ -12,6 +13,24 @@ const PageController = require("./PageController");
 // db.type is a string that determines the type of database
 // db.client is the MongoDB client
 class MongoPageController extends PageController {
+  constructor(database, pluginHandler) {
+    super(pluginHandler);
+
+    if ( !isObject(database)
+      || !('instance' in database)
+    ) {
+      endOnError("Invalid Database Object Sent");
+      return;
+    }
+
+    if (!(database.instance instanceof MongoClient)) {
+      endOnError("Database instance is not a MongoDB Client");
+      return;
+    }
+
+    this.db = database;
+  }
+
   /**
    * Gets a MongoDB Document based on the page slug sent.
    *

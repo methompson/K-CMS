@@ -11,12 +11,6 @@ const { makeDatabaseClient } = require('../database');
 
 const PluginHandler = require('../plugin-handler');
 
-// We use this to instantiate an Authenticator object with default values.
-// If a user passes their own routes and controller, the app would use that
-// rather than these defaults
-// const authRoutes = require('../routes/auth');
-// const authController = require('../controllers/auth');
-
 class CMS {
   constructor(options = {}) {
     if (typeof options !== typeof {}) {
@@ -36,7 +30,14 @@ class CMS {
     const app = express();
 
     this.userController = makeUserController(this.db, this.pluginHandler);
-    this.pageController = makePageController(this.userController, this.db, this.pluginHandler);
+    this.pageController = makePageController(this.db, this.pluginHandler);
+
+    if (!this.userController) {
+      endOnError("Error Creating user controller");
+    }
+    if (!this.pageController) {
+      endOnError("Error Creating user controller");
+    }
 
     const apiBase = "apiBase" in options ? options.apiBase : 'api';
     const userPath = "user" in options ? options.userPath : 'user';

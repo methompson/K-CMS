@@ -2,7 +2,8 @@
 /* eslint-disable lines-between-class-members */
 // These rules are disabled because the PageController class has some empty functions
 // with variable parameters that are used as interfaces.
-const express = require('express');
+const router = require('express').Router();
+const PluginHandler = require("../plugin-handler");
 
 const {
   errorIfTokenDoesNotExist,
@@ -12,10 +13,12 @@ const {
 } = require("../utilities");
 
 class PageController {
-  constructor(authenticator, database, pluginHandler) {
-    this.db = database;
-    this.pluginHandler = pluginHandler;
-    this.authenticator = authenticator;
+  constructor(pluginHandler) {
+    if ((pluginHandler instanceof PluginHandler) === true) {
+      this.pluginHandler = pluginHandler;
+    } else {
+      this.pluginHandler = new PluginHandler();
+    }
 
     this.editors = [
       'editor',
@@ -23,18 +26,17 @@ class PageController {
       'superAdmin',
     ];
 
-    this.router = express.Router();
+    this.router = router;
 
+    // We use short closures in these route definitions so that the scope of the class is
+    // maintained when running the respective functions. errorIfTokenDoesNotExist doesn't
+    // require this scope.
     this.router.post('/add-page', errorIfTokenDoesNotExist, (req, res) => { this.addPage(req, res); });
     this.router.post('/edit-page', errorIfTokenDoesNotExist, (req, res) => { this.editPage(req, res); });
     this.router.post('/delete-page', errorIfTokenDoesNotExist, (req, res) => { this.deletePage(req, res); });
 
     this.router.get('/all-pages', (req, res) => { this.getAllPages(req, res); });
     this.router.get('/:slug', (req, res) => { this.getPageBySlug(req, res); });
-  }
-
-  get pageTypes() {
-    return {};
   }
 
   get routes() {
@@ -47,6 +49,9 @@ class PageController {
    * @param {Object} authToken The decoded JWT authorization token
    */
   checkAllowedUsersForSiteMod(authToken) {
+    if (!isObject(authToken) || !('userType' in authToken)) {
+      return false;
+    }
     return this.editors.includes(authToken.userType);
   }
 
@@ -60,6 +65,7 @@ class PageController {
   extractPageData(req) {
     if ( !isObject(req)
       || !('body' in req)
+      || !isObject(req.body)
       || !('page' in req.body)
     ) {
       return null;
@@ -78,7 +84,6 @@ class PageController {
   checkPageData(pageData) {
     // First we'll check that the required parameters actually exist.
     if ( !isObject(pageData)
-      || typeof pageData !== typeof {}
       || !('name' in pageData)
       || !('enabled' in pageData)
       || !('slug' in pageData)
@@ -88,16 +93,16 @@ class PageController {
     }
 
     // Then we'll check that the slug is correct:
-    if (!this.checkSlug(pageData.slug)) {
-      return "Invalid Page Slug";
-    }
-
     if (!isString(pageData.name) || pageData.name.length < 1) {
       return "Invalid Page Name";
     }
 
     if (!isBoolean(pageData.enabled)) {
       return "Invalid Page Data (Enabled)";
+    }
+
+    if (!isString(pageData.slug) || pageData.slug.length < 1 || !this.checkSlug(pageData.slug)) {
+      return "Invalid Page Slug";
     }
 
     if (!Array.isArray(pageData.content)) {
@@ -117,6 +122,10 @@ class PageController {
    * @param {String} slug the slug string to check
    */
   checkSlug(slug) {
+    if (!isString(slug) || slug.length < 1) {
+      return false;
+    }
+
     const regex = RegExp(/[^a-z0-9-]+/g);
 
     // We return not regex.test because if the regular expression is set up to return true if it

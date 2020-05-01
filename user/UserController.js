@@ -7,12 +7,13 @@ const {
   errorIfTokenDoesNotExist,
   isObject,
 } = require("../utilities");
+
 const PluginHandler = require("../plugin-handler");
 
 class UserController {
   // TODO set up database and plugins
   // eslint-disable-next-line no-unused-vars
-  constructor(database, pluginHandler) {
+  constructor(pluginHandler) {
     this.jwtAlg = "HS256";
     this.passwordLengthMin = 8;
     this.pagination = 30;
@@ -33,77 +34,44 @@ class UserController {
       this.pluginHandler = new PluginHandler();
     }
 
-    if (!isObject(database)) {
-      endOnError("Database required for Authenticator");
-    }
-    this.db = database;
-
     this.additionalUserRoles = {};
 
-    router.post('/login', (req, res) => {
-      this.authenticateUserCredentials(req, res);
-    });
+    this.router = router;
 
     // We don't pass the methods as variables because we still need to access the variables of
     // the UserController object. If we were to pass the methods as variables, the scope would
     // change and the UserController variables would be inaccessible.
-    router.post('/add-user', errorIfTokenDoesNotExist, (req, res, next) => { this.addUser(req, res, next); });
-    router.post('/edit-user', errorIfTokenDoesNotExist, (req, res, next) => { this.editUser(req, res, next); });
-    router.post('/delete-user', errorIfTokenDoesNotExist, (req, res, next) => { this.deleteUser(req, res, next); });
-    router.get('/get-user/:id', errorIfTokenDoesNotExist, (req, res, next) => { this.getUser(req, res, next); });
-    router.get('/get-all-users/:page*?', errorIfTokenDoesNotExist, (req, res, next) => { this.getAllUsers(req, res, next); });
-
-    this.authenticationRoutes = router;
+    this.router.post('/login', (req, res) => { this.authenticateUserCredentials(req, res); });
+    this.router.post('/add-user', errorIfTokenDoesNotExist, (req, res, next) => { this.addUser(req, res, next); });
+    this.router.post('/edit-user', errorIfTokenDoesNotExist, (req, res, next) => { this.editUser(req, res, next); });
+    this.router.post('/delete-user', errorIfTokenDoesNotExist, (req, res, next) => { this.deleteUser(req, res, next); });
+    this.router.get('/get-user/:id', errorIfTokenDoesNotExist, (req, res, next) => { this.getUser(req, res, next); });
+    this.router.get('/get-all-users/:page*?', errorIfTokenDoesNotExist, (req, res, next) => { this.getAllUsers(req, res, next); });
   }
 
   get routes() {
-    return this.authenticationRoutes;
-  }
-
-  get controller() {
-    return {
-      doNothing: this.doNothing,
-      passThrough: this.passThrough,
-      authenticateUserCredentials: this.authenticateUserCredentials,
-      getUserRequestToken: this.getUserRequestToken,
-    };
+    return this.router;
   }
 
   get userTypes() {
     return {
-      superAdmin: {},
-      admin: {},
-      editor: {},
-      subscriber: {},
+      superAdmin: {
+        permissions: ['view', 'edit'],
+      },
+      admin: {
+        permissions: ['view', 'edit'],
+      },
+      editor: {
+        permissions: ['view'],
+      },
+      subscriber: {
+        permissions: [],
+      },
       ...this.additionalUserRoles,
     };
   }
 
   // Controllers - Actions taken when routed to a certain page
-
-  /**
-   * doNothing is a test controller for testing functionality
-   *
-   * @param {Object} req Express Request Object
-   * @param {Object} res Express Response Object
-   * @param {Function} next Express Next Function
-   */
-  doNothing(req, res, next) {
-    console.log("Did nothing");
-    next();
-  }
-
-  /**
-   * passThrough is a test controller for testing functionality
-   *
-   * @param {Object} req Express Request Object
-   * @param {Object} res Express Response Object
-   * @param {Function} next Express Next Function
-   */
-  passThrough(req, res, next) {
-    console.log("Passed Through");
-    next();
-  }
 
   /**
    * This function will extract a user's token from the request header. The function
@@ -142,14 +110,17 @@ class UserController {
     }
 
     const token = split[1];
-    return jwt.verify(token, global.jwtSecret, { alg: this.jwtAlg }, (err, decoded) => {
-      if (err) {
-        req._authData = null;
-      } else {
-        req._authData = decoded;
-      }
+    return new Promise((resolve, reject) => {
+      jwt.verify(token, global.jwtSecret, { alg: this.jwtAlg }, (err, decoded) => {
+        if (err) {
+          req._authData = null;
+        } else {
+          req._authData = decoded;
+        }
 
-      next();
+        next();
+        resolve();
+      });
     });
   }
 
@@ -160,7 +131,14 @@ class UserController {
    * @returns {Boolean} Whether the user is verified
    */
   checkAllowedUsersForSiteMod(authToken) {
-    return this.userEditors.includes(authToken.userType);
+    if ( isObject(authToken)
+      && 'userType' in authToken
+      && authToken.userType in this.userTypes
+    ) {
+      return this.userTypes[authToken.userType].permissions.includes('edit');
+    }
+
+    return false;
   }
 
   /**
@@ -170,7 +148,14 @@ class UserController {
    * @returns {Boolean} Whether the user is verified
    */
   checkAllowedUsersForSiteInfo(authToken) {
-    return this.userViewers.includes(authToken.userType);
+    if ( isObject(authToken)
+      && 'userType' in authToken
+      && authToken.userType in this.userTypes
+    ) {
+      return this.userTypes[authToken.userType].permissions.includes('view');
+    }
+
+    return false;
   }
 
   /**

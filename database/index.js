@@ -45,7 +45,7 @@ function getMongoDb(options = {}) {
 
 /**
  * Creates a MySQL client (UNFINISHED)
- * @param {*} options 
+ * @param {*} options
  */
 // eslint-disable-next-line no-unused-vars
 function getMySQLDb(options = {}) {}
