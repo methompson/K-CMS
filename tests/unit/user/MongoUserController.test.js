@@ -23,6 +23,7 @@ const utilities = require("../../../utilities");
 const jwtSecret = "69";
 global.jwtSecret = jwtSecret;
 const invalidCredentials = "Invalid Credentials";
+const invalidUserId = "Invalid User Id";
 
 jest.mock("http", () => {
   const json = jest.fn(() => {});
@@ -75,8 +76,10 @@ describe("MongoUserController", () => {
     bcrypt.compare.mockClear();
     bcrypt.hash.mockClear();
     insertOne.mockClear();
+    updateOne.mockClear();
     findOne.mockClear();
     find.mockClear();
+    deleteOne.mockClear();
     jwt.sign.mockClear();
     status.mockClear();
     json.mockClear();
@@ -555,7 +558,7 @@ describe("MongoUserController", () => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: "Invalid User Id" });
+          expect(json).toHaveBeenCalledWith({ error: invalidUserId });
 
           expect(ObjectId).toHaveBeenCalledTimes(1);
           expect(ObjectId).toHaveBeenCalledWith(req.params.id);
@@ -629,7 +632,7 @@ describe("MongoUserController", () => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: "Invalid User Id" });
+          expect(json).toHaveBeenCalledWith({ error: invalidUserId });
 
           expect(ObjectId).toHaveBeenCalledTimes(1);
           expect(ObjectId).toHaveBeenCalledWith(req.params.id);
@@ -1276,8 +1279,833 @@ describe("MongoUserController", () => {
     });
   });
 
-  describe("deleteUser", () => {});
+  describe("deleteUser", () => {
+    test("deleteUser will run deleteOne and then send a 200 code when proper data is passed to the end point", (done) => {
+      req._authData = {
+        userType: "admin",
+        _id: "96",
+      };
 
-  describe("editUser", () => {});
+      const delId = "69";
+      req.body = {
+        deletedUser: {
+          id: delId,
+        },
+      };
+
+      const objId = { id: delId };
+      ObjectId.mockImplementationOnce(() => {
+        console.log("Object Id mock implementation");
+        return objId;
+      });
+
+      muc.deleteUser(req, res)
+        .then((result) => {
+          console.log("Proper result", result);
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("users");
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(delId);
+          expect(deleteOne).toHaveBeenCalledTimes(1);
+          expect(deleteOne).toHaveBeenCalledWith({ _id: objId });
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(200);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            message: "User Deleted Successfully",
+          });
+
+          done();
+        });
+    });
+
+    test("deleteUser will send a 401 error if the user making a request is not allowed to make the request", (done) => {
+      req._authData = {
+        userType: "viewer",
+        _id: "96",
+      };
+
+      const delId = "69";
+      req.body = {
+        deletedUser: {
+          id: delId,
+        },
+      };
+
+      muc.deleteUser(req, res)
+        .then(() => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(0);
+          expect(deleteOne).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(401);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "Access Denied",
+          });
+
+          done();
+        });
+
+    });
+
+    test("deleteUser will send a 400 error if the request contains no body", (done) => {
+      req._authData = {
+        userType: "admin",
+        _id: "96",
+      };
+
+      muc.deleteUser(req, res)
+        .then(() => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(0);
+          expect(deleteOne).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "User Data Not Provided",
+          });
+
+          done();
+        });
+
+    });
+
+    test("deleteUser will send a 400 error if the request contains a body, but no deletedUser", (done) => {
+      req._authData = {
+        userType: "admin",
+        _id: "96",
+      };
+
+      req.body = {};
+
+      muc.deleteUser(req, res)
+        .then(() => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(0);
+          expect(deleteOne).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "User Data Not Provided",
+          });
+
+          done();
+        });
+    });
+
+    test("deleteUser will send a 400 error if the request contains a body, but no id in the deletedUser", (done) => {
+      req._authData = {
+        userType: "admin",
+        _id: "96",
+      };
+
+      const delId = "69";
+      req.body = {
+        deletedUser: {},
+      };
+
+      muc.deleteUser(req, res)
+        .then(() => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(0);
+          expect(deleteOne).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "User Data Not Provided",
+          });
+
+          done();
+        });
+
+    });
+
+    test("deleteUser will send a 400 error if the deletedUser is the same as the user making the request", (done) => {
+      const delId = "96";
+      req._authData = {
+        userType: "admin",
+        _id: delId,
+      };
+
+      req.body = {
+        deletedUser: {
+          id: delId,
+        },
+      };
+
+      muc.deleteUser(req, res)
+        .then(() => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(0);
+          expect(deleteOne).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "Cannot Delete Yourself",
+          });
+
+          done();
+        });
+
+    });
+
+    test("deleteUser will send a 500 error if deleteOne throws an error", (done) => {
+      req._authData = {
+        userType: "admin",
+        _id: "96",
+      };
+
+      const delId = "69";
+      req.body = {
+        deletedUser: {
+          id: delId,
+        },
+      };
+
+      const objId = { id: delId };
+      ObjectId.mockImplementationOnce(() => {
+        return objId;
+      });
+
+      deleteOne.mockImplementationOnce(() => {
+        return Promise.reject();
+      });
+
+      muc.deleteUser(req, res)
+        .then(() => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("users");
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(delId);
+          expect(deleteOne).toHaveBeenCalledTimes(1);
+          expect(deleteOne).toHaveBeenCalledWith({ _id: objId });
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(500);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "Error Deleting User",
+          });
+
+          done();
+        });
+
+    });
+
+    test("deleteUser will send a 500 error if ObjectId throws an error", (done) => {
+      req._authData = {
+        userType: "admin",
+        _id: "96",
+      };
+
+      const delId = "69";
+      req.body = {
+        deletedUser: {
+          id: delId,
+        },
+      };
+
+      const err = "New Error";
+      ObjectId.mockImplementationOnce(() => {
+        throw err;
+      });
+
+      muc.deleteUser(req, res)
+        .then(() => {
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(delId);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(deleteOne).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: invalidUserId,
+          });
+
+          done();
+        });
+
+    });
+
+  });
+
+  describe("editUser", () => {
+
+    test("editUser will send a 200 code and run updateOne if correct data is passed to it", (done) => {
+      req._authData = {
+        userType: "admin",
+      };
+
+      const userId = "69";
+      const updatedUser = {
+        id: userId,
+        data: {
+          username: "test user",
+          password: "test password",
+          userType: "viewer",
+          enabled: true,
+        },
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      const objId = "96";
+      ObjectId.mockImplementationOnce(() => {
+        return objId;
+      });
+
+      updateOne.mockImplementationOnce(() => {
+        return Promise.resolve();
+      });
+
+      const hashPass = "hashed pass";
+      bcrypt.hash.mockImplementationOnce(() => {
+        return Promise.resolve(hashPass);
+      });
+
+      muc.editUser(req, res)
+        .then(() => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("users");
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+          expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(userId);
+
+          expect(updateOne).toHaveBeenCalledTimes(1);
+          expect(updateOne).toHaveBeenCalledWith(
+            { _id: objId },
+            {
+              $set: {
+                ...updatedUser.data,
+                password: hashPass,
+              },
+            },
+            { upsert: true }
+          );
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(200);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            message: "User Updated Successfully",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 200 code and run updateOne if correct data is passed to it. bcrypt.hash will not be run if a password is not included", (done) => {
+      req._authData = {
+        userType: "admin",
+      };
+
+      const userId = "69";
+      const updatedUser = {
+        id: userId,
+        data: {
+          username: "test user",
+          // password: "test password",
+          userType: "viewer",
+          enabled: true,
+        },
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      updateOne.mockImplementationOnce(() => {
+        return Promise.resolve();
+      });
+
+      const objId = "96";
+      ObjectId.mockImplementationOnce(() => {
+        return objId;
+      });
+
+      muc.editUser(req, res)
+        .then(() => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("users");
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+          expect(updateOne).toHaveBeenCalledTimes(1);
+          expect(updateOne).toHaveBeenCalledWith(
+            { _id: objId },
+            {
+              $set: {
+                ...updatedUser.data,
+              },
+            },
+            { upsert: true }
+          );
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(200);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            message: "User Updated Successfully",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 401 code if the user making the request is not allowed to make the request", (done) => {
+      req._authData = {
+        userType: "subscriber",
+      };
+
+      const userId = "69";
+      const updatedUser = {
+        id: userId,
+        data: {
+          username: "test user",
+          password: "test password",
+          userType: "viewer",
+          enabled: true,
+        },
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      muc.editUser(req, res)
+        .then(() => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+          expect(updateOne).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(401);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "Access Denied",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 400 code if there's no data in the updatedUser object", (done) => {
+      req._authData = {
+        userType: "admin",
+      };
+
+      const userId = "69";
+      const updatedUser = {
+        id: userId,
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      muc.editUser(req, res)
+        .then(() => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+          expect(updateOne).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "User Data Not Provided",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 400 code if there's no id in the updatedUser object", (done) => {
+      req._authData = {
+        userType: "admin",
+      };
+
+      const updatedUser = {
+        data: {
+          username: "test user",
+          password: "test password",
+          userType: "viewer",
+          enabled: true,
+        },
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      muc.editUser(req, res)
+        .then(() => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+          expect(updateOne).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "User Data Not Provided",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 400 code if there's no updatedUser Object in the body object", (done) => {
+      req._authData = {
+        userType: "admin",
+      };
+
+      req.body = {};
+
+      muc.editUser(req, res)
+        .then(() => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+          expect(updateOne).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "User Data Not Provided",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 400 code if there's no body object", (done) => {
+      req._authData = {
+        userType: "admin",
+      };
+
+      muc.editUser(req, res)
+        .then(() => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+          expect(updateOne).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "User Data Not Provided",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 400 code if the password included in the updatedUser object is too short", (done) => {
+      req._authData = {
+        userType: "admin",
+      };
+
+      req._authData = {
+        userType: "admin",
+      };
+
+      let password = "";
+      for (let x = 0, len = muc.passwordLengthMin - 1; x < len; ++x) {
+        password += "1";
+      }
+
+      const userId = "69";
+      const updatedUser = {
+        id: userId,
+        data: {
+          username: "test user",
+          password,
+          userType: "viewer",
+          enabled: true,
+        },
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      muc.editUser(req, res)
+        .then(() => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(userId);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+          expect(updateOne).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "Password length is too short",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 400 code if ObjectId throws an error", (done) => {
+      req._authData = {
+        userType: "admin",
+      };
+
+      req._authData = {
+        userType: "admin",
+      };
+
+      const userId = "69";
+      const updatedUser = {
+        id: userId,
+        data: {
+          username: "test user",
+          password: "test password",
+          userType: "viewer",
+          enabled: true,
+        },
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      ObjectId.mockImplementationOnce(() => {
+        throw "test error";
+      });
+
+      muc.editUser(req, res)
+        .then(() => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(userId);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+          expect(updateOne).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: invalidUserId,
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 500 code if updateOne throws a non-specific error", (done) => {
+      req._authData = {
+        userType: "admin",
+      };
+
+      const userId = "69";
+      const updatedUser = {
+        id: userId,
+        data: {
+          username: "test user",
+          password: "test password",
+          userType: "viewer",
+          enabled: true,
+        },
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      const objId = "96";
+      ObjectId.mockImplementationOnce(() => {
+        return objId;
+      });
+
+      updateOne.mockImplementationOnce(() => {
+        return Promise.reject();
+      });
+
+      const hashPass = "hashed pass";
+      bcrypt.hash.mockImplementationOnce(() => {
+        return Promise.resolve(hashPass);
+      });
+
+      muc.editUser(req, res)
+        .then(() => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("users");
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+          expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(userId);
+
+          expect(updateOne).toHaveBeenCalledTimes(1);
+          expect(updateOne).toHaveBeenCalledWith(
+            { _id: objId },
+            {
+              $set: {
+                ...updatedUser.data,
+                password: hashPass,
+              },
+            },
+            { upsert: true }
+          );
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(500);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "Error Adding New User",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 401 code if updateOne throws a specific error", (done) => {
+      req._authData = {
+        userType: "admin",
+      };
+
+      const userId = "69";
+      const updatedUser = {
+        id: userId,
+        data: {
+          username: "test user",
+          password: "test password",
+          userType: "viewer",
+          enabled: true,
+        },
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      const objId = "96";
+      ObjectId.mockImplementationOnce(() => {
+        return objId;
+      });
+
+      updateOne.mockImplementationOnce(() => {
+        return Promise.reject({
+          errmsg: "E11000 username already exists",
+        });
+      });
+
+      const hashPass = "hashed pass";
+      bcrypt.hash.mockImplementationOnce(() => {
+        return Promise.resolve(hashPass);
+      });
+
+      muc.editUser(req, res)
+        .then(() => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("users");
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+          expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(userId);
+
+          expect(updateOne).toHaveBeenCalledTimes(1);
+          expect(updateOne).toHaveBeenCalledWith(
+            { _id: objId },
+            {
+              $set: {
+                ...updatedUser.data,
+                password: hashPass,
+              },
+            },
+            { upsert: true }
+          );
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(401);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "Username Already Exists",
+          });
+
+          done();
+        });
+    });
+
+  });
 
 });

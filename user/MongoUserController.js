@@ -14,6 +14,7 @@ const {
 const UserController = require("./UserController");
 
 const invalidCredentials = "Invalid Credentials";
+const invalidUserId = "Invalid User Id";
 
 class MongoUserController extends UserController {
   constructor(database, pluginHandler) {
@@ -120,7 +121,6 @@ class MongoUserController extends UserController {
    * @returns {Promise} For testing purposes
    */
   getUser(req, res) {
-    const invalidUserId = "Invalid User Id";
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteInfo(req._authData)) {
       send401Error(res, "");
@@ -318,30 +318,40 @@ class MongoUserController extends UserController {
 
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteMod(user)) {
-      send401Error(res, "");
-      return Promise.reject("Permission Denied");
+      send401Error(res, "Access Denied");
+      return Promise.resolve("Access Denied");
     }
 
     // Check that the appropriate data was sent to the function
-    if ( !('deletedUser' in req.body)
+    if ( !isObject(req.body)
+      || !('deletedUser' in req.body)
       || !('id' in req.body.deletedUser)
     ) {
       const err = "User Data Not Provided";
       send400Error(res, err);
-      return Promise.reject(err);
+      return Promise.resolve(err);
     }
 
     // Check that the user isn't trying to delete themself and causing an issue
     if (req.body.deletedUser.id === req._authData._id) {
       const err = "Cannot Delete Yourself";
       send400Error(res, err);
-      return Promise.reject(err);
+      return Promise.resolve(err);
+    }
+
+    let id;
+    try {
+      id = ObjectId(req.body.deletedUser.id);
+    } catch (err) {
+      console.log(err);
+      send400Error(res, invalidUserId);
+      return Promise.resolve(invalidUserId);
     }
 
     const collection = this.db.instance.db("kcms").collection("users");
 
     return collection.deleteOne({
-      _id: ObjectId(req.body.deletedUser.id),
+      _id: id,
     })
       .then((result) => {
         res.status(200).json({
@@ -350,7 +360,7 @@ class MongoUserController extends UserController {
       })
       .catch((err) => {
         send500Error(res, "Error Deleting User");
-        throw err;
+        return err;
       });
   }
 
@@ -368,30 +378,40 @@ class MongoUserController extends UserController {
     const currentUser = req._authData;
 
     if (!this.checkAllowedUsersForSiteMod(currentUser)) {
-      send401Error(res, "");
-      return Promise.reject("Access Denied");
+      send401Error(res, "Access Denied");
+      return Promise.resolve("Access Denied");
     }
 
-    if ( !('updatedUser' in req.body)
+    if ( !isObject(req.body)
+      || !('updatedUser' in req.body)
       || !('id' in req.body.updatedUser)
       || !('data' in req.body.updatedUser)
     ) {
       const err = "User Data Not Provided";
       send400Error(res, err);
-      return Promise.reject(err);
+      return Promise.resolve(err);
     }
 
     const updatedUser = {
       ...req.body.updatedUser.data,
     };
 
+    let id;
+    try {
+      id = ObjectId(req.body.updatedUser.id);
+    } catch (err) {
+      send400Error(res, invalidUserId);
+      return Promise.resolve(invalidUserId);
+    }
+
     // We either use bcrypt to make a promise or manually make a promise.
     let p;
     if ('password' in updatedUser) {
-      if (updatedUser.password.length < 8) {
+
+      if (updatedUser.password.length < this.passwordLengthMin) {
         const err = "Password length is too short";
         send400Error(res, err);
-        return Promise.reject(err);
+        return Promise.resolve(err);
       }
 
       p = bcrypt.hash(updatedUser.password, 12)
@@ -405,17 +425,9 @@ class MongoUserController extends UserController {
     const collection = this.db.instance.db("kcms").collection("users");
     return p.then(() => {
       return collection.updateOne(
-        {
-          _id: ObjectId(req.body.updatedUser.id),
-        },
-        {
-          $set: {
-            ...updatedUser,
-          },
-        },
-        {
-          upsert: true,
-        }
+        { _id: id },
+        { $set: { ...updatedUser } },
+        { upsert: true }
       );
     })
       .then((result) => {
@@ -424,14 +436,15 @@ class MongoUserController extends UserController {
         });
       })
       .catch((err) => {
-        if ( 'errmsg' in err
+        if ( isObject(err)
+          && 'errmsg' in err
           && err.errmsg.indexOf("E11000" >= 0)
         ) {
           send401Error(res, "Username Already Exists");
         } else {
           send500Error(res, "Error Adding New User");
         }
-        throw err;
+        return err;
       });
   }
 }
