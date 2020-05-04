@@ -11,7 +11,6 @@ global.jwtSecret = jwtSecret;
 
 describe("UserController", () => {
   let uc;
-  let db;
   let ph;
   let router;
   let req;
@@ -19,8 +18,7 @@ describe("UserController", () => {
 
   beforeEach(() => {
     ph = new PluginHandler();
-    db = {};
-    uc = new UserController(db, ph);
+    uc = new UserController(ph);
 
     router = express.Router();
     router.get.mockClear();

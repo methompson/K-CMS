@@ -33,19 +33,6 @@ const { json, status } = http;
 const MongoPageController = require("../../../page/MongoPageController");
 const PluginHandler = require("../../../plugin-handler");
 
-// const expressJson = jest.fn(() => {});
-// const status = jest.fn(() => {
-//   return {
-//     json: expressJson,
-//   };
-// });
-
-// const res = {
-//   status,
-// };
-
-console.log(http);
-
 const res = new http.ServerResponse();
 
 const errorText = "Test Error";

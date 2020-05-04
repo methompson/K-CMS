@@ -7,6 +7,7 @@ const {
   send401Error,
   send500Error,
   isObject,
+  isNumber,
   endOnError,
 } = require("../utilities");
 
@@ -50,7 +51,8 @@ class MongoUserController extends UserController {
   authenticateUserCredentials(req, res) {
     this.pluginHandler.runLifecycleHook("beforeLoggingIn");
 
-    if ( !('username' in req.body)
+    if ( !isObject(req.body)
+      || !('username' in req.body)
       || !('password' in req.body)
     ) {
       const err = "User Data Not Provided";
@@ -97,7 +99,6 @@ class MongoUserController extends UserController {
         );
 
         res.status(200).json({
-          secret: global.jwtSecret,
           token,
         });
       })
@@ -121,15 +122,15 @@ class MongoUserController extends UserController {
   getUser(req, res) {
     const invalidUserId = "Invalid User Id";
     // Check that the user is allowed to perform this work
-    if (!this.checkAllowedUsersForSiteMod(req._authData)) {
+    if (!this.checkAllowedUsersForSiteInfo(req._authData)) {
       send401Error(res, "");
-      return Promise.reject("Invalid User");
+      return Promise.resolve("Invalid User");
     }
 
     if (!('id' in req.params)) {
       const err = "User Id Not Provided";
       send400Error(res, err);
-      return Promise.reject(err);
+      return Promise.resolve(err);
     }
 
     let id;
@@ -137,7 +138,7 @@ class MongoUserController extends UserController {
       id = ObjectId(req.params.id);
     } catch (err) {
       send400Error(res, invalidUserId);
-      return Promise.reject(invalidUserId);
+      return Promise.resolve(invalidUserId);
     }
 
     const collection = this.db.instance.db("kcms").collection("users");
@@ -147,7 +148,7 @@ class MongoUserController extends UserController {
       .then((result) => {
         if (!result) {
           send400Error(res, invalidUserId);
-          throw invalidUserId;
+          return invalidUserId;
         }
 
         const userData = {
@@ -160,14 +161,13 @@ class MongoUserController extends UserController {
         }
 
         res.status(200).json(userData);
+
+        return null;
       })
       .catch((err) => {
-        console.log(err);
-        if (err !== invalidUserId) {
-          send500Error(res, "Database Error");
-        }
+        send500Error(res, "Database Error");
 
-        throw err;
+        return err;
       });
   }
 
@@ -183,12 +183,10 @@ class MongoUserController extends UserController {
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteMod(req._authData)) {
       send401Error(res, "");
-      return Promise.reject("Permission Denied");
+      return Promise.resolve("Permission Denied");
     }
 
-    console.log(req.params.page);
-    const page = req.params.page ? req.params.page : 1;
-    console.log(page);
+    const page = isObject(req.params) && 'page' in req.params && isNumber(req.params.page) ? req.params.page : 1;
 
     const collection = this.db.instance.db("kcms").collection("users");
     return collection.find(
@@ -206,7 +204,6 @@ class MongoUserController extends UserController {
         });
       })
       .catch((err) => {
-        console.log(err);
         send500Error(res, "Database Error");
       });
   }
@@ -231,13 +228,13 @@ class MongoUserController extends UserController {
     const user = req._authData;
 
     if (!this.checkAllowedUsersForSiteMod(user)) {
-      send401Error(res, "");
-      return Promise.reject("Access Denied");
+      send401Error(res, "Access Denied");
+      return Promise.resolve("Access Denied");
     }
 
-    if (!('newUser' in req.body)) {
+    if (!isObject(req.body) || !('newUser' in req.body)) {
       send400Error(res, userDataNotProvided);
-      return Promise.reject(userDataNotProvided);
+      return Promise.resolve(userDataNotProvided);
     }
 
     const newUser = {
@@ -246,13 +243,13 @@ class MongoUserController extends UserController {
 
     if ( !('username' in newUser) || !('password' in newUser) ) {
       send400Error(res, userDataNotProvided);
-      return Promise.reject(userDataNotProvided);
+      return Promise.resolve(userDataNotProvided);
     }
 
     if (newUser.password.length < this.passwordLengthMin) {
       const err = "Password length is too short";
       send400Error(res, err);
-      return Promise.reject(err);
+      return Promise.resolve(err);
     }
 
     if (!('userType' in newUser)) {
@@ -277,19 +274,22 @@ class MongoUserController extends UserController {
         );
       })
       .then((result) => {
-        if (result.upsertedCount > 0) {
-          const userId = result.upsertedId._id.toString();
-          console.log(userId);
+        let userId;
+        if (result.insertedCount > 0) {
+          userId = result.insertedId.toString();
         }
-        console.log(result);
-        // console.log(result.result.toString());
+
         res.status(200).json({
           message: "User Added Successfully",
+          userId,
         });
+
+        return null;
       })
       .catch((err) => {
         // Do Something;
-        if ( 'errmsg' in err
+        if ( isObject(err)
+          && 'errmsg' in err
           && err.errmsg.indexOf("E11000" >= 0)
         ) {
           send401Error(res, "Username Already Exists");
@@ -297,11 +297,7 @@ class MongoUserController extends UserController {
           send500Error(res, "Error Adding New User");
         }
 
-        throw err;
-
-        // console.log("Add User Error");
-        // console.log(err);
-        // console.log(err.errmsg);
+        return err;
       });
   }
 
@@ -348,13 +344,11 @@ class MongoUserController extends UserController {
       _id: ObjectId(req.body.deletedUser.id),
     })
       .then((result) => {
-        console.log("Deleting User", result);
         res.status(200).json({
           message: "User Deleted Successfully",
         });
       })
       .catch((err) => {
-        console.log("Error Deleting User", err);
         send500Error(res, "Error Deleting User");
         throw err;
       });
@@ -410,7 +404,6 @@ class MongoUserController extends UserController {
 
     const collection = this.db.instance.db("kcms").collection("users");
     return p.then(() => {
-      console.log(collection);
       return collection.updateOne(
         {
           _id: ObjectId(req.body.updatedUser.id),
@@ -426,8 +419,6 @@ class MongoUserController extends UserController {
       );
     })
       .then((result) => {
-        console.log(result);
-        console.log("Editing User");
         res.status(200).json({
           message: "User Updated Successfully",
         });
