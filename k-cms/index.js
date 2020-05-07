@@ -1,6 +1,6 @@
 const uuidv4 = require("uuid/v4");
 
-const CMS = require('./cms');
+const KCMS = require('./kcms');
 
 // const KCMSPlugin = require("./plugin");
 
@@ -17,7 +17,7 @@ function makeKCMS(options = {}) {
     global.jwtSecret = uuidv4();
   }
 
-  const cms = new CMS(options);
+  const cms = new KCMS(options);
 
   return cms;
 }

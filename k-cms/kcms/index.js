@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 
-const { endOnError } = require("../utilities");
+const { endOnError, isObject } = require("../utilities");
 
 // const { makeAuthController } = require('../auth');
 const { makeUserController } = require('../user');
@@ -11,9 +11,9 @@ const { makeDatabaseClient } = require('../database');
 
 const PluginHandler = require('../plugin-handler');
 
-class CMS {
+class KCMS {
   constructor(options = {}) {
-    if (typeof options !== typeof {}) {
+    if (!isObject(options)) {
       endOnError("Options Must Be an Object");
     }
 
@@ -73,4 +73,4 @@ class CMS {
   }
 }
 
-module.exports = CMS;
+module.exports = KCMS;

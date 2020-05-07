@@ -1,10 +1,3 @@
-function MongoClient(url, options) {
-  this.url = url;
-  this.options = options;
-}
-
-MongoClient.prototype.connect = jest.fn(() => {});
-
 const findToArray = jest.fn(() => {});
 
 const findOne = jest.fn(() => {
@@ -35,10 +28,19 @@ const collection = jest.fn(() => {
   };
 });
 
+function MongoClient(url, options) {
+  this.url = url;
+  this.options = options;
+}
+
 MongoClient.prototype.db = jest.fn(() => {
   return {
     collection,
   };
+});
+
+MongoClient.prototype.connect = jest.fn((cb) => {
+  cb(null);
 });
 
 module.exports = {
