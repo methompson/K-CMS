@@ -1,9 +1,9 @@
 const express = require("express");
 
-const PageController = require("../../../page/PageController");
-const PluginHandler = require("../../../plugin-handler");
+const PageController = require("../../../../kcms/page/PageController");
+const PluginHandler = require("../../../../kcms/plugin-handler");
 
-const utilities = require("../../../utilities");
+const utilities = require("../../../../kcms/utilities");
 
 describe("PageController", () => {
   let pc;

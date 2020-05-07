@@ -1,9 +1,5 @@
-const { endOnError } = require("./endOnError");
-const { sendError } = require("./sendError");
 const httpErrors = require("./httpErrors");
-const isData = require("./isData");
-
-const { isObject } = isData;
+const { isObject } = require("./isData");
 
 /**
  * This function does one thing: Check that a token exists. If it does not exist,
@@ -23,13 +19,9 @@ function errorIfTokenDoesNotExist(req, res, next) {
     return;
   }
 
-  httpErrors.send401Error("Invalid User Token", res);
+  httpErrors.send401Error(res, "Invalid User Token");
 }
 
 module.exports = {
-  ...isData,
-  ...httpErrors,
-  endOnError,
-  sendError,
   errorIfTokenDoesNotExist,
 };

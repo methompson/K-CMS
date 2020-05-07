@@ -1,10 +1,10 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 
-const UserController = require("../../../user/UserController");
-const PluginHandler = require("../../../plugin-handler");
+const UserController = require("../../../../kcms/user/UserController");
+const PluginHandler = require("../../../../kcms/plugin-handler");
 
-const utilities = require("../../../utilities");
+const utilities = require("../../../../kcms/utilities");
 
 const jwtSecret = "69";
 global.jwtSecret = jwtSecret;
@@ -57,7 +57,7 @@ describe("UserController", () => {
       expect(router.post).toHaveBeenNthCalledWith(4, '/delete-user', utilities.errorIfTokenDoesNotExist, expect.any(Function));
 
       expect(router.get).toHaveBeenNthCalledWith(1, '/get-user/:id', utilities.errorIfTokenDoesNotExist, expect.any(Function));
-      expect(router.get).toHaveBeenNthCalledWith(2, '/get-all-users/:page*?', utilities.errorIfTokenDoesNotExist, expect.any(Function));
+      expect(router.get).toHaveBeenNthCalledWith(2, '/all-users/:page*?', utilities.errorIfTokenDoesNotExist, expect.any(Function));
     });
 
     test("When a userController is created without a PluginHandler or an invalid PluginHandler, a PluginHandler will be created", () => {
@@ -101,7 +101,7 @@ describe("UserController", () => {
       expect('/delete-user' in routes.post).toBe(true);
 
       expect('/get-user/:id' in routes.get).toBe(true);
-      expect('/get-all-users/:page*?' in routes.get).toBe(true);
+      expect('/all-users/:page*?' in routes.get).toBe(true);
     });
 
     test("the /login route has one function.", () => {
@@ -161,10 +161,10 @@ describe("UserController", () => {
       expect(getUserSpy).toHaveBeenCalledTimes(1);
     });
 
-    test("the /get-all-users/:page*? route has two functions. The second function runs addPage", () => {
+    test("the /all-users/:page*? route has two functions. The second function runs addPage", () => {
       const getUserSpy = jest.spyOn(uc, 'getAllUsers');
 
-      const route = routes.get['/get-all-users/:page*?'];
+      const route = routes.get['/all-users/:page*?'];
       req._authData = {};
 
       expect(route[0] === utilities.errorIfTokenDoesNotExist).toBe(true);

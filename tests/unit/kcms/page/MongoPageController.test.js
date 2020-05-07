@@ -30,8 +30,8 @@ jest.mock("http", () => {
 
 const { json, status } = http;
 
-const MongoPageController = require("../../../page/MongoPageController");
-const PluginHandler = require("../../../plugin-handler");
+const MongoPageController = require("../../../../kcms/page/MongoPageController");
+const PluginHandler = require("../../../../kcms/plugin-handler");
 
 const res = new http.ServerResponse();
 

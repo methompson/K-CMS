@@ -1,8 +1,8 @@
 const { MongoClient } = require("mongodb");
 
-const { makePageController } = require("../../../page");
-const MongoPageController = require("../../../page/MongoPageController");
-const PluginHandler = require("../../../plugin-handler");
+const { makePageController } = require("../../../../kcms/page");
+const MongoPageController = require("../../../../kcms/page/MongoPageController");
+const PluginHandler = require("../../../../kcms/plugin-handler");
 
 describe("makePageController", () => {
   let db;

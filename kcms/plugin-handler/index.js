@@ -1,4 +1,4 @@
-const KCMSPlugin = require("../plugin");
+const KCMSPlugin = require("../../plugin");
 
 class PluginHandler {
   /**
@@ -28,7 +28,16 @@ class PluginHandler {
    */
   addPlugin(plugin) {
     if (plugin instanceof KCMSPlugin) {
-      this.plugins.push(plugin);
+      let alreadyInList = false;
+      for (let x = 0, len = this.plugins.length; x < len; ++x) {
+        if (this.plugins[x] === plugin) {
+          alreadyInList = true;
+        }
+      }
+
+      if (!alreadyInList) {
+        this.plugins.push(plugin);
+      }
     }
   }
 

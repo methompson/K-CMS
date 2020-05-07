@@ -2,7 +2,7 @@
   "name": "new-cms",
   "version": "1.0.0",
   "description": "A new CMS Module",
-  "main": "index.js",
+  "main": "kcms",
   "scripts": {
     "test": "jest",
     "clear-jest-cache": "jest --clearCache"

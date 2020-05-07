@@ -1,7 +1,7 @@
-const { send400Error, send401Error, send500Error } = require("../../../utilities/httpErrors");
-const { sendError } = require("../../../utilities/sendError");
+const { send400Error, send401Error, send500Error } = require("../../../../kcms/utilities/httpErrors");
+const { sendError } = require("../../../../kcms/utilities/sendError");
 
-jest.mock("../../../utilities/sendError", () => {
+jest.mock("../../../../kcms/utilities/sendError", () => {
   const se = jest.fn(() => {});
   return {
     sendError: se,

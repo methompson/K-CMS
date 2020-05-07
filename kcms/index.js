@@ -2,7 +2,9 @@ const uuidv4 = require("uuid/v4");
 
 const CMS = require('./cms');
 
-function createNewApp(options = {}) {
+// const KCMSPlugin = require("./plugin");
+
+function createKCMS(options = {}) {
   // We need a server secret attached to the global object.
   // The order of operations is to let the user define the secret in the options
   // object passed to this method, set an environment variable or let the
@@ -20,4 +22,4 @@ function createNewApp(options = {}) {
   return cms;
 }
 
-module.exports = createNewApp;
+module.exports = createKCMS;

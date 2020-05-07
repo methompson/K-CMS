@@ -1,7 +1,7 @@
-const utilities = require("../../../utilities");
-const { send401Error } = require("../../../utilities/httpErrors");
+const utilities = require("../../../../kcms/utilities");
+const { send401Error } = require("../../../../kcms/utilities/httpErrors");
 
-jest.mock("../../../utilities/httpErrors", () => {
+jest.mock("../../../../kcms/utilities/httpErrors", () => {
   const se = jest.fn(() => {});
   return {
     send401Error: se,

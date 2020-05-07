@@ -15,10 +15,10 @@ const {
   ObjectId,
 } = require("mongodb");
 
-const MongoUserController = require("../../../user/MongoUserController");
-const PluginHandler = require("../../../plugin-handler");
+const MongoUserController = require("../../../../kcms/user/MongoUserController");
+const PluginHandler = require("../../../../kcms/plugin-handler");
 
-const utilities = require("../../../utilities");
+const utilities = require("../../../../kcms/utilities");
 
 const jwtSecret = "69";
 global.jwtSecret = jwtSecret;
@@ -120,7 +120,7 @@ describe("MongoUserController", () => {
       expect(router.post).toHaveBeenNthCalledWith(4, '/delete-user', utilities.errorIfTokenDoesNotExist, expect.any(Function));
 
       expect(router.get).toHaveBeenNthCalledWith(1, '/get-user/:id', utilities.errorIfTokenDoesNotExist, expect.any(Function));
-      expect(router.get).toHaveBeenNthCalledWith(2, '/get-all-users/:page*?', utilities.errorIfTokenDoesNotExist, expect.any(Function));
+      expect(router.get).toHaveBeenNthCalledWith(2, '/all-users/:page*?', utilities.errorIfTokenDoesNotExist, expect.any(Function));
 
       expect(muc.db).toBe(db);
     });

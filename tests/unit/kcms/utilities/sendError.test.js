@@ -1,9 +1,9 @@
 const http = require("http");
 
-const { sendError } = require("../../../utilities/sendError");
-const { endOnError } = require("../../../utilities/endOnError");
+const { sendError } = require("../../../../kcms/utilities/sendError");
+const { endOnError } = require("../../../../kcms/utilities/endOnError");
 
-jest.mock("../../../utilities/endOnError", () => {
+jest.mock("../../../../kcms/utilities/endOnError", () => {
   const eoe = jest.fn(() => {});
   return {
     endOnError: eoe,

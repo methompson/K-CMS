@@ -5,7 +5,7 @@ const {
   isString,
   isBoolean,
   isFunction,
-} = require("../../../utilities/isData");
+} = require("../../../../kcms/utilities/isData");
 
 class MyClass {
   constructor() {
@@ -19,6 +19,7 @@ describe("isData", () => {
   describe("isObject", () => {
     test("isObject will return true for objects and false for non-objects", () => {
       expect(isObject({})).toBe(true);
+      expect(isObject(null)).toBe(false);
       expect(isObject([])).toBe(false);
       expect(isObject(9)).toBe(false);
       expect(isObject("9")).toBe(false);
