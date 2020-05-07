@@ -4,7 +4,7 @@ const CMS = require('./cms');
 
 // const KCMSPlugin = require("./plugin");
 
-function createKCMS(options = {}) {
+function makeKCMS(options = {}) {
   // We need a server secret attached to the global object.
   // The order of operations is to let the user define the secret in the options
   // object passed to this method, set an environment variable or let the
@@ -22,4 +22,4 @@ function createKCMS(options = {}) {
   return cms;
 }
 
-module.exports = createKCMS;
+module.exports = makeKCMS;

@@ -1,4 +1,4 @@
-const { endOnError } = require("../../../../kcms/utilities/endOnError");
+const { endOnError } = require("../../../../k-cms/utilities/endOnError");
 
 describe("endOnError", () => {
   const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {});

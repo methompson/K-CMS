@@ -3,7 +3,7 @@ module.exports = {
   globals: {},
   collectCoverage: true,
   collectCoverageFrom: [
-    "kcms/**/*.js",
+    "k-cms/**/*.js",
     "plugin/**/*.js",
   ],
   coverageReporters: ['text-summary', 'html'],

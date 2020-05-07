@@ -1,10 +1,10 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 
-const UserController = require("../../../../kcms/user/UserController");
-const PluginHandler = require("../../../../kcms/plugin-handler");
+const UserController = require("../../../../k-cms/user/UserController");
+const PluginHandler = require("../../../../k-cms/plugin-handler");
 
-const utilities = require("../../../../kcms/utilities");
+const utilities = require("../../../../k-cms/utilities");
 
 const jwtSecret = "69";
 global.jwtSecret = jwtSecret;

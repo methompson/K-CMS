@@ -15,10 +15,10 @@ const {
   ObjectId,
 } = require("mongodb");
 
-const MongoUserController = require("../../../../kcms/user/MongoUserController");
-const PluginHandler = require("../../../../kcms/plugin-handler");
+const MongoUserController = require("../../../../k-cms/user/MongoUserController");
+const PluginHandler = require("../../../../k-cms/plugin-handler");
 
-const utilities = require("../../../../kcms/utilities");
+const utilities = require("../../../../k-cms/utilities");
 
 const jwtSecret = "69";
 global.jwtSecret = jwtSecret;

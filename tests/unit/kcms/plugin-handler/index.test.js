@@ -1,4 +1,4 @@
-const PluginHandler = require("../../../../kcms/plugin-handler");
+const PluginHandler = require("../../../../k-cms/plugin-handler");
 const KCMSPlugin = require("../../../../plugin");
 
 jest.mock("../../../../plugin", () => {

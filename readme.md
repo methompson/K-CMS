@@ -19,10 +19,10 @@ Currently K-CMS uses MongoDB to store web and user data. MySQL support is planne
 # Basic Usage
 
 ```js
-const CMS = require("k-cms");
+const makeKCMS = require("k-cms");
 
 // Create a CMS object. Pass mongodb login information as an option
-const cms = CMS({
+const cms = makeKCMS({
   db: {
     mongodb: {
       username: 'root',
@@ -74,7 +74,7 @@ myPlugin.addHook("test", (args) => {
 Plugins are added by making an array of Plugins and passing this array to the CMS object when instantiating it:
 
 ```js
-const cms = CMS({
+const cms = makeKCMS({
   // Db information, etc.
   plugins: [
     myPlugin,
