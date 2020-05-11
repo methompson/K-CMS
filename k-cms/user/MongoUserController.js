@@ -203,7 +203,8 @@ class MongoUserController extends UserController {
           users: result,
         });
       })
-      .catch((err) => {
+      // .catch((err) => {
+      .catch(() => {
         send500Error(res, "Database Error");
       });
   }
@@ -353,7 +354,8 @@ class MongoUserController extends UserController {
     return collection.deleteOne({
       _id: id,
     })
-      .then((result) => {
+      // .then((result) => {
+      .then(() => {
         res.status(200).json({
           message: "User Deleted Successfully",
         });
@@ -430,7 +432,8 @@ class MongoUserController extends UserController {
         { upsert: true }
       );
     })
-      .then((result) => {
+      // .then((result) => {
+      .then(() => {
         res.status(200).json({
           message: "User Updated Successfully",
         });

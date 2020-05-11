@@ -12,20 +12,20 @@ const { makeDatabaseClient } = require('../database');
 const PluginHandler = require('../plugin-handler');
 
 class KCMS {
-  constructor(options = {}) {
+  constructor(options) {
     if (!isObject(options)) {
       endOnError("Options Must Be an Object");
+      return;
     }
 
     if (!('db' in options)) {
       endOnError("Database options not provided");
+      return;
     }
 
     this.db = makeDatabaseClient(options.db);
 
-    if ('plugins' in options) {
-      this.checkPlugins(options.plugins);
-    }
+    this.pluginHandler = new PluginHandler(this.db, options.plugins);
 
     const app = express();
 
@@ -34,18 +34,23 @@ class KCMS {
 
     if (!this.userController) {
       endOnError("Error Creating user controller");
+      return;
     }
     if (!this.pageController) {
-      endOnError("Error Creating user controller");
+      endOnError("Error Creating page controller");
+      return;
     }
 
     const apiBase = "apiBase" in options ? options.apiBase : 'api';
-    const userPath = "user" in options ? options.userPath : 'user';
-    const pagePath = "pages" in options ? options.pagePath : 'pages';
+    const userPath = "userPath" in options ? options.userPath : 'user';
+    const pagePath = "pagePath" in options ? options.pagePath : 'pages';
 
     // For all API requests, we will parse the body and make things easier for us
     // We will enable CORS for all requests
     // We will then retrieve the authentication token from the head, if it exists
+    // The final function in this route has be used in a short closure because a portion
+    // of the data that getUserRequestToken uses is part of the userController object
+    // and we need to scope that comes with the implementation below
     app.use(
       `/${apiBase}`,
       bodyParser.json(),
@@ -59,17 +64,6 @@ class KCMS {
     app.use(`/${apiBase}/${pagePath}`, this.pageController.routes);
 
     this.app = app;
-  }
-
-  // Check that each plugin is proper. Remove those that aren't
-  checkPlugins(plugins = []) {
-    // All plugins are sent to the CMS in an array.
-    if (!plugins || !Array.isArray(plugins)) {
-      this.pluginHandler = new PluginHandler();
-      return;
-    }
-
-    this.pluginHandler = new PluginHandler(this.db, plugins);
   }
 }
 

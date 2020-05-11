@@ -4,7 +4,7 @@ const KCMS = require('./kcms');
 
 // const KCMSPlugin = require("./plugin");
 
-function makeKCMS(options = {}) {
+function makeKCMS(options) {
   // We need a server secret attached to the global object.
   // The order of operations is to let the user define the secret in the options
   // object passed to this method, set an environment variable or let the

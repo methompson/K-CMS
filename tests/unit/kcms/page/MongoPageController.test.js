@@ -210,7 +210,7 @@ describe("MongoPageController", () => {
 
     test("getPageBySlug will send a 400 error if no parameters are sent", (done) => {
       mpc.getPageBySlug(req, res)
-        .catch((err) => {
+        .then((err) => {
           expect(err).toBe("Invalid Page Data Sent");
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
@@ -225,7 +225,7 @@ describe("MongoPageController", () => {
     test("getPageBySlug will send a 400 error if parameters are sent, but no slug is sent", (done) => {
       req.params = {};
       mpc.getPageBySlug(req, res)
-        .catch((err) => {
+        .then((err) => {
           expect(err).toBe("Invalid Page Data Sent");
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
@@ -248,7 +248,7 @@ describe("MongoPageController", () => {
       });
 
       mpc.getPageBySlug(req, res)
-        .catch((err) => {
+        .then((err) => {
           expect(err).toBe(error);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
@@ -368,7 +368,7 @@ describe("MongoPageController", () => {
       });
 
       mpc.getAllPages(req, res)
-        .catch((err) => {
+        .then((err) => {
           expect(err).toBe(errorText);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
@@ -452,7 +452,7 @@ describe("MongoPageController", () => {
       };
 
       mpc.addPage(req, res)
-        .catch((err) => {
+        .then((err) => {
           expect(err).toBe("Access Denied");
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
@@ -481,7 +481,7 @@ describe("MongoPageController", () => {
       const error = "Invalid Page Data Sent";
 
       mpc.addPage(req, res)
-        .catch((err) => {
+        .then((err) => {
           expect(err).toBe(error);
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
@@ -542,14 +542,14 @@ describe("MongoPageController", () => {
       const req7 = { ...req, body: { page: newPage7 } };
       const req8 = { ...req, body: { page: newPage8 } };
 
-      const p1 = mpc.addPage(req1, res).catch((err) => { expect(err).toBe("Invalid Parameters sent"); });
-      const p2 = mpc.addPage(req2, res).catch((err) => { expect(err).toBe("Invalid Parameters sent"); });
-      const p3 = mpc.addPage(req3, res).catch((err) => { expect(err).toBe("Invalid Parameters sent"); });
-      const p4 = mpc.addPage(req4, res).catch((err) => { expect(err).toBe("Invalid Parameters sent"); });
-      const p5 = mpc.addPage(req5, res).catch((err) => { expect(err).toBe("Invalid Page Slug"); });
-      const p6 = mpc.addPage(req6, res).catch((err) => { expect(err).toBe("Invalid Page Name"); });
-      const p7 = mpc.addPage(req7, res).catch((err) => { expect(err).toBe("Invalid Page Data (Enabled)"); });
-      const p8 = mpc.addPage(req8, res).catch((err) => { expect(err).toBe("Invalid Page Data"); });
+      const p1 = mpc.addPage(req1, res).then((err) => { expect(err).toBe("Invalid Parameters sent"); });
+      const p2 = mpc.addPage(req2, res).then((err) => { expect(err).toBe("Invalid Parameters sent"); });
+      const p3 = mpc.addPage(req3, res).then((err) => { expect(err).toBe("Invalid Parameters sent"); });
+      const p4 = mpc.addPage(req4, res).then((err) => { expect(err).toBe("Invalid Parameters sent"); });
+      const p5 = mpc.addPage(req5, res).then((err) => { expect(err).toBe("Invalid Page Slug"); });
+      const p6 = mpc.addPage(req6, res).then((err) => { expect(err).toBe("Invalid Page Name"); });
+      const p7 = mpc.addPage(req7, res).then((err) => { expect(err).toBe("Invalid Page Data (Enabled)"); });
+      const p8 = mpc.addPage(req8, res).then((err) => { expect(err).toBe("Invalid Page Data"); });
 
       Promise.all([p1, p2, p3, p4, p5, p6, p7, p8])
         .then(() => {
@@ -635,7 +635,7 @@ describe("MongoPageController", () => {
       };
 
       mpc.addPage(req, res)
-        .catch((err) => {
+        .then((err) => {
           expect(err).toBe(error);
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
@@ -690,7 +690,7 @@ describe("MongoPageController", () => {
       };
 
       mpc.addPage(req, res)
-        .catch((err) => {
+        .then((err) => {
           expect(err).toBe(error);
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
@@ -784,7 +784,7 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If the user isn't allowed to modify the page, editPage will throw an error and send a 401 error", (done) => {
+    test("If the user isn't allowed to modify the page, editPage will return an error and send a 401 error", (done) => {
       const editPage = {
         name: "name",
         enabled: true,
@@ -807,7 +807,7 @@ describe("MongoPageController", () => {
       };
 
       mpc.editPage(req, res)
-        .catch((err) => {
+        .then((err) => {
           expect(err).toBe("Access Denied");
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
@@ -824,7 +824,7 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If no page data is included, editPage will throw an error and send a 400 error", (done) => {
+    test("If no page data is included, editPage will return an error and send a 400 error", (done) => {
       const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
       const extractSpy = jest.spyOn(mpc, "extractPageData");
       const checkPageSpy = jest.spyOn(mpc, "checkPageData");
@@ -836,7 +836,7 @@ describe("MongoPageController", () => {
       const error = "Invalid Page Data Sent";
 
       mpc.editPage(req, res)
-        .catch((err) => {
+        .then((err) => {
           expect(err).toBe(error);
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
@@ -854,7 +854,7 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If no id is included in the page data, editPage will throw an error and send a 400 error", (done) => {
+    test("If no id is included in the page data, editPage will return an error and send a 400 error", (done) => {
       const editPage = {
         name: "name",
         enabled: true,
@@ -876,7 +876,7 @@ describe("MongoPageController", () => {
       const error = "Invalid Page Data. No Id Provided.";
 
       mpc.editPage(req, res)
-        .catch((err) => {
+        .then((err) => {
           expect(err).toBe(error);
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
@@ -943,14 +943,14 @@ describe("MongoPageController", () => {
       const req7 = { ...req, body: { page: { id: 123, ...editPage7 } } };
       const req8 = { ...req, body: { page: { id: 123, ...editPage8 } } };
 
-      const p1 = mpc.editPage(req1, res).catch((err) => { expect(err).toBe("Invalid Parameters sent"); });
-      const p2 = mpc.editPage(req2, res).catch((err) => { expect(err).toBe("Invalid Parameters sent"); });
-      const p3 = mpc.editPage(req3, res).catch((err) => { expect(err).toBe("Invalid Parameters sent"); });
-      const p4 = mpc.editPage(req4, res).catch((err) => { expect(err).toBe("Invalid Parameters sent"); });
-      const p5 = mpc.editPage(req5, res).catch((err) => { expect(err).toBe("Invalid Page Slug"); });
-      const p6 = mpc.editPage(req6, res).catch((err) => { expect(err).toBe("Invalid Page Name"); });
-      const p7 = mpc.editPage(req7, res).catch((err) => { expect(err).toBe("Invalid Page Data (Enabled)"); });
-      const p8 = mpc.editPage(req8, res).catch((err) => { expect(err).toBe("Invalid Page Data"); });
+      const p1 = mpc.editPage(req1, res).then((err) => { expect(err).toBe("Invalid Parameters sent"); });
+      const p2 = mpc.editPage(req2, res).then((err) => { expect(err).toBe("Invalid Parameters sent"); });
+      const p3 = mpc.editPage(req3, res).then((err) => { expect(err).toBe("Invalid Parameters sent"); });
+      const p4 = mpc.editPage(req4, res).then((err) => { expect(err).toBe("Invalid Parameters sent"); });
+      const p5 = mpc.editPage(req5, res).then((err) => { expect(err).toBe("Invalid Page Slug"); });
+      const p6 = mpc.editPage(req6, res).then((err) => { expect(err).toBe("Invalid Page Name"); });
+      const p7 = mpc.editPage(req7, res).then((err) => { expect(err).toBe("Invalid Page Data (Enabled)"); });
+      const p8 = mpc.editPage(req8, res).then((err) => { expect(err).toBe("Invalid Page Data"); });
 
       Promise.all([p1, p2, p3, p4, p5, p6, p7, p8])
         .then(() => {
@@ -1011,7 +1011,7 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If updateOne throws an error, editPage will throw an error and send an HTTP 500 error", (done) => {
+    test("If updateOne throws an error, editPage will return an error and send an HTTP 500 error", (done) => {
       const error = "test error";
       updateOne.mockImplementationOnce(() => {
         return Promise.reject(error);
@@ -1039,7 +1039,7 @@ describe("MongoPageController", () => {
       };
 
       mpc.editPage(req, res)
-        .catch((err) => {
+        .then((err) => {
           expect(err).toBe(error);
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
@@ -1073,7 +1073,7 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If updateOne throws an error indicating the slug already exists, editPage will throw an error and send an HTTP 401 error", (done) => {
+    test("If updateOne throws an error indicating the slug already exists, editPage will return an error and send an HTTP 401 error", (done) => {
       const error = {
         errmsg: "E11000 Error",
       };
@@ -1103,7 +1103,7 @@ describe("MongoPageController", () => {
       };
 
       mpc.editPage(req, res)
-        .catch((err) => {
+        .then((err) => {
           expect(err).toBe(error);
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
@@ -1204,7 +1204,7 @@ describe("MongoPageController", () => {
       };
 
       mpc.deletePage(req, res)
-        .catch((err) => {
+        .then((err) => {
           expect(err).toBe("Access Denied");
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
@@ -1236,7 +1236,7 @@ describe("MongoPageController", () => {
       const error = "Invalid Page Data Sent";
 
       mpc.deletePage(req, res)
-        .catch((err) => {
+        .then((err) => {
           expect(err).toBe(error);
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
@@ -1274,7 +1274,7 @@ describe("MongoPageController", () => {
       const error = "Invalid Page Data. No Id Provided.";
 
       mpc.deletePage(req, res)
-        .catch((err) => {
+        .then((err) => {
           expect(err).toBe(error);
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
@@ -1317,7 +1317,7 @@ describe("MongoPageController", () => {
       };
 
       mpc.deletePage(req, res)
-        .catch((err) => {
+        .then((err) => {
           expect(err).toBe(error);
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);

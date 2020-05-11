@@ -1,4 +1,5 @@
 const MongoUserController = require('./MongoUserController');
+const { isObject } = require("../utilities");
 
 /**
  * Makes a user controller based on the input from the user. Right now,
@@ -10,7 +11,7 @@ const MongoUserController = require('./MongoUserController');
  */
 const makeUserController = (db, pluginHandler) => {
   // return new UserController(db, pluginHandler);
-  if (db.type === 'mongodb') {
+  if (isObject(db) && db.type === 'mongodb') {
     return new MongoUserController(db, pluginHandler);
   }
 

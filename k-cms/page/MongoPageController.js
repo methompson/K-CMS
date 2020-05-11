@@ -44,7 +44,7 @@ class MongoPageController extends PageController {
     ) {
       const err = "Invalid Page Data Sent";
       send400Error(res, err);
-      return Promise.reject(err);
+      return Promise.resolve(err);
     }
 
     const findParams = {
@@ -74,7 +74,7 @@ class MongoPageController extends PageController {
       .catch((err) => {
         console.log(err);
         send500Error(res, "Database Error");
-        throw err;
+        return err;
       });
   }
 
@@ -113,7 +113,7 @@ class MongoPageController extends PageController {
       .catch((err) => {
         console.log(err);
         send500Error(res, "Database Error");
-        throw err;
+        return err;
       });
   }
 
@@ -128,20 +128,20 @@ class MongoPageController extends PageController {
     if (!this.checkAllowedUsersForSiteMod(req._authData)) {
       console.log("Access Denied");
       send401Error(res, "");
-      return Promise.reject("Access Denied");
+      return Promise.resolve("Access Denied");
     }
 
     const pageData = this.extractPageData(req);
     if (!pageData) {
       const err = "Invalid Page Data Sent";
       send400Error(res, err);
-      return Promise.reject(err);
+      return Promise.resolve(err);
     }
 
     const pageErr = this.checkPageData(pageData);
     if (pageErr) {
       send400Error(res, pageErr);
-      return Promise.reject(pageErr);
+      return Promise.resolve(pageErr);
     }
 
     const now = new Date().getTime();
@@ -166,7 +166,7 @@ class MongoPageController extends PageController {
           send500Error(res, "Error Adding New Page");
         }
 
-        throw err;
+        return err;
       });
   }
 
@@ -180,26 +180,26 @@ class MongoPageController extends PageController {
   editPage(req, res) {
     if (!this.checkAllowedUsersForSiteMod(req._authData)) {
       send401Error(res, "");
-      return Promise.reject("Access Denied");
+      return Promise.resolve("Access Denied");
     }
 
     const pageData = this.extractPageData(req);
     if (!pageData) {
       const err = "Invalid Page Data Sent";
       send400Error(res, err);
-      return Promise.reject(err);
+      return Promise.resolve(err);
     }
 
     if (!('id' in pageData)) {
       const err = "Invalid Page Data. No Id Provided.";
       send400Error(res, err);
-      return Promise.reject(err);
+      return Promise.resolve(err);
     }
 
     const pageErr = this.checkPageData(pageData);
     if (pageErr) {
       send400Error(res, pageErr);
-      return Promise.reject(pageErr);
+      return Promise.resolve(pageErr);
     }
 
     const now = new Date().getTime();
@@ -223,7 +223,7 @@ class MongoPageController extends PageController {
         res.status(200).json(setData);
       })
       .catch((err) => {
-        console.log(err);
+        // console.log(err);
         if ( isObject(err)
           && 'errmsg' in err
           && err.errmsg.indexOf("E11000" >= 0)
@@ -233,7 +233,7 @@ class MongoPageController extends PageController {
           send500Error(res, "Error Editing Page");
         }
 
-        throw err;
+        return err;
       });
   }
 
@@ -247,20 +247,20 @@ class MongoPageController extends PageController {
   deletePage(req, res) {
     if (!this.checkAllowedUsersForSiteMod(req._authData)) {
       send401Error(res, "");
-      return Promise.reject("Access Denied");
+      return Promise.resolve("Access Denied");
     }
 
     const pageData = this.extractPageData(req);
     if (!pageData) {
       const err = "Invalid Page Data Sent";
       send400Error(res, err);
-      return Promise.reject(err);
+      return Promise.resolve(err);
     }
 
     if (!('id' in pageData)) {
       const err = "Invalid Page Data. No Id Provided.";
       send400Error(res, err);
-      return Promise.reject(err);
+      return Promise.resolve(err);
     }
 
     const collection = this.db.instance.db("kcms").collection("pages");
@@ -273,7 +273,7 @@ class MongoPageController extends PageController {
       .catch((err) => {
         console.log(err);
         send500Error(res, "Error Deleting Page");
-        throw err;
+        return err;
       });
   }
 }
