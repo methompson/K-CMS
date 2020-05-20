@@ -3,6 +3,7 @@ const {
   endOnError,
   send400Error,
   send401Error,
+  send404Error,
   send500Error,
   isObject,
 } = require("../utilities");
@@ -38,7 +39,7 @@ class MongoPageController extends PageController {
    * @param {Object} res Express Response Object
    * @return {Promise} Returns a promise (for testing purposes)
    */
-  async getPageBySlug(req, res) {
+  getPageBySlug(req, res) {
     if ( !('params' in req)
       || !('slug' in req.params)
     ) {
@@ -65,11 +66,10 @@ class MongoPageController extends PageController {
       .then((result) => {
         if (result) {
           res.status(200).json(result);
-          return result;
+          return;
         }
 
-        res.status(404).json();
-        return 404;
+        send404Error(res);
       })
       .catch((err) => {
         console.log(err);
@@ -104,11 +104,10 @@ class MongoPageController extends PageController {
       .then((result) => {
         if (result) {
           res.status(200).json(result);
-          return result;
+          return;
         }
 
-        res.status(200).json();
-        return 200;
+        send404Error(res);
       })
       .catch((err) => {
         console.log(err);

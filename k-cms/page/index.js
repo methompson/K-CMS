@@ -1,4 +1,5 @@
 const MongoPageController = require('./MongoPageController');
+const MySQLPageController = require('./MySQLPageController');
 const { isObject } = require("../utilities");
 
 /**
@@ -18,6 +19,10 @@ const makePageController = (database, pluginHandler) => {
 
   if (database.type === 'mongodb') {
     return new MongoPageController(database, pluginHandler);
+  }
+
+  if (database.type === 'mysql') {
+    return new MySQLPageController(database, pluginHandler);
   }
 
   return null;

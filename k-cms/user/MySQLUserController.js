@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { ObjectId, MongoClient } = require("mongodb");
+const { Pool }  = require("mysql2");
 
 const {
   send400Error,
@@ -15,10 +15,9 @@ const {
 const UserController = require("./UserController");
 
 const invalidCredentials = "Invalid Credentials";
-const invalidUserId = "Invalid User Id";
 const userDataNotProvided = "User Data Not Provided";
 
-class MongoUserController extends UserController {
+class MySQLUserController extends UserController {
   constructor(database, pluginHandler) {
     super(pluginHandler);
 
@@ -29,8 +28,8 @@ class MongoUserController extends UserController {
       return;
     }
 
-    if (!(database.instance instanceof MongoClient)) {
-      endOnError("Database instance is not a MongoDB Client");
+    if (!(database.instance instanceof Pool)) {
+      endOnError("Database instance is not a MySQL Pool Instance");
       return;
     }
 
@@ -64,30 +63,48 @@ class MongoUserController extends UserController {
       return Promise.resolve(err);
     }
     const { username, password } = req.body;
-    const userData = {};
 
-    const collection = this.db.instance.db("kcms").collection("users");
-    return collection.findOne({
-      username,
-    })
-      .then((result) => {
-        if (!result) {
+    const query = `
+      SELECT
+        id,
+        firstName,
+        lastName,
+        username,
+        email,
+        userType,
+        password,
+        userMeta
+      FROM users
+      WHERE username = ?
+    `;
+
+    const queryParams = [username];
+
+    const promisePool = this.db.instance.promise();
+    return promisePool.execute(query, queryParams)
+      .then(([rows]) => {
+        if (rows.length === 0) {
           throw invalidCredentials;
         }
 
-        userData.id = result._id;
-        userData.username = result.username;
-        userData.userType = result.userType;
+        const userData = {
+          ...rows[0],
+        };
 
-        return bcrypt.compare(password, result.password);
+        const dbPass = userData.password;
+
+        delete userData.password;
+
+        return bcrypt.compare(password, dbPass)
+          .then((result) => {
+            if (!result) {
+              throw invalidCredentials;
+            }
+
+            return userData;
+          });
       })
-      .then((result) => {
-        if (!result) {
-          throw invalidCredentials;
-        }
-
-        this.pluginHandler.runLifecycleHook('loginSucceeded');
-
+      .then((userData) => {
         const token = jwt.sign(
           {
             ...userData,
@@ -104,7 +121,6 @@ class MongoUserController extends UserController {
         });
       })
       .catch((err) => {
-        this.pluginHandler.runLifecycleHook('loginFailed');
         if (err === invalidCredentials) {
           send401Error(res, invalidCredentials);
         } else {
@@ -135,38 +151,43 @@ class MongoUserController extends UserController {
       return Promise.resolve(err);
     }
 
-    let id;
-    try {
-      id = ObjectId(req.params.id);
-    } catch (err) {
-      send400Error(res, invalidUserId);
-      return Promise.resolve(invalidUserId);
-    }
+    const query = `
+      SELECT
+        id,
+        firstName,
+        lastName,
+        username,
+        email,
+        userType,
+        userMeta,
+        dateAdded,
+        dateUpdated
+      FROM users
+      WHERE id = ?
+    `;
+    const queryParams = [req.params.id];
 
-    const collection = this.db.instance.db("kcms").collection("users");
-    return collection.findOne({
-      _id: id,
-    })
-      .then((result) => {
-        if (!result) {
-          send404Error(res);
-          return 404;
+    const promisePool = this.db.instance.promise();
+    return promisePool.execute(query, queryParams)
+      .then(([results]) => {
+        if (results.length > 0) {
+          const userData = {
+            ...results[0],
+          };
+
+          // Let's remove the password field from the output so that we don't allow an attack against their hash
+          if ('password' in userData) {
+            delete userData.password;
+          }
+
+          res.status(200).json(userData);
+          return;
         }
 
-        const userData = {
-          ...result,
-        };
-
-        // Let's remove the password field from the output so that we don't allow an attack against their hash
-        if ('password' in userData) {
-          delete userData.password;
-        }
-
-        res.status(200).json(userData);
-
-        return null;
+        send404Error(res);
       })
       .catch((err) => {
+        console.log(err);
         send500Error(res, "Database Error");
 
         return err;
@@ -194,34 +215,57 @@ class MongoUserController extends UserController {
       ? req.params.page
       : 1;
 
-    const collection = this.db.instance.db("kcms").collection("users");
-    return collection.find(
-      {},
-      {
-        projection: { password: 0 },
-        skip: ((page - 1) * this.pagination),
-        limit: this.pagination,
-      }
-    )
-      .toArray()
-      .then((results) => {
-        const returnResults = [];
-        results.forEach((el) => {
-          const user = {
-            ...el,
-          };
-          delete user.password;
-          returnResults.push(user);
-        });
+    const query = `
+      SELECT
+        id,
+        firstName,
+        lastName,
+        username,
+        email,
+        userType,
+        userMeta,
+        dateAdded,
+        dateUpdated
+      FROM users
+      ORDER BY id
+      LIMIT ?
+      OFFSET ?
+    `;
 
-        res.status(200).json({
-          users: returnResults,
-        });
+    const queryParams = [
+      this.pagination,
+      this.pagination * (page - 1),
+    ];
+
+    const promisePool = this.db.instance.promise();
+    return promisePool.execute(query, queryParams)
+      .then(([results]) => {
+        if (results.length > 0) {
+
+          const returnResults = [];
+          results.forEach((el) => {
+            const user = {
+              ...el,
+            };
+            delete user.password;
+            returnResults.push(user);
+          });
+
+          res.status(200).json({
+            users: returnResults,
+          });
+          return;
+        }
+
+        send404Error(res);
       })
-      // .catch((err) => {
-      .catch(() => {
+      .catch((err) => {
+        console.log(err);
         send500Error(res, "Database Error");
+
+        return err;
       });
+
   }
 
   /**
@@ -275,44 +319,89 @@ class MongoUserController extends UserController {
       newUser.enabled = true;
     }
 
-    const collection = this.db.instance.db("kcms").collection("users");
+    const output = {
+      username: newUser.username,
+      email: newUser.email,
+      userType: newUser.userType,
+      enabled: newUser.enabled,
+    };
 
     // We've set a unique constraint on the username field, so we can't add a username
     // that already exists.
     return bcrypt.hash(newUser.password, 12)
-      .then((result) => {
-        return collection.insertOne(
-          {
-            ...newUser,
-            password: result,
-          }
-        );
-      })
-      .then((result) => {
-        let userId;
-        if (result.insertedCount > 0) {
-          userId = result.insertedId.toString();
+      .then((password) => {
+        let query = "INSERT INTO users (username, email, password, userType, enabled";
+        let values = "VALUES (?, ?, ?, ?, ?";
+        const queryParams = [newUser.username, newUser.email, password, newUser.userType, newUser.enabled];
+
+        if ('firstName' in newUser) {
+          query += ", firstName";
+          values += ", ?";
+          queryParams.push(newUser.firstName);
+          output.firstName = newUser.firstName;
         }
 
-        res.status(200).json({
-          message: "User Added Successfully",
-          userId,
-        });
+        if ('lastName' in newUser) {
+          query += ", lastName";
+          values += ", ?";
+          queryParams.push(newUser.lastName);
+          output.lastName = newUser.lastName;
+        }
 
-        return null;
+        if ('userMeta' in newUser) {
+          query += ", userMeta";
+          values += ", ?";
+          queryParams.push(JSON.stringify(newUser.userMeta));
+          output.userMeta = newUser.userMeta;
+        }
+
+        const now = new Date();
+        query += ", dateAdded, dateUpdated)";
+        values += ", ?, ?)";
+        queryParams.push(now);
+        queryParams.push(now);
+        output.dateAdded = now;
+        output.dateUpdated = now;
+
+        console.log(`${query} ${values}`);
+
+        const promisePool = this.db.instance.promise();
+        return promisePool.execute(`${query} ${values}`, queryParams)
+          .then(([results]) => {
+            if (isObject(results)
+              && 'affectedRows' in results
+              && results.affectedRows > 0
+              && "insertId" in results
+            ) {
+              res.status(200).json({
+                ...output,
+                message: "User Added Successfully",
+                userId: results.insertId,
+              });
+              return;
+            }
+
+            send401Error(res, "User Not Added");
+          });
       })
       .catch((err) => {
-        // Do Something;
-        if ( isObject(err)
-          && 'errmsg' in err
-          && err.errmsg.indexOf("E11000" >= 0)
-        ) {
-          send400Error(res, "Username Already Exists");
-        } else {
-          send500Error(res, "Error Adding New User");
-        }
+        if (isObject(err) && 'code' in err) {
+          if (err.code === 'ER_DUP_ENTRY') {
+            let msg;
+            // Check what has been duplicated
+            if (err.message.indexOf("users.email") > -1) {
+              msg = "Email Already Exists.";
+            } else if (err.message.indexOf("users.username") > -1) {
+              msg = "Username Already Exists.";
+            }
 
-        return err;
+            send400Error(res, `User Not Created: ${msg}`);
+            return;
+          }
+        }
+        console.log("Add User", err);
+
+        send500Error(res, "Error Adding New User");
       });
   }
 
@@ -354,29 +443,29 @@ class MongoUserController extends UserController {
       return Promise.resolve(err);
     }
 
-    let id;
-    try {
-      id = ObjectId(req.body.deletedUser.id);
-    } catch (err) {
-      console.log(err);
-      send400Error(res, invalidUserId);
-      return Promise.resolve(invalidUserId);
-    }
+    const query = "DELETE FROM users WHERE id = ? LIMIT 1";
+    const queryParams = [req.body.deletedUser.id];
 
-    const collection = this.db.instance.db("kcms").collection("users");
+    const promisePool = this.db.instance.promise();
+    return promisePool.execute(query, queryParams)
+      .then(([result]) => {
+        if (isObject(result) && "affectedRows" in result) {
+          if (result.affectedRows > 0) {
+            res.status(200).json({
+              message: "User Deleted Successfully",
+            });
+          } else {
+            send400Error(res, "No User Deleted");
+          }
 
-    return collection.deleteOne({
-      _id: id,
-    })
-      // .then((result) => {
-      .then(() => {
-        res.status(200).json({
-          message: "User Deleted Successfully",
-        });
+          return;
+        }
+
+        throw "No Results Returned";
       })
       .catch((err) => {
+        console.log("Delete User Error", err);
         send500Error(res, "Error Deleting User");
-        return err;
       });
   }
 
@@ -412,13 +501,7 @@ class MongoUserController extends UserController {
       ...req.body.updatedUser.data,
     };
 
-    let id;
-    try {
-      id = ObjectId(req.body.updatedUser.id);
-    } catch (err) {
-      send400Error(res, invalidUserId);
-      return Promise.resolve(invalidUserId);
-    }
+    const { id } = req.body.updatedUser;
 
     // We either use bcrypt to make a promise or manually make a promise.
     let p;
@@ -438,32 +521,91 @@ class MongoUserController extends UserController {
       p = Promise.resolve();
     }
 
-    const collection = this.db.instance.db("kcms").collection("users");
     return p.then(() => {
-      return collection.updateOne(
-        { _id: id },
-        { $set: { ...updatedUser } },
-        { upsert: true }
-      );
+      let query = "UPDATE users SET ";
+      const queryParams = [];
+
+      if ('username' in updatedUser) {
+        query += "username = ?, ";
+        queryParams.push(updatedUser.username);
+      }
+
+      if ('password' in updatedUser) {
+        query += "password = ?, ";
+        queryParams.push(updatedUser.password);
+      }
+
+      if ('firstName' in updatedUser) {
+        query += "firstName = ?, ";
+        queryParams.push(updatedUser.firstName);
+      }
+
+      if ('lastName' in updatedUser) {
+        query += "lastName = ?, ";
+        queryParams.push(updatedUser.lastName);
+      }
+
+      if ('email' in updatedUser) {
+        query += "email = ?, ";
+        queryParams.push(updatedUser.email);
+      }
+
+      if ('userType' in updatedUser) {
+        query += "userType = ?, ";
+        queryParams.push(updatedUser.userType);
+      }
+
+      if ('enabled' in updatedUser) {
+        query += "enabled = ?, ";
+        queryParams.push(updatedUser.enabled);
+      }
+
+      if ('userMeta' in updatedUser) {
+        query += "userMeta = ?, ";
+        queryParams.push(JSON.stringify(updatedUser.userMeta));
+      }
+
+      const now = new Date();
+      query += "dateUpdated = ? WHERE id = ?";
+      queryParams.push(now);
+      queryParams.push(id);
+
+      const promisePool = this.db.instance.promise();
+      return promisePool.execute(query, queryParams);
     })
-      // .then((result) => {
-      .then(() => {
-        res.status(200).json({
-          message: "User Updated Successfully",
-        });
+      .then(([result]) => {
+        if (isObject(result)
+          && "affectedRows" in result
+          && result.affectedRows > 0
+        ) {
+          res.status(200).json({
+            message: "User Updated Successfully",
+          });
+          return;
+        }
+
+        send400Error(res, "No User Edited");
       })
       .catch((err) => {
-        if ( isObject(err)
-          && 'errmsg' in err
-          && err.errmsg.indexOf("E11000" >= 0)
-        ) {
-          send401Error(res, "Username Already Exists");
-        } else {
-          send500Error(res, "Error Updating User");
+        if (isObject(err) && 'code' in err) {
+          if (err.code === 'ER_DUP_ENTRY') {
+            let msg;
+            // Check what has been duplicated
+            if (err.message.indexOf("users.email") > -1) {
+              msg = "Email Already Exists.";
+            } else if (err.message.indexOf("users.username") > -1) {
+              msg = "Username Already Exists.";
+            }
+
+            send400Error(res, `User Not Created: ${msg}`);
+            return;
+          }
         }
-        return err;
+        console.log("Edit User Error", err);
+
+        send500Error(res, "Error Updating User");
       });
   }
 }
 
-module.exports = MongoUserController;
+module.exports = MySQLUserController;

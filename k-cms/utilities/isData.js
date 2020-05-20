@@ -8,7 +8,7 @@ module.exports = {
   },
 
   isNumber(x) {
-    return typeof x === typeof 1;
+    return typeof x === typeof 1 && !Number.isNaN(x);
   },
 
   isString(x) {

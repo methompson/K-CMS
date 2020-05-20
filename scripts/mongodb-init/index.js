@@ -1,3 +1,4 @@
+const { makeDatabaseClient } = require("../../k-cms/database");
 const addAdminUser = require("./add-admin-user");
 const setPages = require("./set-pages");
 
@@ -9,12 +10,14 @@ const mongoCredentials = {
   },
 };
 
+const db = makeDatabaseClient(mongoCredentials);
+
 const adminUser = 'admin';
 const adminPassword = 'password';
 
-addAdminUser(mongoCredentials, adminUser, adminPassword)
+addAdminUser(db, adminUser, adminPassword)
   .then(() => {
-    return setPages(mongoCredentials);
+    return setPages(db);
   })
   .then(() => {
     console.log("Successfully Updated the Admin User and Pages");

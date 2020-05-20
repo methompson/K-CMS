@@ -25,6 +25,19 @@ function send401Error(res, msg) {
 }
 
 /**
+ * Send a 404 error to the user. A lot of problematic requests result in 404 not found
+ * error messages. This performs the task without having to duplicate the same task
+ * over and over again.
+ *
+ * @param {String} msg The message that is displayed to the user
+ * @param {Object} res Express Response Object
+ */
+function send404Error(res) {
+  const msg = "Page Not Found";
+  sendError(res, msg, 404);
+}
+
+/**
  * Send a 500 error to the user. A lot of problematic requests result in 500 server error
  * error messages. This performs the task without having to duplicate the same task
  * over and over again.
@@ -39,5 +52,6 @@ function send500Error(res, msg) {
 module.exports = {
   send400Error,
   send401Error,
+  send404Error,
   send500Error,
 };

@@ -1,17 +1,13 @@
 const express = require("express");
 const http = require("http");
-const {
-  MongoClient,
-  findToArray, // Mock Implementation of toArray in MongoDb
-  findOne,
-  find,
-  deleteOne,
-  insertOne,
-  updateOne,
-  collection,
-  ObjectId,
-} = require("mongodb");
+const mysql = require("mysql2");
+
+const MySQLPageController = require("../../../../k-cms/page/MySQLPageController");
+const PluginHandler = require("../../../../k-cms/plugin-handler");
+
+const utilities = require("../../../../k-cms/utilities");
 const endModule = require("../../../../k-cms/utilities/endOnError");
+
 
 jest.mock("http", () => {
   const json = jest.fn(() => {});
@@ -39,14 +35,11 @@ jest.mock("../../../../k-cms/utilities/endOnError", () => {
 
 const { json, status } = http;
 
-const MongoPageController = require("../../../../k-cms/page/MongoPageController");
-const PluginHandler = require("../../../../k-cms/plugin-handler");
-
 const res = new http.ServerResponse();
 
 const errorText = "Test Error";
 
-describe("MongoPageController", () => {
+describe("MySQLPageController", () => {
   let db;
   let ph;
   let mpc;
@@ -54,38 +47,33 @@ describe("MongoPageController", () => {
   let router;
 
   beforeEach(() => {
-    const mc = new MongoClient();
+    const mp = mysql.createPool();
     db = {
-      type: 'mongodb',
-      instance: mc,
+      type: "mysql",
+      instance: mp,
     };
 
     ph = new PluginHandler();
 
-    mpc = new MongoPageController(db, ph);
+    mpc = new MySQLPageController(db, ph);
+
     router = express.Router();
     router.get.mockClear();
     router.post.mockClear();
     router.all.mockClear();
     req = {};
 
-    MongoClient.prototype.db.mockClear();
+    mysql.execute.mockClear();
+    mysql.createPool.mockClear();
+    mysql.Pool.prototype.promise.mockClear();
 
     status.mockClear();
     json.mockClear();
-
-    findOne.mockClear();
-    find.mockClear();
-    deleteOne.mockClear();
-    insertOne.mockClear();
-    updateOne.mockClear();
-    collection.mockClear();
   });
 
   describe("Instantiation", () => {
-    test("When a new MongoPageController is instantiated, a database, a pluginHandler, editors and an authenticator are added to the object's data. 5 routes are set", () => {
-      mpc = new MongoPageController(db, ph);
-
+    test("When a new MySQLPageController is instantiated, a database, a pluginHandler and a list of editors are added to the object's data. 5 routes are set", () => {
+      mpc = new MySQLPageController(db, ph);
       expect(router.get).toHaveBeenCalledTimes(2);
       expect(router.get).toHaveBeenNthCalledWith(1, '/all-pages', expect.any(Function));
       expect(router.get).toHaveBeenNthCalledWith(2, '/:slug', expect.any(Function));
@@ -99,32 +87,39 @@ describe("MongoPageController", () => {
       expect(mpc.pluginHandler).toBe(ph);
     });
 
-    test("When a PageController is instantiated without a database or an improper database, the Node process will exit", () => {
+    test("When a PageController is instantiated without a database or an improper database, endOnError will be called", () => {
       const endSpy = jest.spyOn(endModule, "endOnError");
-      mpc = new MongoPageController();
+
+      mpc = new MySQLPageController();
 
       db = {
         instance: {},
-        type: "mongodb",
+        type: "mysql",
       };
 
-      mpc = new MongoPageController(db);
+      mpc = new MySQLPageController(db);
 
       expect(endSpy).toHaveBeenCalledTimes(2);
       expect(endSpy).toHaveBeenNthCalledWith(1, "Invalid Database Object Sent");
-      expect(endSpy).toHaveBeenNthCalledWith(2, "Database instance is not a MongoDB Client");
+      expect(endSpy).toHaveBeenNthCalledWith(2, "Database instance is not a MySQL Pool Instance");
     });
   });
 
   describe("getPageBySlug", () => {
+    let sqlQuery;
+    beforeEach(() => {
+      sqlQuery = "SELECT id, enabled, name, slug, content, meta, dateUpdated, dateAdded FROM pages WHERE slug = ?";
+    });
 
     test("getPageBySlug will send a document if the proper data is passed to it and the slug returns data from the database", (done) => {
       const doc = {
         test: 'test',
         id: 'id',
       };
-      findOne.mockImplementationOnce(() => {
-        return Promise.resolve(doc);
+
+      mysql.execute.mockImplementationOnce(async () => {
+        const results = [doc];
+        return [results];
       });
 
       req._authData = {
@@ -135,14 +130,13 @@ describe("MongoPageController", () => {
         slug: 'testSlug',
       };
 
+      sqlQuery += " LIMIT 1";
+
       mpc.getPageBySlug(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
-          expect(findOne).toHaveBeenCalledTimes(1);
-          expect(findOne).toHaveBeenCalledWith(req.params);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [req.params.slug]);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
@@ -157,8 +151,9 @@ describe("MongoPageController", () => {
         test: 'test',
         id: 'id',
       };
-      findOne.mockImplementationOnce(() => {
-        return Promise.resolve(doc);
+      mysql.execute.mockImplementationOnce(async () => {
+        const results = [doc];
+        return [results];
       });
 
       req._authData = {
@@ -169,39 +164,43 @@ describe("MongoPageController", () => {
         slug: 'testSlug',
       };
 
+      const queryParams = [req.params.slug];
+
+      sqlQuery += " AND enabled = ?";
+      queryParams.push(true);
+
+      sqlQuery += " LIMIT 1";
+
       mpc.getPageBySlug(req, res)
         .then(() => {
-          expect(findOne).toHaveBeenCalledWith({
-            ...req.params,
-            enabled: true,
-          });
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
-          findOne.mockClear();
+          mysql.execute.mockClear();
           delete req._authData.userType;
           return mpc.getPageBySlug(req, res);
         })
         .then(() => {
-          expect(findOne).toHaveBeenCalledWith({
-            ...req.params,
-            enabled: true,
-          });
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
-          findOne.mockClear();
+          mysql.execute.mockClear();
           req._authData = null;
           return mpc.getPageBySlug(req, res);
         })
         .then(() => {
-          expect(findOne).toHaveBeenCalledWith({
-            ...req.params,
-            enabled: true,
-          });
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
           done();
         });
     });
 
     test("getPageBySlug will send a 404 status and an empty object if the document isn't found", (done) => {
-      findOne.mockImplementationOnce(() => {
-        return Promise.resolve(null);
+      mysql.execute.mockImplementationOnce(async () => {
+        const results = [];
+        return [results];
       });
 
       req._authData = {
@@ -212,14 +211,13 @@ describe("MongoPageController", () => {
         slug: 'testSlug',
       };
 
+      sqlQuery += " LIMIT 1";
+
       mpc.getPageBySlug(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
-          expect(findOne).toHaveBeenCalledTimes(1);
-          expect(findOne).toHaveBeenCalledWith(req.params);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [req.params.slug]);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(404);
@@ -234,9 +232,8 @@ describe("MongoPageController", () => {
     test("getPageBySlug will send a 400 error if no parameters are sent", (done) => {
       mpc.getPageBySlug(req, res)
         .then((err) => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-          expect(findOne).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           expect(err).toBe("Invalid Page Data Sent");
           expect(status).toHaveBeenCalledTimes(1);
@@ -253,9 +250,8 @@ describe("MongoPageController", () => {
       req.params = {};
       mpc.getPageBySlug(req, res)
         .then((err) => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-          expect(findOne).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           expect(err).toBe("Invalid Page Data Sent");
           expect(status).toHaveBeenCalledTimes(1);
@@ -268,28 +264,18 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("getPageBySlug will throw an error and send a 500 error if findOne throws an error", (done) => {
+    test("getPageBySlug will throw an error and send a 500 error if execute throws an error", (done) => {
       req.params = {
         slug: 'testSlug',
       };
 
       const error = "Test Error 69696969";
-      findOne.mockImplementationOnce(() => {
+      mysql.execute.mockImplementationOnce(async () => {
         return Promise.reject(error);
       });
 
       mpc.getPageBySlug(req, res)
         .then((err) => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
-          expect(findOne).toHaveBeenCalledTimes(1);
-          expect(findOne).toHaveBeenCalledWith({
-            ...req.params,
-            enabled: true,
-          });
-
           expect(err).toBe(error);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
@@ -304,8 +290,12 @@ describe("MongoPageController", () => {
   });
 
   describe("getAllPages", () => {
+    let sqlQuery;
+    let queryParams;
+
     beforeEach(() => {
-      findToArray.mockClear();
+      sqlQuery = "SELECT id, enabled, name, slug, content, meta, dateUpdated, dateAdded FROM pages";
+      queryParams = [];
     });
 
     test("getAllPages will send a 200 response and send the results of a search from the db collection", (done) => {
@@ -320,8 +310,8 @@ describe("MongoPageController", () => {
         },
       ];
 
-      findToArray.mockImplementationOnce(() => {
-        return Promise.resolve(docs);
+      mysql.execute.mockImplementationOnce(async () => {
+        return [docs];
       });
 
       req._authData = {
@@ -330,18 +320,14 @@ describe("MongoPageController", () => {
 
       mpc.getAllPages(req, res)
         .then(() => {
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith(docs);
-
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
-          expect(findToArray).toHaveBeenCalledTimes(1);
-          expect(find).toHaveBeenCalledTimes(1);
-          expect(find).toHaveBeenCalledWith({});
           done();
         });
     });
@@ -358,9 +344,12 @@ describe("MongoPageController", () => {
         },
       ];
 
-      findToArray.mockImplementation(() => {
-        return Promise.resolve(docs);
+      mysql.execute.mockImplementationOnce(async () => {
+        return [docs];
       });
+
+      sqlQuery += " WHERE enabled = ?";
+      queryParams.push(true);
 
       mpc.getAllPages(req, res)
         .then(() => {
@@ -374,20 +363,12 @@ describe("MongoPageController", () => {
           return mpc.getAllPages(req, res);
         })
         .then(() => {
-          expect(find).toHaveBeenCalledTimes(3);
-          expect(find).toHaveBeenNthCalledWith(1, { enabled: true });
-          expect(find).toHaveBeenNthCalledWith(2, { enabled: true });
-          expect(find).toHaveBeenNthCalledWith(3, { enabled: true });
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(3);
 
-          expect(status).toHaveBeenCalledTimes(3);
-          expect(status).toHaveBeenNthCalledWith(1, 200);
-          expect(status).toHaveBeenNthCalledWith(2, 200);
-          expect(status).toHaveBeenNthCalledWith(3, 200);
-
-          expect(json).toHaveBeenCalledTimes(3);
-          expect(json).toHaveBeenNthCalledWith(1, docs);
-          expect(json).toHaveBeenNthCalledWith(2, docs);
-          expect(json).toHaveBeenNthCalledWith(3, docs);
+          expect(mysql.execute).toHaveBeenCalledTimes(3);
+          expect(mysql.execute).toHaveBeenNthCalledWith(1, sqlQuery, queryParams);
+          expect(mysql.execute).toHaveBeenNthCalledWith(2, sqlQuery, queryParams);
+          expect(mysql.execute).toHaveBeenNthCalledWith(3, sqlQuery, queryParams);
 
           done();
         });
@@ -395,21 +376,20 @@ describe("MongoPageController", () => {
     });
 
     test("getAllPages will send a 200 status code and an empty object if no documents exist", (done) => {
-      findToArray.mockImplementationOnce(() => {
-        return Promise.resolve(null);
+      mysql.execute.mockImplementationOnce(() => {
+        const results = [];
+        return Promise.resolve([results]);
       });
+
+      req._authData = {
+        userType: 'admin',
+      };
 
       mpc.getAllPages(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
-          expect(findToArray).toHaveBeenCalledTimes(1);
-          expect(find).toHaveBeenCalledTimes(1);
-          expect(find).toHaveBeenCalledWith({
-            enabled: true,
-          });
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
@@ -419,22 +399,20 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("getAllPages will throw an error if collection.find.toArray throws an error", (done) => {
-      findToArray.mockImplementationOnce(() => {
+    test("getAllPages will throw an error if mysql.execute throws an error", (done) => {
+      mysql.execute.mockImplementationOnce(() => {
         return Promise.reject(errorText);
       });
 
+      req._authData = {
+        userType: 'admin',
+      };
+
       mpc.getAllPages(req, res)
         .then((err) => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
-          expect(findToArray).toHaveBeenCalledTimes(1);
-          expect(find).toHaveBeenCalledTimes(1);
-          expect(find).toHaveBeenCalledWith({
-            enabled: true,
-          });
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
           expect(err).toBe(errorText);
           expect(status).toHaveBeenCalledTimes(1);

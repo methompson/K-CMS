@@ -19,6 +19,7 @@ Currently K-CMS uses MongoDB to store web and user data. MySQL support is planne
 # Basic Usage
 
 ```js
+const http = require('http');
 const makeKCMS = require("k-cms");
 
 // Create a CMS object. Pass mongodb login information as an option

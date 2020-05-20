@@ -1,6 +1,6 @@
 const { endOnError, isObject } = require("../utilities");
 const { getMongoDb } = require("./getMongoDb");
-// const { getMySQLDb } = require("./getMySQLdb");
+const { getMySQLDb } = require("./getMySQLdb");
 
 /**
  * Accepts an object of parameters and makes a Database client
@@ -15,10 +15,18 @@ const makeDatabaseClient = (options) => {
   }
 
   if ("mongodb" in options) {
-    const client = getMongoDb(options.mongodb);
+    const instance = getMongoDb(options.mongodb);
     return {
       type: 'mongodb',
-      instance: client,
+      instance,
+    };
+  }
+
+  if ('mysql' in options) {
+    const instance = getMySQLDb(options.mysql);
+    return {
+      type: 'mysql',
+      instance,
     };
   }
 

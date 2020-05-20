@@ -1,9 +1,6 @@
 const bcrypt = require('bcryptjs');
 
-const { makeDatabaseClient } = require("../database");
-
-module.exports = (mongoCredentials, adminUserName, adminPassword) => {
-  const db = makeDatabaseClient(mongoCredentials);
+module.exports = (db, adminUserName, adminPassword) => {
   const collection = db.instance.db("kcms").collection("users");
 
   return collection.createIndex( { username: 1 }, { unique: true })

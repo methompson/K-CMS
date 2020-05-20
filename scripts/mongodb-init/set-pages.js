@@ -1,7 +1,4 @@
-const { makeDatabaseClient } = require("../database");
-
-module.exports = (mongoCredentials) => {
-  const db = makeDatabaseClient(mongoCredentials);
+module.exports = (db) => {
   const collection = db.instance.db("kcms").collection("pages");
 
   // Making slugs unique

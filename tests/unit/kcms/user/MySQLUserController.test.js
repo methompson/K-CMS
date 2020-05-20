@@ -1,21 +1,10 @@
-/* eslint-disable no-unused-vars */
 const express = require("express");
 const bcrypt = require('bcryptjs');
 const http = require("http");
 const jwt = require('jsonwebtoken');
-const {
-  MongoClient,
-  findToArray, // Mock Implementation of toArray in MongoDb
-  findOne,
-  find,
-  deleteOne,
-  insertOne,
-  updateOne,
-  collection,
-  ObjectId,
-} = require("mongodb");
+const mysql = require("mysql2");
 
-const MongoUserController = require("../../../../k-cms/user/MongoUserController");
+const MySQLUserController = require("../../../../k-cms/user/MySQLUserController");
 const PluginHandler = require("../../../../k-cms/plugin-handler");
 
 const utilities = require("../../../../k-cms/utilities");
@@ -23,7 +12,6 @@ const utilities = require("../../../../k-cms/utilities");
 const jwtSecret = "69";
 global.jwtSecret = jwtSecret;
 const invalidCredentials = "Invalid Credentials";
-const invalidUserId = "Invalid User Id";
 
 jest.mock("http", () => {
   const json = jest.fn(() => {});
@@ -45,7 +33,7 @@ const { json, status } = http;
 
 const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {});
 
-describe("MongoUserController", () => {
+describe("MySQLUserController", () => {
   let db;
   let ph;
   let router;
@@ -56,30 +44,25 @@ describe("MongoUserController", () => {
 
   beforeEach(() => {
     ph = new PluginHandler();
-    const mc = new MongoClient();
+    const mp = mysql.createPool();
     db = {
-      type: "mongodb",
-      instance: mc,
+      type: "mysql",
+      instance: mp,
     };
 
-    muc = new MongoUserController(db, ph);
+    muc = new MySQLUserController(db, ph);
     res = new http.ServerResponse();
 
-    MongoClient.prototype.db.mockClear();
-    collection.mockClear();
+    mysql.execute.mockClear();
+    mysql.createPool.mockClear();
+    mysql.Pool.prototype.promise.mockClear();
 
     req = {
       _authData: null,
     };
 
-    ObjectId.mockClear();
     bcrypt.compare.mockClear();
     bcrypt.hash.mockClear();
-    insertOne.mockClear();
-    updateOne.mockClear();
-    findOne.mockClear();
-    find.mockClear();
-    deleteOne.mockClear();
     jwt.sign.mockClear();
     status.mockClear();
     json.mockClear();
@@ -92,8 +75,8 @@ describe("MongoUserController", () => {
   });
 
   describe("Instantiation", () => {
-    test("When a new MongoUserController is instantiated, several parameters are saved in the constructor and several routes are added", () => {
-      muc = new MongoUserController(db, ph);
+    test("When a new MySQLUserController is instantiated, several parameters are saved in the constructor and several routes are added", () => {
+      muc = new MySQLUserController(db, ph);
       expect(muc.pluginHandler).toBe(ph);
       expect(muc.pluginHandler instanceof PluginHandler).toBe(true);
       expect(muc.userViewers).toEqual(expect.arrayContaining([
@@ -125,31 +108,47 @@ describe("MongoUserController", () => {
       expect(muc.db).toBe(db);
     });
 
-    test("When a new MongoUserController is created with a a non-MongoClient database instance, the program will end", () => {
+    test("When a new MySQLUserController is created with a a non-Mysql Pool database instance, the program will end", () => {
       db.instance = {};
-      muc = new MongoUserController(db, ph);
+      muc = new MySQLUserController(db, ph);
       expect(mockExit).toHaveBeenCalledTimes(1);
       expect(mockExit).toHaveBeenCalledWith(1);
     });
 
-    test("When a new MongoUserController is created without a database argument, the program will end", () => {
-      muc = new MongoUserController();
+    test("When a new MySQLUserController is created without a database argument, the program will end", () => {
+      muc = new MySQLUserController();
       expect(mockExit).toHaveBeenCalledTimes(1);
       expect(mockExit).toHaveBeenCalledWith(1);
     });
   });
 
-  const username = "test username";
   describe("authenticateUserCredentials", () => {
+
+    const sqlQuery = `
+      SELECT
+        id,
+        firstName,
+        lastName,
+        username,
+        email,
+        userType,
+        password,
+        userMeta
+      FROM users
+      WHERE username = ?
+    `;
+
+    const username = "test username";
     const password = "test password";
+
     const userData = {
-      _id: "abc",
+      id: 69,
       username,
       userType: "userType",
       password: "AbcDef",
     };
 
-    test("authenticateUserCredentials will run findOne on a username, compare the passed password to the hashed password, then create a JWT before sending it as a part of the result", (done) => {
+    test("authenticateUserCredentials will run execute with a query finding a username, compare the passed password to the hashed password, then create a JWT before sending it as a part of the result", (done) => {
       req.body = {
         username,
         password,
@@ -157,31 +156,27 @@ describe("MongoUserController", () => {
 
       const token = "a token!";
 
-      findOne.mockImplementationOnce(async () => {
-        return userData;
-      });
       bcrypt.compare.mockImplementationOnce(async () => {
         return true;
       });
       jwt.sign.mockImplementationOnce(() => {
         return token;
       });
+      mysql.execute.mockImplementationOnce(() => {
+        return Promise.resolve([[userData]]);
+      });
 
       muc.authenticateUserCredentials(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
-          expect(findOne).toHaveBeenCalledTimes(1);
-          expect(findOne).toHaveBeenCalledWith({ username });
-
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [userData.username]);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
           expect(bcrypt.compare).toHaveBeenCalledTimes(1);
           expect(bcrypt.compare).toHaveBeenCalledWith(req.body.password, userData.password);
           expect(jwt.sign).toHaveBeenCalledTimes(1);
           expect(jwt.sign).toHaveBeenCalledWith(
             {
-              id: userData._id,
+              id: userData.id,
               username: userData.username,
               userType: userData.userType,
             },
@@ -191,7 +186,6 @@ describe("MongoUserController", () => {
               algorithm: muc.jwtAlg,
             }
           );
-
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
@@ -207,9 +201,8 @@ describe("MongoUserController", () => {
 
       muc.authenticateUserCredentials(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-          expect(findOne).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
           expect(bcrypt.compare).toHaveBeenCalledTimes(0);
           expect(jwt.sign).toHaveBeenCalledTimes(0);
           expect(status).toHaveBeenCalledTimes(1);
@@ -229,9 +222,8 @@ describe("MongoUserController", () => {
 
       muc.authenticateUserCredentials(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-          expect(findOne).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
           expect(bcrypt.compare).toHaveBeenCalledTimes(0);
           expect(jwt.sign).toHaveBeenCalledTimes(0);
           expect(status).toHaveBeenCalledTimes(1);
@@ -247,9 +239,8 @@ describe("MongoUserController", () => {
     test("authenticateUserCredentials will send a 401 error if no body is included in the request", (done) => {
       muc.authenticateUserCredentials(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-          expect(findOne).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
           expect(bcrypt.compare).toHaveBeenCalledTimes(0);
           expect(jwt.sign).toHaveBeenCalledTimes(0);
           expect(status).toHaveBeenCalledTimes(1);
@@ -262,24 +253,22 @@ describe("MongoUserController", () => {
         });
     });
 
-    test("authenticateUserCredentials will send a 401 error if findOne returns no results", (done) => {
+    test("authenticateUserCredentials will send a 401 error if execute returns no results", (done) => {
       req.body = {
         username,
         password,
       };
 
-      findOne.mockImplementationOnce(() => {
-        return Promise.resolve(null);
+      mysql.execute.mockImplementationOnce(() => {
+        const rows = [];
+        return Promise.resolve([rows]);
       });
 
       muc.authenticateUserCredentials(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
-          expect(findOne).toHaveBeenCalledTimes(1);
-          expect(findOne).toHaveBeenCalledWith({ username });
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [req.body.username]);
           expect(bcrypt.compare).toHaveBeenCalledTimes(0);
           expect(jwt.sign).toHaveBeenCalledTimes(0);
           expect(status).toHaveBeenCalledTimes(1);
@@ -292,7 +281,7 @@ describe("MongoUserController", () => {
         });
     });
 
-    test("authenticateUserCredentials will send a 500 error if findOne throws an error", (done) => {
+    test("authenticateUserCredentials will send a 500 error if execute throws an error", (done) => {
       req.body = {
         username,
         password,
@@ -300,18 +289,15 @@ describe("MongoUserController", () => {
 
       const error = "A test error";
 
-      findOne.mockImplementationOnce(() => {
+      mysql.execute.mockImplementationOnce(() => {
         return Promise.reject(error);
       });
 
       muc.authenticateUserCredentials(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
-          expect(findOne).toHaveBeenCalledTimes(1);
-          expect(findOne).toHaveBeenCalledWith({ username });
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [req.body.username]);
           expect(bcrypt.compare).toHaveBeenCalledTimes(0);
           expect(jwt.sign).toHaveBeenCalledTimes(0);
           expect(status).toHaveBeenCalledTimes(1);
@@ -330,8 +316,8 @@ describe("MongoUserController", () => {
         password,
       };
 
-      findOne.mockImplementationOnce(async () => {
-        return userData;
+      mysql.execute.mockImplementationOnce(() => {
+        return Promise.resolve([[userData]]);
       });
 
       bcrypt.compare.mockImplementationOnce(async () => {
@@ -340,12 +326,9 @@ describe("MongoUserController", () => {
 
       muc.authenticateUserCredentials(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
-          expect(findOne).toHaveBeenCalledTimes(1);
-          expect(findOne).toHaveBeenCalledWith({ username });
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [userData.username]);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
           expect(bcrypt.compare).toHaveBeenCalledTimes(1);
           expect(bcrypt.compare).toHaveBeenCalledWith(req.body.password, userData.password);
           expect(jwt.sign).toHaveBeenCalledTimes(0);
@@ -367,8 +350,8 @@ describe("MongoUserController", () => {
 
       const error = "A test error";
 
-      findOne.mockImplementationOnce(async () => {
-        return userData;
+      mysql.execute.mockImplementationOnce(() => {
+        return Promise.resolve([[userData]]);
       });
 
       bcrypt.compare.mockImplementationOnce(() => {
@@ -377,12 +360,9 @@ describe("MongoUserController", () => {
 
       muc.authenticateUserCredentials(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
-          expect(findOne).toHaveBeenCalledTimes(1);
-          expect(findOne).toHaveBeenCalledWith({ username });
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [userData.username]);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
           expect(bcrypt.compare).toHaveBeenCalledTimes(1);
           expect(bcrypt.compare).toHaveBeenCalledWith(req.body.password, userData.password);
           expect(jwt.sign).toHaveBeenCalledTimes(0);
@@ -399,36 +379,50 @@ describe("MongoUserController", () => {
   });
 
   describe("getUser", () => {
-    test("getUser will run findOne and return results. If a password is in the results, the return will be sans password", (done) => {
+    const sqlQuery = `
+      SELECT
+        id,
+        firstName,
+        lastName,
+        username,
+        email,
+        userType,
+        userMeta,
+        dateAdded,
+        dateUpdated
+      FROM users
+      WHERE id = ?
+    `;
+
+    const id = 69;
+    let findResult;
+
+    beforeEach(() => {
+      findResult = {
+        id,
+        test: "test",
+        user: "user",
+        password: "69",
+      };
+    });
+
+    test("getUser will run execute and return results. If a password is in the results, the return will be sans password", (done) => {
       req._authData = {
         userType: 'admin',
       };
 
       req.params = {
-        id: "abc",
+        id,
       };
 
-      const idObj = "An object";
-      ObjectId.mockImplementationOnce(() => {
-        return idObj;
-      });
-
-      const findResult = {
-        test: "test",
-        user: "user",
-      };
-
-      const returnedResult = {
+      const returnedData = {
         ...findResult,
       };
 
-      findResult.password = "69";
+      delete returnedData.password;
 
-      findOne.mockImplementationOnce(() => {
-        return Promise.resolve({
-          ...findResult,
-          password: "abc",
-        });
+      mysql.execute.mockImplementationOnce(() => {
+        return Promise.resolve([[findResult]]);
       });
 
       muc.getUser(req, res)
@@ -436,14 +430,10 @@ describe("MongoUserController", () => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith(returnedResult);
-          expect(ObjectId).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
-          expect(findOne).toHaveBeenCalledTimes(1);
-          expect(findOne).toHaveBeenCalledWith({ _id: idObj });
+          expect(json).toHaveBeenCalledWith(returnedData);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [req.params.id]);
           done();
         });
     });
@@ -457,19 +447,10 @@ describe("MongoUserController", () => {
         id: "abc",
       };
 
-      const idObj = "An object";
-      ObjectId.mockImplementationOnce(() => {
-        return idObj;
-      });
+      delete findResult.password;
 
-      const findResult = {
-        test: "test",
-        user: "user",
-      };
-      findOne.mockImplementationOnce(() => {
-        return Promise.resolve({
-          ...findResult,
-        });
+      mysql.execute.mockImplementationOnce(() => {
+        return Promise.resolve([[findResult]]);
       });
 
       muc.getUser(req, res)
@@ -478,13 +459,10 @@ describe("MongoUserController", () => {
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith(findResult);
-          expect(ObjectId).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
-          expect(findOne).toHaveBeenCalledTimes(1);
-          expect(findOne).toHaveBeenCalledWith({ _id: idObj });
+
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [req.params.id]);
           done();
         });
     });
@@ -501,9 +479,8 @@ describe("MongoUserController", () => {
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({ error: "" });
 
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-          expect(findOne).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           done();
         });
     });
@@ -522,14 +499,13 @@ describe("MongoUserController", () => {
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({ error: "User Id Not Provided" });
 
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-          expect(findOne).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           done();
         });
     });
 
-    test("getUser will return a 400 error if the id is not valid", (done) => {
+    test("getUser will return a 500 error if execute throws an error", (done) => {
       req._authData = {
         userType: 'admin',
       };
@@ -537,42 +513,9 @@ describe("MongoUserController", () => {
       req.params = {
         id: "abc",
       };
-      ObjectId.mockImplementationOnce(() => {
-        throw "Mock ObjectId Error";
-      });
-
-      muc.getUser(req, res)
-        .then(() => {
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: invalidUserId });
-
-          expect(ObjectId).toHaveBeenCalledTimes(1);
-          expect(ObjectId).toHaveBeenCalledWith(req.params.id);
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-          expect(findOne).toHaveBeenCalledTimes(0);
-          done();
-        });
-    });
-
-    test("getUser will return a 500 error if findOne throws an error", (done) => {
-      req._authData = {
-        userType: 'admin',
-      };
-
-      req.params = {
-        id: "abc",
-      };
-
-      const idObj = "An object";
-      ObjectId.mockImplementationOnce(() => {
-        return idObj;
-      });
 
       const error = "Test Error";
-      findOne.mockImplementationOnce(() => {
+      mysql.execute.mockImplementationOnce(() => {
         return Promise.reject(error);
       });
 
@@ -583,21 +526,15 @@ describe("MongoUserController", () => {
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({ error: "Database Error" });
 
-          expect(ObjectId).toHaveBeenCalledTimes(1);
-          expect(ObjectId).toHaveBeenCalledWith(req.params.id);
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
-          expect(findOne).toHaveBeenCalledTimes(1);
-          expect(findOne).toHaveBeenCalledWith({
-            _id: idObj,
-          });
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [req.params.id]);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+
           done();
         });
     });
 
-    test("getUser will return a 400 error if findOne returns no data", (done) => {
+    test("getUser will return a 404 error if execute returns no data", (done) => {
       req._authData = {
         userType: 'admin',
       };
@@ -606,13 +543,8 @@ describe("MongoUserController", () => {
         id: "abc",
       };
 
-      const idObj = "An object";
-      ObjectId.mockImplementationOnce(() => {
-        return idObj;
-      });
-
-      findOne.mockImplementationOnce(() => {
-        return Promise.resolve(null);
+      mysql.execute.mockImplementationOnce(() => {
+        return Promise.resolve([[]]);
       });
 
       muc.getUser(req, res)
@@ -622,16 +554,10 @@ describe("MongoUserController", () => {
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({ error: "Page Not Found" });
 
-          expect(ObjectId).toHaveBeenCalledTimes(1);
-          expect(ObjectId).toHaveBeenCalledWith(req.params.id);
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
-          expect(findOne).toHaveBeenCalledTimes(1);
-          expect(findOne).toHaveBeenCalledWith({
-            _id: idObj,
-          });
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [req.params.id]);
+
           done();
         });
     });
@@ -639,6 +565,24 @@ describe("MongoUserController", () => {
   });
 
   describe("getAllUsers", () => {
+
+    const sqlQuery = `
+      SELECT
+        id,
+        firstName,
+        lastName,
+        username,
+        email,
+        userType,
+        userMeta,
+        dateAdded,
+        dateUpdated
+      FROM users
+      ORDER BY id
+      LIMIT ?
+      OFFSET ?
+    `;
+
     test("getAllUsers will send a 200 status and return an array of user data if the user can receive all the data", (done) => {
       const page = 5;
       req._authData = {
@@ -660,9 +604,11 @@ describe("MongoUserController", () => {
         returnResults.push(user);
       });
 
-      findToArray.mockImplementationOnce(() => {
-        return Promise.resolve(findResult);
+      mysql.execute.mockImplementationOnce(() => {
+        return Promise.resolve([findResult]);
       });
+
+      const { pagination } = muc;
 
       muc.getAllUsers(req, res)
         .then(() => {
@@ -673,20 +619,10 @@ describe("MongoUserController", () => {
             users: returnResults,
           });
 
-          expect(find).toHaveBeenCalledTimes(1);
-          expect(find).toHaveBeenCalledWith(
-            {},
-            {
-              projection: { password: 0 },
-              skip: ((page - 1) * muc.pagination),
-              limit: muc.pagination,
-            }
-          );
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [pagination, pagination * (page - 1)]);
 
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
           done();
         });
     });
@@ -700,7 +636,7 @@ describe("MongoUserController", () => {
         { user: "user1", type: 'viewer' },
         { user: "user2", type: 'admin' },
       ];
-      findToArray.mockImplementationOnce(() => {
+      mysql.execute.mockImplementationOnce(() => {
         return Promise.resolve(findResult);
       })
         .mockImplementationOnce(() => {
@@ -718,35 +654,13 @@ describe("MongoUserController", () => {
       const p2 = muc.getAllUsers(req2, res);
       const p3 = muc.getAllUsers(req3, res);
 
+      const { pagination } = muc;
+
       Promise.all([p1, p2, p3])
         .then(() => {
-          expect(find).toHaveBeenNthCalledWith(
-            1,
-            {},
-            {
-              projection: { password: 0 },
-              skip: ((1 - 1) * muc.pagination),
-              limit: muc.pagination,
-            }
-          );
-          expect(find).toHaveBeenNthCalledWith(
-            2,
-            {},
-            {
-              projection: { password: 0 },
-              skip: ((1 - 1) * muc.pagination),
-              limit: muc.pagination,
-            }
-          );
-          expect(find).toHaveBeenNthCalledWith(
-            3,
-            {},
-            {
-              projection: { password: 0 },
-              skip: ((1 - 1) * muc.pagination),
-              limit: muc.pagination,
-            }
-          );
+          expect(mysql.execute).toHaveBeenNthCalledWith(1, sqlQuery, [pagination, 0]);
+          expect(mysql.execute).toHaveBeenNthCalledWith(2, sqlQuery, [pagination, 0]);
+          expect(mysql.execute).toHaveBeenNthCalledWith(3, sqlQuery, [pagination, 0]);
 
           done();
         });
@@ -766,21 +680,22 @@ describe("MongoUserController", () => {
             error: "",
           });
 
-          expect(find).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
           done();
         });
     });
 
-    test("getAllUsers with send a 500 error if toArray throws an error", (done) => {
+    test("getAllUsers with send a 500 error if execute throws an error", (done) => {
       req._authData = {
         userType: 'admin',
       };
-      findToArray.mockImplementationOnce(() => {
+      mysql.execute.mockImplementationOnce(() => {
         return Promise.reject();
       });
+
+      const { pagination } = muc;
 
       muc.getAllUsers(req, res)
         .then(() => {
@@ -791,10 +706,11 @@ describe("MongoUserController", () => {
             error: "Database Error",
           });
 
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [pagination, 0]);
+
           done();
         });
     });
@@ -802,22 +718,6 @@ describe("MongoUserController", () => {
   });
 
   describe("addUser", () => {
-    let returnObjectId;
-    let toString;
-    const idString = "new_user_69";
-
-    beforeEach(() => {
-      toString = jest.fn(() => {
-        return idString;
-      });
-      returnObjectId = {
-        insertedCount: 1,
-        insertedId: {
-          toString,
-        },
-      };
-    });
-
     test("addUser will run bcrypt.hash, insertOne, send a 200 code and a specific message if a properly structured request is sent", (done) => {
       req._authData = {
         userType: "admin",
@@ -826,7 +726,7 @@ describe("MongoUserController", () => {
       const newUser = {
         username: "test user",
         password: "test password",
-        email: "test@test.test",
+        email: "test@email.io",
         userType: "viewer",
         enabled: true,
       };
@@ -834,39 +734,61 @@ describe("MongoUserController", () => {
         newUser,
       };
 
+      const output = {
+        username: newUser.username,
+        email: newUser.email,
+        userType: newUser.userType,
+        enabled: newUser.enabled,
+        dateAdded: expect.any(Date),
+        dateUpdated: expect.any(Date),
+      };
+
       const hashedPass = "abc123_69";
       bcrypt.hash.mockImplementationOnce(() => {
         return Promise.resolve(hashedPass);
       });
 
-      insertOne.mockImplementationOnce(() => {
-        return Promise.resolve(returnObjectId);
+      let sqlQuery = "INSERT INTO users (username, email, password, userType, enabled";
+      let values = "VALUES (?, ?, ?, ?, ?";
+      const queryParams = [
+        newUser.username,
+        newUser.email,
+        hashedPass,
+        newUser.userType,
+        newUser.enabled,
+        expect.any(Date),
+        expect.any(Date),
+      ];
+      sqlQuery += ", dateAdded, dateUpdated)";
+      values += ", ?, ?)";
+
+      const userId = 69;
+      mysql.execute.mockImplementationOnce(() => {
+        const results = {
+          affectedRows: 1,
+          insertId: userId,
+        };
+        return Promise.resolve([
+          results,
+        ]);
       });
 
       muc.addUser(req, res)
-        .catch((err) => {
-          console.log("Add User Error", err);
-        })
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(1);
           expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
-          expect(insertOne).toHaveBeenCalledTimes(1);
-          expect(insertOne).toHaveBeenCalledWith({
-            ...newUser,
-            password: hashedPass,
-          });
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
+            ...output,
             message: "User Added Successfully",
-            userId: idString,
+            userId,
           });
 
           done();
@@ -881,7 +803,7 @@ describe("MongoUserController", () => {
       const newUser = {
         username: "test user",
         password: "test password",
-        email: "test@test.test",
+        email: "test@email.io",
         // userType: "viewer",
         // enabled: true,
       };
@@ -889,38 +811,61 @@ describe("MongoUserController", () => {
         newUser,
       };
 
+      const output = {
+        username: newUser.username,
+        email: newUser.email,
+        userType: "subscriber",
+        enabled: true,
+        dateAdded: expect.any(Date),
+        dateUpdated: expect.any(Date),
+      };
+
       const hashedPass = "abc123_69";
       bcrypt.hash.mockImplementationOnce(() => {
         return Promise.resolve(hashedPass);
       });
 
-      insertOne.mockImplementationOnce(() => {
-        return Promise.resolve(returnObjectId);
+      let sqlQuery = "INSERT INTO users (username, email, password, userType, enabled";
+      let values = "VALUES (?, ?, ?, ?, ?";
+      const queryParams = [
+        newUser.username,
+        newUser.email,
+        hashedPass,
+        "subscriber",
+        true,
+        expect.any(Date),
+        expect.any(Date),
+      ];
+      sqlQuery += ", dateAdded, dateUpdated)";
+      values += ", ?, ?)";
+
+      const userId = 69;
+      mysql.execute.mockImplementationOnce(() => {
+        const results = {
+          affectedRows: 1,
+          insertId: userId,
+        };
+        return Promise.resolve([
+          results,
+        ]);
       });
 
       muc.addUser(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(1);
           expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
-          expect(insertOne).toHaveBeenCalledTimes(1);
-          expect(insertOne).toHaveBeenCalledWith({
-            ...newUser,
-            enabled: true,
-            userType: 'subscriber',
-            password: hashedPass,
-          });
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
+            ...output,
             message: "User Added Successfully",
-            userId: idString,
+            userId,
           });
 
           done();
@@ -935,7 +880,7 @@ describe("MongoUserController", () => {
       const newUser = {
         username: "test user",
         password: "test password",
-        email: "test@test.test",
+        email: "test@email.io",
         userType: "viewer",
         enabled: true,
       };
@@ -953,9 +898,8 @@ describe("MongoUserController", () => {
           });
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-          expect(insertOne).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           done();
         });
@@ -976,9 +920,8 @@ describe("MongoUserController", () => {
           });
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-          expect(insertOne).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           done();
         });
@@ -1000,9 +943,8 @@ describe("MongoUserController", () => {
           });
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-          expect(insertOne).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           done();
         });
@@ -1024,9 +966,8 @@ describe("MongoUserController", () => {
           });
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-          expect(insertOne).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           done();
         });
@@ -1039,6 +980,7 @@ describe("MongoUserController", () => {
 
       const newUser = {
         // username: "test user",
+        email: "test@email.io",
         password: "test password",
         userType: "viewer",
         enabled: true,
@@ -1056,9 +998,8 @@ describe("MongoUserController", () => {
           });
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-          expect(insertOne).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           done();
         });
@@ -1072,6 +1013,7 @@ describe("MongoUserController", () => {
       const newUser = {
         username: "test user",
         // password: "test password",
+        email: "test@email.io",
         userType: "viewer",
         enabled: true,
       };
@@ -1088,9 +1030,40 @@ describe("MongoUserController", () => {
           });
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-          expect(insertOne).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
+
+          done();
+        });
+    });
+
+    test("addUser will send a 400 error if the newUser object contains no email", (done) => {
+      req._authData = {
+        userType: "admin",
+      };
+
+      const newUser = {
+        username: "test user",
+        password: "test password",
+        // email: "test@email.io",
+        userType: "viewer",
+        enabled: true,
+      };
+      req.body = {
+        newUser,
+      };
+      muc.addUser(req, res)
+        .then(() => {
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "User Data Not Provided",
+          });
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           done();
         });
@@ -1110,7 +1083,7 @@ describe("MongoUserController", () => {
       const newUser = {
         username: "test user",
         password,
-        email: "test@test.test",
+        email: "test@email.io",
         userType: "viewer",
         enabled: true,
       };
@@ -1127,9 +1100,8 @@ describe("MongoUserController", () => {
           });
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-          expect(insertOne).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           done();
         });
@@ -1143,7 +1115,7 @@ describe("MongoUserController", () => {
       const newUser = {
         username: "test user",
         password: "test password",
-        email: "test@test.test",
+        email: "test@email.io",
         userType: "viewer",
         enabled: true,
       };
@@ -1158,14 +1130,12 @@ describe("MongoUserController", () => {
 
       muc.addUser(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
+
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(1);
           expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
-          expect(insertOne).toHaveBeenCalledTimes(0);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
@@ -1178,144 +1148,176 @@ describe("MongoUserController", () => {
         });
     });
 
-    test("addUser will send a 500 error if insertOne throws a non-specific error", (done) => {
-      req._authData = {
-        userType: "admin",
-      };
-
-      const newUser = {
-        username: "test user",
-        password: "test password",
-        email: "test@test.test",
-        userType: "viewer",
-        enabled: true,
-      };
-      req.body = {
-        newUser,
-      };
-
+    describe("Execute Errors", () => {
+      let newUser;
+      let sqlQuery;
+      let values;
+      let queryParams;
       const hashedPass = "abc123_69";
-      bcrypt.hash.mockImplementationOnce(() => {
-        return Promise.resolve(hashedPass);
+
+      beforeEach(() => {
+        req._authData = {
+          userType: "admin",
+        };
+
+        newUser = {
+          username: "test user",
+          password: "test password",
+          email: "test@email.io",
+          userType: "viewer",
+          enabled: true,
+        };
+        req.body = {
+          newUser,
+        };
+
+        sqlQuery = "INSERT INTO users (username, email, password, userType, enabled";
+        values = "VALUES (?, ?, ?, ?, ?";
+        queryParams = [
+          newUser.username,
+          newUser.email,
+          hashedPass,
+          newUser.userType,
+          newUser.enabled,
+          expect.any(Date),
+          expect.any(Date),
+        ];
+        sqlQuery += ", dateAdded, dateUpdated)";
+        values += ", ?, ?)";
+
       });
 
-      insertOne.mockImplementationOnce(() => {
-        return Promise.reject();
-      });
+      test("addUser will send a 500 error if execute throws a non-specific error", (done) => {
 
-      muc.addUser(req, res)
-        .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
-
-          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
-          expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
-          expect(insertOne).toHaveBeenCalledTimes(1);
-          expect(insertOne).toHaveBeenCalledWith({
-            ...newUser,
-            password: hashedPass,
-          });
-
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(500);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: "Error Adding New User",
-          });
-
-          done();
+        bcrypt.hash.mockImplementationOnce(() => {
+          return Promise.resolve(hashedPass);
         });
+
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.reject();
+        });
+
+        muc.addUser(req, res)
+          .then(() => {
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
+
+            expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+            expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(500);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error: "Error Adding New User",
+            });
+
+            done();
+          });
+      });
+
+      test("addUser will send a 400 error if execute throws a specific error re duplicate emails", (done) => {
+        bcrypt.hash.mockImplementationOnce(() => {
+          return Promise.resolve(hashedPass);
+        });
+
+        const error = {
+          code: "ER_DUP_ENTRY",
+          message: "Duplicate entry 'test@test.test' for key 'users.email'",
+        };
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.reject(error);
+        });
+
+        muc.addUser(req, res)
+          .then(() => {
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
+
+            expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+            expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(400);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error: "User Not Created: Email Already Exists.",
+            });
+
+            done();
+          });
+      });
+
+      test("addUser will send a 400 error if execute throws a specific error re duplicate usernames", (done) => {
+        bcrypt.hash.mockImplementationOnce(() => {
+          return Promise.resolve(hashedPass);
+        });
+
+        const error = {
+          code: "ER_DUP_ENTRY",
+          message: "Duplicate entry 'test@test.test' for key 'users.username'",
+        };
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.reject(error);
+        });
+
+        muc.addUser(req, res)
+          .then(() => {
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
+
+            expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+            expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(400);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error: "User Not Created: Username Already Exists.",
+            });
+
+            done();
+          });
+      });
+
     });
 
-    test("addUser will send a 400 error if insertOne throws a specific error re duplicate values", (done) => {
-      req._authData = {
-        userType: "admin",
-      };
-
-      const newUser = {
-        username: "test user",
-        password: "test password",
-        email: "test@test.test",
-        userType: "viewer",
-        enabled: true,
-      };
-      req.body = {
-        newUser,
-      };
-
-      const hashedPass = "abc123_69";
-      bcrypt.hash.mockImplementationOnce(() => {
-        return Promise.resolve(hashedPass);
-      });
-
-      const error = {
-        errmsg: "E11000 User Already Exists",
-      };
-      insertOne.mockImplementationOnce(() => {
-        return Promise.reject(error);
-      });
-
-      muc.addUser(req, res)
-        .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
-
-          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
-          expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
-          expect(insertOne).toHaveBeenCalledTimes(1);
-          expect(insertOne).toHaveBeenCalledWith({
-            ...newUser,
-            password: hashedPass,
-          });
-
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: "Username Already Exists",
-          });
-
-          done();
-        });
-    });
   });
 
   describe("deleteUser", () => {
-    test("deleteUser will run deleteOne and then send a 200 code when proper data is passed to the end point", (done) => {
+    const sqlQuery = "DELETE FROM users WHERE id = ? LIMIT 1";
+
+    test("deleteUser will run execute with a query and then send a 200 code when proper data is passed to the end point", (done) => {
       req._authData = {
         userType: "admin",
-        id: "96",
       };
 
-      const delId = "69";
+      const delId = 69;
       req.body = {
         deletedUser: {
           id: delId,
         },
       };
 
-      const objId = { id: delId };
-      ObjectId.mockImplementationOnce(() => {
-        console.log("Object Id mock implementation");
-        return objId;
+      const delResults = {
+        affectedRows: 1,
+      };
+      mysql.execute.mockImplementationOnce(() => {
+        return Promise.resolve([delResults]);
       });
+
+      const queryParams = [delId];
 
       muc.deleteUser(req, res)
         .then((result) => {
           console.log("Proper result", result);
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
 
-          expect(ObjectId).toHaveBeenCalledTimes(1);
-          expect(ObjectId).toHaveBeenCalledWith(delId);
-          expect(deleteOne).toHaveBeenCalledTimes(1);
-          expect(deleteOne).toHaveBeenCalledWith({ _id: objId });
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
@@ -1328,13 +1330,53 @@ describe("MongoUserController", () => {
         });
     });
 
+    test("deleteUser will send a 400 error if no user is deleted", (done) => {
+      req._authData = {
+        userType: "admin",
+      };
+
+      const delId = 69;
+      req.body = {
+        deletedUser: {
+          id: delId,
+        },
+      };
+
+      const delResults = {
+        affectedRows: 0,
+      };
+      mysql.execute.mockImplementationOnce(() => {
+        return Promise.resolve([delResults]);
+      });
+
+      const queryParams = [delId];
+
+      muc.deleteUser(req, res)
+        .then((result) => {
+          console.log("Proper result", result);
+
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "No User Deleted",
+          });
+
+          done();
+        });
+    });
+
     test("deleteUser will send a 401 error if the user making a request is not allowed to make the request", (done) => {
       req._authData = {
         userType: "viewer",
-        id: "96",
+        id: 69,
       };
 
-      const delId = "69";
+      const delId = 96;
       req.body = {
         deletedUser: {
           id: delId,
@@ -1343,11 +1385,8 @@ describe("MongoUserController", () => {
 
       muc.deleteUser(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-
-          expect(ObjectId).toHaveBeenCalledTimes(0);
-          expect(deleteOne).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(401);
@@ -1364,16 +1403,13 @@ describe("MongoUserController", () => {
     test("deleteUser will send a 400 error if the request contains no body", (done) => {
       req._authData = {
         userType: "admin",
-        id: "96",
+        id: 69,
       };
 
       muc.deleteUser(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-
-          expect(ObjectId).toHaveBeenCalledTimes(0);
-          expect(deleteOne).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
@@ -1390,18 +1426,15 @@ describe("MongoUserController", () => {
     test("deleteUser will send a 400 error if the request contains a body, but no deletedUser", (done) => {
       req._authData = {
         userType: "admin",
-        id: "96",
+        id: 69,
       };
 
       req.body = {};
 
       muc.deleteUser(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-
-          expect(ObjectId).toHaveBeenCalledTimes(0);
-          expect(deleteOne).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
@@ -1417,21 +1450,17 @@ describe("MongoUserController", () => {
     test("deleteUser will send a 400 error if the request contains a body, but no id in the deletedUser", (done) => {
       req._authData = {
         userType: "admin",
-        id: "96",
+        id: 69,
       };
 
-      const delId = "69";
       req.body = {
         deletedUser: {},
       };
 
       muc.deleteUser(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-
-          expect(ObjectId).toHaveBeenCalledTimes(0);
-          expect(deleteOne).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
@@ -1446,7 +1475,7 @@ describe("MongoUserController", () => {
     });
 
     test("deleteUser will send a 400 error if the deletedUser is the same as the user making the request", (done) => {
-      const delId = "96";
+      const delId = 96;
       req._authData = {
         userType: "admin",
         id: delId,
@@ -1460,11 +1489,8 @@ describe("MongoUserController", () => {
 
       muc.deleteUser(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-
-          expect(ObjectId).toHaveBeenCalledTimes(0);
-          expect(deleteOne).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
@@ -1478,85 +1504,36 @@ describe("MongoUserController", () => {
 
     });
 
-    test("deleteUser will send a 500 error if deleteOne throws an error", (done) => {
+    test("deleteUser will send a 500 error if execute throws an error", (done) => {
       req._authData = {
         userType: "admin",
-        id: "96",
+        id: 69,
       };
 
-      const delId = "69";
+      const delId = 96;
       req.body = {
         deletedUser: {
           id: delId,
         },
       };
 
-      const objId = { id: delId };
-      ObjectId.mockImplementationOnce(() => {
-        return objId;
-      });
-
-      deleteOne.mockImplementationOnce(() => {
+      mysql.execute.mockImplementationOnce(() => {
         return Promise.reject();
       });
 
+      const queryParams = [delId];
+
       muc.deleteUser(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
-
-          expect(ObjectId).toHaveBeenCalledTimes(1);
-          expect(ObjectId).toHaveBeenCalledWith(delId);
-          expect(deleteOne).toHaveBeenCalledTimes(1);
-          expect(deleteOne).toHaveBeenCalledWith({ _id: objId });
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
             error: "Error Deleting User",
-          });
-
-          done();
-        });
-
-    });
-
-    test("deleteUser will send a 500 error if ObjectId throws an error", (done) => {
-      req._authData = {
-        userType: "admin",
-        id: "96",
-      };
-
-      const delId = "69";
-      req.body = {
-        deletedUser: {
-          id: delId,
-        },
-      };
-
-      const err = "New Error";
-      ObjectId.mockImplementationOnce(() => {
-        throw err;
-      });
-
-      muc.deleteUser(req, res)
-        .then(() => {
-          expect(ObjectId).toHaveBeenCalledTimes(1);
-          expect(ObjectId).toHaveBeenCalledWith(delId);
-
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-
-          expect(deleteOne).toHaveBeenCalledTimes(0);
-
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: invalidUserId,
           });
 
           done();
@@ -1584,48 +1561,47 @@ describe("MongoUserController", () => {
         },
       };
 
+      const hashPass = "hashed pass";
+
+      const sqlQuery = "UPDATE users SET "
+        + "username = ?, "
+        + "password = ?, "
+        + "userType = ?, "
+        + "enabled = ?, "
+        + "dateUpdated = ? WHERE id = ?";
+
+      const queryParams = [
+        updatedUser.data.username,
+        hashPass,
+        updatedUser.data.userType,
+        updatedUser.data.enabled,
+        expect.any(Date),
+        updatedUser.id,
+      ];
+
       req.body = {
         updatedUser,
       };
 
-      const objId = "96";
-      ObjectId.mockImplementationOnce(() => {
-        return objId;
+      const result = {
+        affectedRows: 1,
+      };
+      mysql.execute.mockImplementation(() => {
+        return Promise.resolve([result]);
       });
 
-      updateOne.mockImplementationOnce(() => {
-        return Promise.resolve();
-      });
-
-      const hashPass = "hashed pass";
       bcrypt.hash.mockImplementationOnce(() => {
         return Promise.resolve(hashPass);
       });
 
       muc.editUser(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(1);
           expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
-
-          expect(ObjectId).toHaveBeenCalledTimes(1);
-          expect(ObjectId).toHaveBeenCalledWith(userId);
-
-          expect(updateOne).toHaveBeenCalledTimes(1);
-          expect(updateOne).toHaveBeenCalledWith(
-            { _id: objId },
-            {
-              $set: {
-                ...updatedUser.data,
-                password: hashPass,
-              },
-            },
-            { upsert: true }
-          );
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
@@ -1654,39 +1630,46 @@ describe("MongoUserController", () => {
         },
       };
 
+      const hashPass = "hashed pass";
+
+      const sqlQuery = "UPDATE users SET "
+        + "username = ?, "
+        // + "password = ?, "
+        + "userType = ?, "
+        + "enabled = ?, "
+        + "dateUpdated = ? WHERE id = ?";
+
+      const queryParams = [
+        updatedUser.data.username,
+        // hashPass,
+        updatedUser.data.userType,
+        updatedUser.data.enabled,
+        expect.any(Date),
+        updatedUser.id,
+      ];
+
       req.body = {
         updatedUser,
       };
 
-      updateOne.mockImplementationOnce(() => {
-        return Promise.resolve();
+      const result = {
+        affectedRows: 1,
+      };
+      mysql.execute.mockImplementation(() => {
+        return Promise.resolve([result]);
       });
 
-      const objId = "96";
-      ObjectId.mockImplementationOnce(() => {
-        return objId;
+      bcrypt.hash.mockImplementationOnce(() => {
+        return Promise.resolve(hashPass);
       });
 
       muc.editUser(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
-
-          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
-          expect(updateOne).toHaveBeenCalledTimes(1);
-          expect(updateOne).toHaveBeenCalledWith(
-            { _id: objId },
-            {
-              $set: {
-                ...updatedUser.data,
-              },
-            },
-            { upsert: true }
-          );
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
@@ -1721,13 +1704,10 @@ describe("MongoUserController", () => {
 
       muc.editUser(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
-          expect(updateOne).toHaveBeenCalledTimes(0);
-
-          expect(ObjectId).toHaveBeenCalledTimes(0);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(401);
@@ -1756,13 +1736,10 @@ describe("MongoUserController", () => {
 
       muc.editUser(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
-          expect(updateOne).toHaveBeenCalledTimes(0);
-
-          expect(ObjectId).toHaveBeenCalledTimes(0);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
@@ -1795,13 +1772,10 @@ describe("MongoUserController", () => {
 
       muc.editUser(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
-          expect(updateOne).toHaveBeenCalledTimes(0);
-
-          expect(ObjectId).toHaveBeenCalledTimes(0);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
@@ -1823,13 +1797,10 @@ describe("MongoUserController", () => {
 
       muc.editUser(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
-          expect(updateOne).toHaveBeenCalledTimes(0);
-
-          expect(ObjectId).toHaveBeenCalledTimes(0);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
@@ -1849,13 +1820,10 @@ describe("MongoUserController", () => {
 
       muc.editUser(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
-          expect(updateOne).toHaveBeenCalledTimes(0);
-
-          expect(ObjectId).toHaveBeenCalledTimes(0);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
@@ -1899,14 +1867,10 @@ describe("MongoUserController", () => {
 
       muc.editUser(req, res)
         .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-
-          expect(ObjectId).toHaveBeenCalledTimes(1);
-          expect(ObjectId).toHaveBeenCalledWith(userId);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
-          expect(updateOne).toHaveBeenCalledTimes(0);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
@@ -1919,15 +1883,7 @@ describe("MongoUserController", () => {
         });
     });
 
-    test("editUser will send a 400 code if ObjectId throws an error", (done) => {
-      req._authData = {
-        userType: "admin",
-      };
-
-      req._authData = {
-        userType: "admin",
-      };
-
+    describe("Execute Errors", () => {
       const userId = "69";
       const updatedUser = {
         id: userId,
@@ -1938,177 +1894,130 @@ describe("MongoUserController", () => {
           enabled: true,
         },
       };
-
-      req.body = {
-        updatedUser,
-      };
-
-      ObjectId.mockImplementationOnce(() => {
-        throw "test error";
-      });
-
-      muc.editUser(req, res)
-        .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-
-          expect(ObjectId).toHaveBeenCalledTimes(1);
-          expect(ObjectId).toHaveBeenCalledWith(userId);
-
-          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
-          expect(updateOne).toHaveBeenCalledTimes(0);
-
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: invalidUserId,
-          });
-
-          done();
-        });
-    });
-
-    test("editUser will send a 500 code if updateOne throws a non-specific error", (done) => {
-      req._authData = {
-        userType: "admin",
-      };
-
-      const userId = "69";
-      const updatedUser = {
-        id: userId,
-        data: {
-          username: "test user",
-          password: "test password",
-          userType: "viewer",
-          enabled: true,
-        },
-      };
-
-      req.body = {
-        updatedUser,
-      };
-
-      const objId = "96";
-      ObjectId.mockImplementationOnce(() => {
-        return objId;
-      });
-
-      updateOne.mockImplementationOnce(() => {
-        return Promise.reject();
-      });
 
       const hashPass = "hashed pass";
-      bcrypt.hash.mockImplementationOnce(() => {
-        return Promise.resolve(hashPass);
+
+      const sqlQuery = "UPDATE users SET "
+        + "username = ?, "
+        + "password = ?, "
+        + "userType = ?, "
+        + "enabled = ?, "
+        + "dateUpdated = ? WHERE id = ?";
+
+      const queryParams = [
+        updatedUser.data.username,
+        hashPass,
+        updatedUser.data.userType,
+        updatedUser.data.enabled,
+        expect.any(Date),
+        updatedUser.id,
+      ];
+
+      beforeEach(() => {
+        req._authData = {
+          userType: "admin",
+        };
+
+        req.body = {
+          updatedUser,
+        };
       });
 
-      muc.editUser(req, res)
-        .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
+      test("editUser will send a 500 code if Execute throws a non-specific error", (done) => {
 
-          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
-          expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.reject();
+        });
 
-          expect(ObjectId).toHaveBeenCalledTimes(1);
-          expect(ObjectId).toHaveBeenCalledWith(userId);
+        bcrypt.hash.mockImplementationOnce(() => {
+          return Promise.resolve(hashPass);
+        });
 
-          expect(updateOne).toHaveBeenCalledTimes(1);
-          expect(updateOne).toHaveBeenCalledWith(
-            { _id: objId },
-            {
-              $set: {
-                ...updatedUser.data,
-                password: hashPass,
-              },
-            },
-            { upsert: true }
-          );
+        muc.editUser(req, res)
+          .then(() => {
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(500);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: "Error Updating User",
+            expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+            expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(500);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error: "Error Updating User",
+            });
+
+            done();
           });
+      });
 
-          done();
+      test("editUser will send a 401 code if execute throws a specific error re duplicate email", (done) => {
+        const error = {
+          code: "ER_DUP_ENTRY",
+          message: "Duplicate entry 'test@test.test' for key 'users.email'",
+        };
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.reject(error);
         });
-    });
 
-    test("editUser will send a 401 code if updateOne throws a specific error", (done) => {
-      req._authData = {
-        userType: "admin",
-      };
-
-      const userId = "69";
-      const updatedUser = {
-        id: userId,
-        data: {
-          username: "test user",
-          password: "test password",
-          userType: "viewer",
-          enabled: true,
-        },
-      };
-
-      req.body = {
-        updatedUser,
-      };
-
-      const objId = "96";
-      ObjectId.mockImplementationOnce(() => {
-        return objId;
-      });
-
-      updateOne.mockImplementationOnce(() => {
-        return Promise.reject({
-          errmsg: "E11000 username already exists",
+        bcrypt.hash.mockImplementationOnce(() => {
+          return Promise.resolve(hashPass);
         });
-      });
 
-      const hashPass = "hashed pass";
-      bcrypt.hash.mockImplementationOnce(() => {
-        return Promise.resolve(hashPass);
-      });
+        muc.editUser(req, res)
+          .then(() => {
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
-      muc.editUser(req, res)
-        .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
+            expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+            expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
 
-          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
-          expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(400);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error: "User Not Created: Email Already Exists.",
+            });
 
-          expect(ObjectId).toHaveBeenCalledTimes(1);
-          expect(ObjectId).toHaveBeenCalledWith(userId);
-
-          expect(updateOne).toHaveBeenCalledTimes(1);
-          expect(updateOne).toHaveBeenCalledWith(
-            { _id: objId },
-            {
-              $set: {
-                ...updatedUser.data,
-                password: hashPass,
-              },
-            },
-            { upsert: true }
-          );
-
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(401);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: "Username Already Exists",
+            done();
           });
+      });
 
-          done();
+      test("editUser will send a 401 code if execute throws a specific error re duplicate username", (done) => {
+        const error = {
+          code: "ER_DUP_ENTRY",
+          message: "Duplicate entry 'test@test.test' for key 'users.username'",
+        };
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.reject(error);
         });
+
+        bcrypt.hash.mockImplementationOnce(() => {
+          return Promise.resolve(hashPass);
+        });
+
+        muc.editUser(req, res)
+          .then(() => {
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+            expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+            expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(400);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error: "User Not Created: Username Already Exists.",
+            });
+
+            done();
+          });
+      });
     });
 
   });

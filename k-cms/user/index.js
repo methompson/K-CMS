@@ -1,4 +1,5 @@
 const MongoUserController = require('./MongoUserController');
+const MySQLUserController = require('./MySQLUserController');
 const { isObject } = require("../utilities");
 
 /**
@@ -13,6 +14,10 @@ const makeUserController = (db, pluginHandler) => {
   // return new UserController(db, pluginHandler);
   if (isObject(db) && db.type === 'mongodb') {
     return new MongoUserController(db, pluginHandler);
+  }
+
+  if (isObject(db) && db.type === 'mysql') {
+    return new MySQLUserController(db, pluginHandler);
   }
 
   return null;
