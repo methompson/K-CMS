@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 const express = require("express");
 const bcrypt = require('bcryptjs');
 const http = require("http");
@@ -168,7 +167,7 @@ describe("MongoUserController", () => {
       });
 
       muc.authenticateUserCredentials(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -206,7 +205,7 @@ describe("MongoUserController", () => {
       };
 
       muc.authenticateUserCredentials(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
           expect(findOne).toHaveBeenCalledTimes(0);
@@ -228,7 +227,7 @@ describe("MongoUserController", () => {
       };
 
       muc.authenticateUserCredentials(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
           expect(findOne).toHaveBeenCalledTimes(0);
@@ -246,7 +245,7 @@ describe("MongoUserController", () => {
 
     test("authenticateUserCredentials will send a 401 error if no body is included in the request", (done) => {
       muc.authenticateUserCredentials(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
           expect(findOne).toHaveBeenCalledTimes(0);
@@ -273,7 +272,7 @@ describe("MongoUserController", () => {
       });
 
       muc.authenticateUserCredentials(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -305,7 +304,7 @@ describe("MongoUserController", () => {
       });
 
       muc.authenticateUserCredentials(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -339,7 +338,7 @@ describe("MongoUserController", () => {
       });
 
       muc.authenticateUserCredentials(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -376,7 +375,7 @@ describe("MongoUserController", () => {
       });
 
       muc.authenticateUserCredentials(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -432,7 +431,7 @@ describe("MongoUserController", () => {
       });
 
       muc.getUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
@@ -473,7 +472,7 @@ describe("MongoUserController", () => {
       });
 
       muc.getUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
@@ -495,7 +494,7 @@ describe("MongoUserController", () => {
       };
 
       muc.getUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(401);
           expect(json).toHaveBeenCalledTimes(1);
@@ -516,7 +515,7 @@ describe("MongoUserController", () => {
       req.params = {};
 
       muc.getUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -542,7 +541,7 @@ describe("MongoUserController", () => {
       });
 
       muc.getUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -577,7 +576,7 @@ describe("MongoUserController", () => {
       });
 
       muc.getUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
           expect(json).toHaveBeenCalledTimes(1);
@@ -616,7 +615,7 @@ describe("MongoUserController", () => {
       });
 
       muc.getUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(404);
           expect(json).toHaveBeenCalledTimes(1);
@@ -665,7 +664,7 @@ describe("MongoUserController", () => {
       });
 
       muc.getAllUsers(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
@@ -719,7 +718,7 @@ describe("MongoUserController", () => {
       const p3 = muc.getAllUsers(req3, res);
 
       Promise.all([p1, p2, p3])
-        .then(() => {
+        .then((result) => {
           expect(find).toHaveBeenNthCalledWith(
             1,
             {},
@@ -758,7 +757,7 @@ describe("MongoUserController", () => {
       };
 
       muc.getAllUsers(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(401);
           expect(json).toHaveBeenCalledTimes(1);
@@ -783,7 +782,7 @@ describe("MongoUserController", () => {
       });
 
       muc.getAllUsers(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
           expect(json).toHaveBeenCalledTimes(1);
@@ -847,7 +846,7 @@ describe("MongoUserController", () => {
         .catch((err) => {
           console.log("Add User Error", err);
         })
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -899,7 +898,7 @@ describe("MongoUserController", () => {
       });
 
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -944,7 +943,7 @@ describe("MongoUserController", () => {
       };
 
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(401);
           expect(json).toHaveBeenCalledTimes(1);
@@ -967,7 +966,7 @@ describe("MongoUserController", () => {
       };
 
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -991,7 +990,7 @@ describe("MongoUserController", () => {
 
       req.body = [];
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -1015,7 +1014,7 @@ describe("MongoUserController", () => {
 
       req.body = {};
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -1047,7 +1046,7 @@ describe("MongoUserController", () => {
         newUser,
       };
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -1079,7 +1078,7 @@ describe("MongoUserController", () => {
         newUser,
       };
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -1118,7 +1117,7 @@ describe("MongoUserController", () => {
         newUser,
       };
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -1157,7 +1156,7 @@ describe("MongoUserController", () => {
       });
 
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -1204,7 +1203,7 @@ describe("MongoUserController", () => {
       });
 
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -1258,7 +1257,7 @@ describe("MongoUserController", () => {
       });
 
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -1282,288 +1281,6 @@ describe("MongoUserController", () => {
           done();
         });
     });
-  });
-
-  describe("deleteUser", () => {
-    test("deleteUser will run deleteOne and then send a 200 code when proper data is passed to the end point", (done) => {
-      req._authData = {
-        userType: "admin",
-        id: "96",
-      };
-
-      const delId = "69";
-      req.body = {
-        deletedUser: {
-          id: delId,
-        },
-      };
-
-      const objId = { id: delId };
-      ObjectId.mockImplementationOnce(() => {
-        console.log("Object Id mock implementation");
-        return objId;
-      });
-
-      muc.deleteUser(req, res)
-        .then((result) => {
-          console.log("Proper result", result);
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
-
-          expect(ObjectId).toHaveBeenCalledTimes(1);
-          expect(ObjectId).toHaveBeenCalledWith(delId);
-          expect(deleteOne).toHaveBeenCalledTimes(1);
-          expect(deleteOne).toHaveBeenCalledWith({ _id: objId });
-
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(200);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            message: "User Deleted Successfully",
-          });
-
-          done();
-        });
-    });
-
-    test("deleteUser will send a 401 error if the user making a request is not allowed to make the request", (done) => {
-      req._authData = {
-        userType: "viewer",
-        id: "96",
-      };
-
-      const delId = "69";
-      req.body = {
-        deletedUser: {
-          id: delId,
-        },
-      };
-
-      muc.deleteUser(req, res)
-        .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-
-          expect(ObjectId).toHaveBeenCalledTimes(0);
-          expect(deleteOne).toHaveBeenCalledTimes(0);
-
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(401);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: "Access Denied",
-          });
-
-          done();
-        });
-
-    });
-
-    test("deleteUser will send a 400 error if the request contains no body", (done) => {
-      req._authData = {
-        userType: "admin",
-        id: "96",
-      };
-
-      muc.deleteUser(req, res)
-        .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-
-          expect(ObjectId).toHaveBeenCalledTimes(0);
-          expect(deleteOne).toHaveBeenCalledTimes(0);
-
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: "User Data Not Provided",
-          });
-
-          done();
-        });
-
-    });
-
-    test("deleteUser will send a 400 error if the request contains a body, but no deletedUser", (done) => {
-      req._authData = {
-        userType: "admin",
-        id: "96",
-      };
-
-      req.body = {};
-
-      muc.deleteUser(req, res)
-        .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-
-          expect(ObjectId).toHaveBeenCalledTimes(0);
-          expect(deleteOne).toHaveBeenCalledTimes(0);
-
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: "User Data Not Provided",
-          });
-
-          done();
-        });
-    });
-
-    test("deleteUser will send a 400 error if the request contains a body, but no id in the deletedUser", (done) => {
-      req._authData = {
-        userType: "admin",
-        id: "96",
-      };
-
-      const delId = "69";
-      req.body = {
-        deletedUser: {},
-      };
-
-      muc.deleteUser(req, res)
-        .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-
-          expect(ObjectId).toHaveBeenCalledTimes(0);
-          expect(deleteOne).toHaveBeenCalledTimes(0);
-
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: "User Data Not Provided",
-          });
-
-          done();
-        });
-
-    });
-
-    test("deleteUser will send a 400 error if the deletedUser is the same as the user making the request", (done) => {
-      const delId = "96";
-      req._authData = {
-        userType: "admin",
-        id: delId,
-      };
-
-      req.body = {
-        deletedUser: {
-          id: delId,
-        },
-      };
-
-      muc.deleteUser(req, res)
-        .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-
-          expect(ObjectId).toHaveBeenCalledTimes(0);
-          expect(deleteOne).toHaveBeenCalledTimes(0);
-
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: "Cannot Delete Yourself",
-          });
-
-          done();
-        });
-
-    });
-
-    test("deleteUser will send a 500 error if deleteOne throws an error", (done) => {
-      req._authData = {
-        userType: "admin",
-        id: "96",
-      };
-
-      const delId = "69";
-      req.body = {
-        deletedUser: {
-          id: delId,
-        },
-      };
-
-      const objId = { id: delId };
-      ObjectId.mockImplementationOnce(() => {
-        return objId;
-      });
-
-      deleteOne.mockImplementationOnce(() => {
-        return Promise.reject();
-      });
-
-      muc.deleteUser(req, res)
-        .then(() => {
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
-
-          expect(ObjectId).toHaveBeenCalledTimes(1);
-          expect(ObjectId).toHaveBeenCalledWith(delId);
-          expect(deleteOne).toHaveBeenCalledTimes(1);
-          expect(deleteOne).toHaveBeenCalledWith({ _id: objId });
-
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(500);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: "Error Deleting User",
-          });
-
-          done();
-        });
-
-    });
-
-    test("deleteUser will send a 500 error if ObjectId throws an error", (done) => {
-      req._authData = {
-        userType: "admin",
-        id: "96",
-      };
-
-      const delId = "69";
-      req.body = {
-        deletedUser: {
-          id: delId,
-        },
-      };
-
-      const err = "New Error";
-      ObjectId.mockImplementationOnce(() => {
-        throw err;
-      });
-
-      muc.deleteUser(req, res)
-        .then(() => {
-          expect(ObjectId).toHaveBeenCalledTimes(1);
-          expect(ObjectId).toHaveBeenCalledWith(delId);
-
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
-          expect(collection).toHaveBeenCalledTimes(0);
-
-          expect(deleteOne).toHaveBeenCalledTimes(0);
-
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: invalidUserId,
-          });
-
-          done();
-        });
-
-    });
-
   });
 
   describe("editUser", () => {
@@ -1603,7 +1320,7 @@ describe("MongoUserController", () => {
       });
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -1668,7 +1385,7 @@ describe("MongoUserController", () => {
       });
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -1720,7 +1437,7 @@ describe("MongoUserController", () => {
       };
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
 
@@ -1755,7 +1472,7 @@ describe("MongoUserController", () => {
       };
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
 
@@ -1794,7 +1511,7 @@ describe("MongoUserController", () => {
       };
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
 
@@ -1822,7 +1539,7 @@ describe("MongoUserController", () => {
       req.body = {};
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
 
@@ -1848,7 +1565,7 @@ describe("MongoUserController", () => {
       };
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
 
@@ -1898,7 +1615,7 @@ describe("MongoUserController", () => {
       };
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
 
@@ -1948,7 +1665,7 @@ describe("MongoUserController", () => {
       });
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
 
@@ -2004,7 +1721,7 @@ describe("MongoUserController", () => {
       });
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -2076,7 +1793,7 @@ describe("MongoUserController", () => {
       });
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -2109,6 +1826,288 @@ describe("MongoUserController", () => {
 
           done();
         });
+    });
+
+  });
+
+  describe("deleteUser", () => {
+    test("deleteUser will run deleteOne and then send a 200 code when proper data is passed to the end point", (done) => {
+      req._authData = {
+        userType: "admin",
+        id: "96",
+      };
+
+      const delId = "69";
+      req.body = {
+        deletedUser: {
+          id: delId,
+        },
+      };
+
+      const objId = { id: delId };
+      ObjectId.mockImplementationOnce(() => {
+        console.log("Object Id mock implementation");
+        return objId;
+      });
+
+      muc.deleteUser(req, res)
+        .then((result) => {
+          console.log("Proper result", result);
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("users");
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(delId);
+          expect(deleteOne).toHaveBeenCalledTimes(1);
+          expect(deleteOne).toHaveBeenCalledWith({ _id: objId });
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(200);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            message: "User Deleted Successfully",
+          });
+
+          done();
+        });
+    });
+
+    test("deleteUser will send a 401 error if the user making a request is not allowed to make the request", (done) => {
+      req._authData = {
+        userType: "viewer",
+        id: "96",
+      };
+
+      const delId = "69";
+      req.body = {
+        deletedUser: {
+          id: delId,
+        },
+      };
+
+      muc.deleteUser(req, res)
+        .then((result) => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(0);
+          expect(deleteOne).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(401);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "Access Denied",
+          });
+
+          done();
+        });
+
+    });
+
+    test("deleteUser will send a 400 error if the request contains no body", (done) => {
+      req._authData = {
+        userType: "admin",
+        id: "96",
+      };
+
+      muc.deleteUser(req, res)
+        .then((result) => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(0);
+          expect(deleteOne).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "User Data Not Provided",
+          });
+
+          done();
+        });
+
+    });
+
+    test("deleteUser will send a 400 error if the request contains a body, but no deletedUser", (done) => {
+      req._authData = {
+        userType: "admin",
+        id: "96",
+      };
+
+      req.body = {};
+
+      muc.deleteUser(req, res)
+        .then((result) => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(0);
+          expect(deleteOne).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "User Data Not Provided",
+          });
+
+          done();
+        });
+    });
+
+    test("deleteUser will send a 400 error if the request contains a body, but no id in the deletedUser", (done) => {
+      req._authData = {
+        userType: "admin",
+        id: "96",
+      };
+
+      const delId = "69";
+      req.body = {
+        deletedUser: {},
+      };
+
+      muc.deleteUser(req, res)
+        .then((result) => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(0);
+          expect(deleteOne).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "User Data Not Provided",
+          });
+
+          done();
+        });
+
+    });
+
+    test("deleteUser will send a 400 error if the deletedUser is the same as the user making the request", (done) => {
+      const delId = "96";
+      req._authData = {
+        userType: "admin",
+        id: delId,
+      };
+
+      req.body = {
+        deletedUser: {
+          id: delId,
+        },
+      };
+
+      muc.deleteUser(req, res)
+        .then((result) => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(0);
+          expect(deleteOne).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "Cannot Delete Yourself",
+          });
+
+          done();
+        });
+
+    });
+
+    test("deleteUser will send a 500 error if deleteOne throws an error", (done) => {
+      req._authData = {
+        userType: "admin",
+        id: "96",
+      };
+
+      const delId = "69";
+      req.body = {
+        deletedUser: {
+          id: delId,
+        },
+      };
+
+      const objId = { id: delId };
+      ObjectId.mockImplementationOnce(() => {
+        return objId;
+      });
+
+      deleteOne.mockImplementationOnce(() => {
+        return Promise.reject();
+      });
+
+      muc.deleteUser(req, res)
+        .then((result) => {
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("users");
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(delId);
+          expect(deleteOne).toHaveBeenCalledTimes(1);
+          expect(deleteOne).toHaveBeenCalledWith({ _id: objId });
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(500);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: "Error Deleting User",
+          });
+
+          done();
+        });
+
+    });
+
+    test("deleteUser will send a 500 error if ObjectId throws an error", (done) => {
+      req._authData = {
+        userType: "admin",
+        id: "96",
+      };
+
+      const delId = "69";
+      req.body = {
+        deletedUser: {
+          id: delId,
+        },
+      };
+
+      const err = "New Error";
+      ObjectId.mockImplementationOnce(() => {
+        throw err;
+      });
+
+      muc.deleteUser(req, res)
+        .then((result) => {
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(delId);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(deleteOne).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error: invalidUserId,
+          });
+
+          done();
+        });
+
     });
 
   });

@@ -167,7 +167,7 @@ describe("MySQLUserController", () => {
       });
 
       muc.authenticateUserCredentials(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [userData.username]);
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
@@ -200,7 +200,7 @@ describe("MySQLUserController", () => {
       };
 
       muc.authenticateUserCredentials(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
           expect(bcrypt.compare).toHaveBeenCalledTimes(0);
@@ -221,7 +221,7 @@ describe("MySQLUserController", () => {
       };
 
       muc.authenticateUserCredentials(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
           expect(bcrypt.compare).toHaveBeenCalledTimes(0);
@@ -238,7 +238,7 @@ describe("MySQLUserController", () => {
 
     test("authenticateUserCredentials will send a 401 error if no body is included in the request", (done) => {
       muc.authenticateUserCredentials(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
           expect(bcrypt.compare).toHaveBeenCalledTimes(0);
@@ -265,7 +265,7 @@ describe("MySQLUserController", () => {
       });
 
       muc.authenticateUserCredentials(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [req.body.username]);
@@ -294,7 +294,7 @@ describe("MySQLUserController", () => {
       });
 
       muc.authenticateUserCredentials(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [req.body.username]);
@@ -325,7 +325,7 @@ describe("MySQLUserController", () => {
       });
 
       muc.authenticateUserCredentials(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [userData.username]);
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
@@ -359,7 +359,7 @@ describe("MySQLUserController", () => {
       });
 
       muc.authenticateUserCredentials(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [userData.username]);
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
@@ -426,7 +426,7 @@ describe("MySQLUserController", () => {
       });
 
       muc.getUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
@@ -454,7 +454,7 @@ describe("MySQLUserController", () => {
       });
 
       muc.getUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
@@ -473,7 +473,7 @@ describe("MySQLUserController", () => {
       };
 
       muc.getUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(401);
           expect(json).toHaveBeenCalledTimes(1);
@@ -493,7 +493,7 @@ describe("MySQLUserController", () => {
       req.params = {};
 
       muc.getUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -520,7 +520,7 @@ describe("MySQLUserController", () => {
       });
 
       muc.getUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
           expect(json).toHaveBeenCalledTimes(1);
@@ -548,7 +548,7 @@ describe("MySQLUserController", () => {
       });
 
       muc.getUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(404);
           expect(json).toHaveBeenCalledTimes(1);
@@ -611,7 +611,7 @@ describe("MySQLUserController", () => {
       const { pagination } = muc;
 
       muc.getAllUsers(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
@@ -657,7 +657,7 @@ describe("MySQLUserController", () => {
       const { pagination } = muc;
 
       Promise.all([p1, p2, p3])
-        .then(() => {
+        .then((result) => {
           expect(mysql.execute).toHaveBeenNthCalledWith(1, sqlQuery, [pagination, 0]);
           expect(mysql.execute).toHaveBeenNthCalledWith(2, sqlQuery, [pagination, 0]);
           expect(mysql.execute).toHaveBeenNthCalledWith(3, sqlQuery, [pagination, 0]);
@@ -672,7 +672,7 @@ describe("MySQLUserController", () => {
       };
 
       muc.getAllUsers(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(401);
           expect(json).toHaveBeenCalledTimes(1);
@@ -698,7 +698,7 @@ describe("MySQLUserController", () => {
       const { pagination } = muc;
 
       muc.getAllUsers(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
           expect(json).toHaveBeenCalledTimes(1);
@@ -774,7 +774,7 @@ describe("MySQLUserController", () => {
       });
 
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
@@ -851,7 +851,7 @@ describe("MySQLUserController", () => {
       });
 
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
@@ -889,7 +889,7 @@ describe("MySQLUserController", () => {
       };
 
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(401);
           expect(json).toHaveBeenCalledTimes(1);
@@ -911,7 +911,7 @@ describe("MySQLUserController", () => {
       };
 
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -934,7 +934,7 @@ describe("MySQLUserController", () => {
 
       req.body = [];
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -957,7 +957,7 @@ describe("MySQLUserController", () => {
 
       req.body = {};
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -989,7 +989,7 @@ describe("MySQLUserController", () => {
         newUser,
       };
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -1021,7 +1021,7 @@ describe("MySQLUserController", () => {
         newUser,
       };
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -1053,7 +1053,7 @@ describe("MySQLUserController", () => {
         newUser,
       };
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -1091,7 +1091,7 @@ describe("MySQLUserController", () => {
         newUser,
       };
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -1129,7 +1129,7 @@ describe("MySQLUserController", () => {
       });
 
       muc.addUser(req, res)
-        .then(() => {
+        .then((result) => {
 
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
@@ -1198,7 +1198,7 @@ describe("MySQLUserController", () => {
         });
 
         muc.addUser(req, res)
-          .then(() => {
+          .then((result) => {
             expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
             expect(mysql.execute).toHaveBeenCalledTimes(1);
             expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
@@ -1231,7 +1231,7 @@ describe("MySQLUserController", () => {
         });
 
         muc.addUser(req, res)
-          .then(() => {
+          .then((result) => {
             expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
             expect(mysql.execute).toHaveBeenCalledTimes(1);
             expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
@@ -1264,7 +1264,7 @@ describe("MySQLUserController", () => {
         });
 
         muc.addUser(req, res)
-          .then(() => {
+          .then((result) => {
             expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
             expect(mysql.execute).toHaveBeenCalledTimes(1);
             expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
@@ -1384,7 +1384,7 @@ describe("MySQLUserController", () => {
       };
 
       muc.deleteUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
 
@@ -1407,7 +1407,7 @@ describe("MySQLUserController", () => {
       };
 
       muc.deleteUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
 
@@ -1432,7 +1432,7 @@ describe("MySQLUserController", () => {
       req.body = {};
 
       muc.deleteUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
 
@@ -1458,7 +1458,7 @@ describe("MySQLUserController", () => {
       };
 
       muc.deleteUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
 
@@ -1488,7 +1488,7 @@ describe("MySQLUserController", () => {
       };
 
       muc.deleteUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
 
@@ -1524,7 +1524,7 @@ describe("MySQLUserController", () => {
       const queryParams = [delId];
 
       muc.deleteUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
@@ -1595,7 +1595,7 @@ describe("MySQLUserController", () => {
       });
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
@@ -1664,7 +1664,7 @@ describe("MySQLUserController", () => {
       });
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
@@ -1703,7 +1703,7 @@ describe("MySQLUserController", () => {
       };
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
 
@@ -1735,7 +1735,7 @@ describe("MySQLUserController", () => {
       };
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
 
@@ -1771,7 +1771,7 @@ describe("MySQLUserController", () => {
       };
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
 
@@ -1796,7 +1796,7 @@ describe("MySQLUserController", () => {
       req.body = {};
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
 
@@ -1819,7 +1819,7 @@ describe("MySQLUserController", () => {
       };
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
 
@@ -1866,7 +1866,7 @@ describe("MySQLUserController", () => {
       };
 
       muc.editUser(req, res)
-        .then(() => {
+        .then((result) => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
 
@@ -1934,7 +1934,7 @@ describe("MySQLUserController", () => {
         });
 
         muc.editUser(req, res)
-          .then(() => {
+          .then((result) => {
             expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
             expect(mysql.execute).toHaveBeenCalledTimes(1);
             expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
@@ -1967,7 +1967,7 @@ describe("MySQLUserController", () => {
         });
 
         muc.editUser(req, res)
-          .then(() => {
+          .then((result) => {
             expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
             expect(mysql.execute).toHaveBeenCalledTimes(1);
             expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
@@ -2000,7 +2000,7 @@ describe("MySQLUserController", () => {
         });
 
         muc.editUser(req, res)
-          .then(() => {
+          .then((result) => {
             expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
             expect(mysql.execute).toHaveBeenCalledTimes(1);
             expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);

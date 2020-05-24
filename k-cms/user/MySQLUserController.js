@@ -9,6 +9,7 @@ const {
   send500Error,
   isObject,
   isNumber,
+  isString,
   endOnError,
 } = require("../utilities");
 
@@ -141,8 +142,9 @@ class MySQLUserController extends UserController {
   getUser(req, res) {
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteInfo(req._authData)) {
-      send401Error(res, "");
-      return Promise.resolve("Invalid User");
+      const error = "Acccess Denied";
+      send401Error(res, error);
+      return Promise.resolve(error);
     }
 
     if (!('id' in req.params)) {
@@ -170,26 +172,25 @@ class MySQLUserController extends UserController {
     const promisePool = this.db.instance.promise();
     return promisePool.execute(query, queryParams)
       .then(([results]) => {
-        if (results.length > 0) {
-          const userData = {
-            ...results[0],
-          };
+        if (results.length <= 0) {
+          send404Error(res);
+          return 404;
+        }
+        const userData = {
+          ...results[0],
+        };
 
-          // Let's remove the password field from the output so that we don't allow an attack against their hash
-          if ('password' in userData) {
-            delete userData.password;
-          }
-
-          res.status(200).json(userData);
-          return;
+        // Let's remove the password field from the output so that we don't allow an attack against their hash
+        if ('password' in userData) {
+          delete userData.password;
         }
 
-        send404Error(res);
+        res.status(200).json(userData);
+        return 200;
+
       })
       .catch((err) => {
-        console.log(err);
         send500Error(res, "Database Error");
-
         return err;
       });
   }
@@ -205,8 +206,9 @@ class MySQLUserController extends UserController {
   getAllUsers(req, res) {
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteMod(req._authData)) {
-      send401Error(res, "");
-      return Promise.resolve("Permission Denied");
+      const error = "Acccess Denied";
+      send401Error(res, error);
+      return Promise.resolve(error);
     }
 
     const page = isObject(req.params)
@@ -240,9 +242,8 @@ class MySQLUserController extends UserController {
     const promisePool = this.db.instance.promise();
     return promisePool.execute(query, queryParams)
       .then(([results]) => {
+        const returnResults = [];
         if (results.length > 0) {
-
-          const returnResults = [];
           results.forEach((el) => {
             const user = {
               ...el,
@@ -250,19 +251,15 @@ class MySQLUserController extends UserController {
             delete user.password;
             returnResults.push(user);
           });
-
-          res.status(200).json({
-            users: returnResults,
-          });
-          return;
         }
 
-        send404Error(res);
+        res.status(200).json({
+          users: returnResults,
+        });
+        return 200;
       })
       .catch((err) => {
-        console.log(err);
         send500Error(res, "Database Error");
-
         return err;
       });
 
@@ -287,8 +284,9 @@ class MySQLUserController extends UserController {
     const user = req._authData;
 
     if (!this.checkAllowedUsersForSiteMod(user)) {
-      send401Error(res, "Access Denied");
-      return Promise.resolve("Access Denied");
+      const error = "Acccess Denied";
+      send401Error(res, error);
+      return Promise.resolve(error);
     }
 
     if (!isObject(req.body) || !('newUser' in req.body)) {
@@ -363,109 +361,52 @@ class MySQLUserController extends UserController {
         output.dateAdded = now;
         output.dateUpdated = now;
 
-        console.log(`${query} ${values}`);
-
         const promisePool = this.db.instance.promise();
         return promisePool.execute(`${query} ${values}`, queryParams)
           .then(([results]) => {
             if (isObject(results)
               && 'affectedRows' in results
-              && results.affectedRows > 0
+              && isNumber(results.affectedRows)
               && "insertId" in results
             ) {
-              res.status(200).json({
-                ...output,
-                message: "User Added Successfully",
-                userId: results.insertId,
-              });
-              return;
+
+              if (results.affectedRows > 0) {
+                res.status(200).json({
+                  ...output,
+                  id: results.insertId,
+                });
+                return 200;
+              }
+
+              const error = "User Was Not Added";
+              send400Error(res, error);
+              return error;
             }
 
-            send401Error(res, "User Not Added");
+            const error = "Database Error: Improper Results Returned";
+            send500Error(res, error);
+            return error;
           });
       })
       .catch((err) => {
-        if (isObject(err) && 'code' in err) {
-          if (err.code === 'ER_DUP_ENTRY') {
-            let msg;
-            // Check what has been duplicated
-            if (err.message.indexOf("users.email") > -1) {
-              msg = "Email Already Exists.";
-            } else if (err.message.indexOf("users.username") > -1) {
-              msg = "Username Already Exists.";
-            }
-
-            send400Error(res, `User Not Created: ${msg}`);
-            return;
-          }
-        }
-        console.log("Add User", err);
-
-        send500Error(res, "Error Adding New User");
-      });
-  }
-
-  /**
-   * This function will delete a user from the current database. The method expects that
-   * getUserRequestToken has already been run and that the user's token has been decoded.
-   * It also expects that errorIfTokenDoesNotExist has been run to check that a token
-   * exists. We will not have reached this point if a token didn't exist.
-   *
-   * This method relies on an id being sent.
-   *
-   * @param {Object} req Express Request Object
-   * @param {Object} res Express Response Object
-   * @returns {Promise} For testing purposes
-   */
-  deleteUser(req, res) {
-    const user = req._authData;
-
-    // Check that the user is allowed to perform this work
-    if (!this.checkAllowedUsersForSiteMod(user)) {
-      send401Error(res, "Access Denied");
-      return Promise.resolve("Access Denied");
-    }
-
-    // Check that the appropriate data was sent to the function
-    if ( !isObject(req.body)
-      || !('deletedUser' in req.body)
-      || !('id' in req.body.deletedUser)
-    ) {
-      const err = "User Data Not Provided";
-      send400Error(res, err);
-      return Promise.resolve(err);
-    }
-
-    // Check that the user isn't trying to delete themself and causing an issue
-    if (req.body.deletedUser.id === req._authData.id) {
-      const err = "Cannot Delete Yourself";
-      send400Error(res, err);
-      return Promise.resolve(err);
-    }
-
-    const query = "DELETE FROM users WHERE id = ? LIMIT 1";
-    const queryParams = [req.body.deletedUser.id];
-
-    const promisePool = this.db.instance.promise();
-    return promisePool.execute(query, queryParams)
-      .then(([result]) => {
-        if (isObject(result) && "affectedRows" in result) {
-          if (result.affectedRows > 0) {
-            res.status(200).json({
-              message: "User Deleted Successfully",
-            });
+        if (isObject(err)
+          && 'code' in err
+          && isString(err.code)
+          && err.code === 'ER_DUP_ENTRY'
+        ) {
+          let msg = "";
+          if (err.message.indexOf("users.email") > -1) {
+            msg = "Email Already Exists";
           } else {
-            send400Error(res, "No User Deleted");
+            msg = "Username Already Exists";
           }
 
-          return;
+          send400Error(res, msg);
+        } else {
+          send500Error(res, "Error Adding User");
         }
 
-        throw "No Results Returned";
-      })
-      .catch((err) => {
-        console.log("Delete User Error", err);
-        send500Error(res, "Error Deleting User");
+        return err;
       });
   }
 
@@ -483,8 +424,9 @@ class MySQLUserController extends UserController {
     const currentUser = req._authData;
 
     if (!this.checkAllowedUsersForSiteMod(currentUser)) {
-      send401Error(res, "Access Denied");
-      return Promise.resolve("Access Denied");
+      const error = "Acccess Denied";
+      send401Error(res, error);
+      return Promise.resolve(error);
     }
 
     if ( !isObject(req.body)
@@ -576,34 +518,115 @@ class MySQLUserController extends UserController {
       .then(([result]) => {
         if (isObject(result)
           && "affectedRows" in result
-          && result.affectedRows > 0
+          && isNumber(result.affectedRows)
         ) {
-          res.status(200).json({
-            message: "User Updated Successfully",
-          });
-          return;
+          if (result.affectedRows > 0) {
+            res.status(200).json({
+              message: "User Updated Successfully",
+            });
+            return 200;
+          }
+
+          const error = "User Was Not Updated";
+          send400Error(res, error);
+          return error;
         }
 
-        send400Error(res, "No User Edited");
+        const error = "Database Error: Improper Results Returned";
+        send500Error(res, error);
+        return error;
       })
       .catch((err) => {
-        if (isObject(err) && 'code' in err) {
-          if (err.code === 'ER_DUP_ENTRY') {
-            let msg;
-            // Check what has been duplicated
-            if (err.message.indexOf("users.email") > -1) {
-              msg = "Email Already Exists.";
-            } else if (err.message.indexOf("users.username") > -1) {
-              msg = "Username Already Exists.";
-            }
-
-            send400Error(res, `User Not Created: ${msg}`);
-            return;
+        if (isObject(err)
+          && 'code' in err
+          && isString(err.code)
+          && err.code === 'ER_DUP_ENTRY'
+        ) {
+          let msg = "";
+          if (err.message.indexOf("users.username") > -1) {
+            msg = "Username Already Exists";
+          } else {
+            msg = "Email Already Exists";
           }
-        }
-        console.log("Edit User Error", err);
 
-        send500Error(res, "Error Updating User");
+          send400Error(res, msg);
+        } else {
+          send500Error(res, "Error Updating User");
+        }
+
+        return err;
+      });
+  }
+
+  /**
+   * This function will delete a user from the current database. The method expects that
+   * getUserRequestToken has already been run and that the user's token has been decoded.
+   * It also expects that errorIfTokenDoesNotExist has been run to check that a token
+   * exists. We will not have reached this point if a token didn't exist.
+   *
+   * This method relies on an id being sent.
+   *
+   * @param {Object} req Express Request Object
+   * @param {Object} res Express Response Object
+   * @returns {Promise} For testing purposes
+   */
+  deleteUser(req, res) {
+    const user = req._authData;
+
+    // Check that the user is allowed to perform this work
+    if (!this.checkAllowedUsersForSiteMod(user)) {
+      const error = "Acccess Denied";
+      send401Error(res, error);
+      return Promise.resolve(error);
+    }
+
+    // Check that the appropriate data was sent to the function
+    if ( !isObject(req.body)
+      || !('deletedUser' in req.body)
+      || !('id' in req.body.deletedUser)
+    ) {
+      const err = "User Data Not Provided";
+      send400Error(res, err);
+      return Promise.resolve(err);
+    }
+
+    // Check that the user isn't trying to delete themself and causing an issue
+    if (req.body.deletedUser.id === req._authData.id) {
+      const err = "Cannot Delete Yourself";
+      send400Error(res, err);
+      return Promise.resolve(err);
+    }
+
+    const query = "DELETE FROM users WHERE id = ? LIMIT 1";
+    const queryParams = [req.body.deletedUser.id];
+
+    const promisePool = this.db.instance.promise();
+    return promisePool.execute(query, queryParams)
+      .then(([result]) => {
+        if (isObject(result)
+          && "affectedRows" in result
+          && isNumber(result.affectedRows)
+        ) {
+          if (result.affectedRows > 0) {
+            res.status(200).json({
+              message: "User Deleted Successfully",
+            });
+
+            return 200;
+          }
+
+          const error = "User Was Not Deleted";
+          send400Error(res, error);
+          return error;
+        }
+
+        const error = "Database Error: Improper Results Returned";
+        send500Error(res, error);
+        return error;
+      })
+      .catch((err) => {
+        send500Error(res, "Error Deleting User");
+        return err;
       });
   }
 }

@@ -5,6 +5,9 @@ module.exports = (db, adminUserName, adminPassword) => {
 
   return collection.createIndex( { username: 1 }, { unique: true })
     .then(() => {
+      return collection.createIndex( { email: 1 }, { unique: true });
+    })
+    .then(() => {
       return bcrypt.hash(adminPassword, 12);
     })
     .then((result) => {

@@ -9,6 +9,7 @@ const {
   send500Error,
   isObject,
   isNumber,
+  isString,
   endOnError,
 } = require("../utilities");
 
@@ -58,10 +59,10 @@ class MongoUserController extends UserController {
       || !('username' in req.body)
       || !('password' in req.body)
     ) {
-      const err = "User Data Not Provided";
+      const error = "User Data Not Provided";
       this.pluginHandler.runLifecycleHook('loginFailed');
-      send401Error(res, err);
-      return Promise.resolve(err);
+      send401Error(res, error);
+      return Promise.resolve(error);
     }
     const { username, password } = req.body;
     const userData = {};
@@ -125,8 +126,9 @@ class MongoUserController extends UserController {
   getUser(req, res) {
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteInfo(req._authData)) {
-      send401Error(res, "");
-      return Promise.resolve("Invalid User");
+      const error = "Acccess Denied";
+      send401Error(res, error);
+      return Promise.resolve(error);
     }
 
     if (!('id' in req.params)) {
@@ -164,7 +166,7 @@ class MongoUserController extends UserController {
 
         res.status(200).json(userData);
 
-        return null;
+        return 200;
       })
       .catch((err) => {
         send500Error(res, "Database Error");
@@ -184,8 +186,9 @@ class MongoUserController extends UserController {
   getAllUsers(req, res) {
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteMod(req._authData)) {
-      send401Error(res, "");
-      return Promise.resolve("Permission Denied");
+      const error = "Acccess Denied";
+      send401Error(res, error);
+      return Promise.resolve(error);
     }
 
     const page = isObject(req.params)
@@ -217,9 +220,11 @@ class MongoUserController extends UserController {
         res.status(200).json({
           users: returnResults,
         });
+        return 200;
       })
-      .catch(() => {
+      .catch((err) => {
         send500Error(res, "Database Error");
+        return err;
       });
   }
 
@@ -242,8 +247,9 @@ class MongoUserController extends UserController {
     const user = req._authData;
 
     if (!this.checkAllowedUsersForSiteMod(user)) {
-      send401Error(res, "Access Denied");
-      return Promise.resolve("Access Denied");
+      const error = "Acccess Denied";
+      send401Error(res, error);
+      return Promise.resolve(error);
     }
 
     if (!isObject(req.body) || !('newUser' in req.body)) {
@@ -292,7 +298,10 @@ class MongoUserController extends UserController {
         );
       })
       .then((result) => {
-        if (isObject(result) && 'insertedCount' in result ) {
+        if (isObject(result)
+          && 'insertedCount' in result
+          && isNumber(result.insertedCount)
+        ) {
           // Assume that if insertedCount exists, insertedId also exists
           if (result.insertedCount > 0) {
             output.id = result.insertedId.toString();
@@ -300,11 +309,9 @@ class MongoUserController extends UserController {
             return 200;
           }
 
-          if (result.insertedCount === 0) {
-            const error = "User Not Added";
-            send400Error(res, error);
-            return error;
-          }
+          const error = "User Was Not Added";
+          send400Error(res, error);
+          return error;
         }
 
         const error = "Database Error: Improper Results Returned";
@@ -315,9 +322,17 @@ class MongoUserController extends UserController {
         // Do Something;
         if ( isObject(err)
           && 'errmsg' in err
+          && isString(err.errmsg)
           && err.errmsg.indexOf("E11000" >= 0)
         ) {
-          send400Error(res, "Username Already Exists");
+          let msg = "";
+          if (err.errmsg.indexOf("username") >= 0) {
+            msg = "Username Already Exists";
+          } else {
+            msg = "Email Already Exists";
+          }
+
+          send400Error(res, msg);
         } else {
           send500Error(res, "Error Adding New User");
         }
@@ -340,9 +355,9 @@ class MongoUserController extends UserController {
     const currentUser = req._authData;
 
     if (!this.checkAllowedUsersForSiteMod(currentUser)) {
-      const err = "Access Denied";
-      send401Error(res, err);
-      return Promise.resolve(err);
+      const error = "Acccess Denied";
+      send401Error(res, error);
+      return Promise.resolve(error);
     }
 
     if ( !isObject(req.body)
@@ -396,28 +411,21 @@ class MongoUserController extends UserController {
       );
     })
       .then((result) => {
-        if (isObject(result) && 'modifiedCount' in result ) {
+        if (isObject(result)
+          && 'modifiedCount' in result
+          && isNumber(result.modifiedCount)
+        ) {
+
           if (result.modifiedCount > 0) {
-            const output = {
-              ...updatedUser,
-              id: idString,
-            };
-
-            // _id is automatically added by MongoDB, this line Removes the _id
-            // key to prevent confusion and make it similar to the MySQL controller.
-            // We also remove the password from the output.
-            delete output.password;
-            delete output._id;
-
-            res.status(200).json(output);
+            res.status(200).json({
+              message: "User Updated Successfully",
+            });
             return 200;
           }
 
-          if (result.modifiedCount === 0) {
-            const error = "User Not Updated";
-            send400Error(res, error);
-            return error;
-          }
+          const error = "User Was Not Updated";
+          send400Error(res, error);
+          return error;
         }
 
         const error = "Database Error: Improper Results Returned";
@@ -427,12 +435,21 @@ class MongoUserController extends UserController {
       .catch((err) => {
         if ( isObject(err)
           && 'errmsg' in err
+          && isString(err.errmsg)
           && err.errmsg.indexOf("E11000" >= 0)
         ) {
-          send401Error(res, "Username Already Exists");
+          let msg = "";
+          if (err.errmsg.indexOf("username") >= 0) {
+            msg = "Username Already Exists";
+          } else if (err.errmsg.indexOf("email") >= 0) {
+            msg = "Email Already Exists";
+          }
+
+          send400Error(res, msg);
         } else {
           send500Error(res, "Error Updating User");
         }
+
         return err;
       });
   }
@@ -454,8 +471,9 @@ class MongoUserController extends UserController {
 
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteMod(user)) {
-      send401Error(res, "Access Denied");
-      return Promise.resolve("Access Denied");
+      const error = "Acccess Denied";
+      send401Error(res, error);
+      return Promise.resolve(error);
     }
 
     // Check that the appropriate data was sent to the function
@@ -479,7 +497,6 @@ class MongoUserController extends UserController {
     try {
       id = ObjectId(req.body.deletedUser.id);
     } catch (err) {
-      console.log(err);
       send400Error(res, invalidUserId);
       return Promise.resolve(invalidUserId);
     }
@@ -490,7 +507,10 @@ class MongoUserController extends UserController {
       _id: id,
     })
       .then((result) => {
-        if (isObject(result) && 'deletedCount' in result ) {
+        if (isObject(result)
+          && 'deletedCount' in result
+          && isNumber(result.deletedCount)
+        ) {
           if (result.deletedCount > 0) {
             res.status(200).json({
               message: "User Deleted Successfully",
@@ -499,11 +519,9 @@ class MongoUserController extends UserController {
             return 200;
           }
 
-          if (result.deletedCount === 0) {
-            const error = "User Not Deleted";
-            send400Error(res, error);
-            return error;
-          }
+          const error = "User Was Not Deleted";
+          send400Error(res, error);
+          return error;
         }
 
         const error = "Database Error: Improper Results Returned";
