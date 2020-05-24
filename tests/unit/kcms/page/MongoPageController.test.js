@@ -11,6 +11,7 @@ const {
   collection,
   ObjectId,
   testId,
+  insertedId,
 } = require("mongodb");
 const endModule = require("../../../../k-cms/utilities/endOnError");
 
@@ -548,9 +549,10 @@ describe("MongoPageController", () => {
         userType: 'viewer',
       };
 
+      const error = "Access Denied";
       mpc.addPage(req, res)
         .then((err) => {
-          expect(err).toBe("Access Denied");
+          expect(err).toBe(error);
 
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
@@ -563,7 +565,7 @@ describe("MongoPageController", () => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(401);
           expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: "" });
+          expect(json).toHaveBeenCalledWith({ error });
           done();
         });
     });
@@ -573,7 +575,7 @@ describe("MongoPageController", () => {
         userType: 'editor',
       };
 
-      const error = "Invalid Page Data Sent";
+      const error = "Page Data Not Provided";
 
       mpc.addPage(req, res)
         .then((err) => {
@@ -783,6 +785,217 @@ describe("MongoPageController", () => {
         });
     });
 
+    test("If insertedCount is 0, addPage will send a 400 response and return an error. The function will run insertOne", (done) => {
+      const newPage = {
+        name: "name",
+        enabled: true,
+        slug: "name",
+        content: [],
+      };
+
+      req.body = {
+        page: newPage,
+      };
+      req._authData = {
+        userType: 'admin',
+      };
+
+      insertOne.mockImplementationOnce(async () => {
+        return {
+          insertedCount: 0,
+          insertedId,
+        };
+      });
+
+      const error = "Page Was Not Added";
+      mpc.addPage(req, res)
+        .then((result) => {
+          expect(result).toBe(error);
+
+          expect(checkUserSpy).toHaveBeenCalledTimes(1);
+          expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
+          expect(extractSpy).toHaveBeenCalledTimes(1);
+          expect(extractSpy).toHaveBeenCalledWith(req);
+          expect(checkPageSpy).toHaveBeenCalledTimes(1);
+          expect(checkPageSpy).toHaveBeenCalledWith(newPage);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("pages");
+          expect(insertOne).toHaveBeenCalledTimes(1);
+          expect(insertOne).toHaveBeenCalledWith({
+            ...newPage,
+            dateAdded: expect.any(Number),
+            dateUpdated: expect.any(Number),
+          });
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error });
+          done();
+        });
+
+    });
+
+    test("If insertedCount is not in the result, addPage will send a 500 response and return an error. The function will run insertOne", (done) => {
+      const newPage = {
+        name: "name",
+        enabled: true,
+        slug: "name",
+        content: [],
+      };
+
+      req.body = {
+        page: newPage,
+      };
+      req._authData = {
+        userType: 'admin',
+      };
+
+      insertOne.mockImplementationOnce(async () => {
+        return {
+          insertedId,
+        };
+      });
+
+      const error = "Database Error: Improper Results Returned";
+      mpc.addPage(req, res)
+        .then((result) => {
+          expect(result).toBe(error);
+
+          expect(checkUserSpy).toHaveBeenCalledTimes(1);
+          expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
+          expect(extractSpy).toHaveBeenCalledTimes(1);
+          expect(extractSpy).toHaveBeenCalledWith(req);
+          expect(checkPageSpy).toHaveBeenCalledTimes(1);
+          expect(checkPageSpy).toHaveBeenCalledWith(newPage);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("pages");
+          expect(insertOne).toHaveBeenCalledTimes(1);
+          expect(insertOne).toHaveBeenCalledWith({
+            ...newPage,
+            dateAdded: expect.any(Number),
+            dateUpdated: expect.any(Number),
+          });
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(500);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error });
+          done();
+        });
+
+    });
+
+    test("If insertedCount is not a number, addPage will send a 500 response and return an error. The function will run insertOne", (done) => {
+      const newPage = {
+        name: "name",
+        enabled: true,
+        slug: "name",
+        content: [],
+      };
+
+      req.body = {
+        page: newPage,
+      };
+      req._authData = {
+        userType: 'admin',
+      };
+
+      insertOne.mockImplementationOnce(async () => {
+        return {
+          insertedId,
+          insertedCount: true,
+        };
+      });
+
+      const error = "Database Error: Improper Results Returned";
+      mpc.addPage(req, res)
+        .then((result) => {
+          expect(result).toBe(error);
+
+          expect(checkUserSpy).toHaveBeenCalledTimes(1);
+          expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
+          expect(extractSpy).toHaveBeenCalledTimes(1);
+          expect(extractSpy).toHaveBeenCalledWith(req);
+          expect(checkPageSpy).toHaveBeenCalledTimes(1);
+          expect(checkPageSpy).toHaveBeenCalledWith(newPage);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("pages");
+          expect(insertOne).toHaveBeenCalledTimes(1);
+          expect(insertOne).toHaveBeenCalledWith({
+            ...newPage,
+            dateAdded: expect.any(Number),
+            dateUpdated: expect.any(Number),
+          });
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(500);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error });
+          done();
+        });
+
+    });
+
+    test("If addPage doesn't return an object, addPage will send a 500 response and return an error. The function will run insertOne", (done) => {
+      const newPage = {
+        name: "name",
+        enabled: true,
+        slug: "name",
+        content: [],
+      };
+
+      req.body = {
+        page: newPage,
+      };
+      req._authData = {
+        userType: 'admin',
+      };
+
+      insertOne.mockImplementationOnce(async () => {
+      });
+
+      const error = "Database Error: Improper Results Returned";
+      mpc.addPage(req, res)
+        .then((result) => {
+          expect(result).toBe(error);
+
+          expect(checkUserSpy).toHaveBeenCalledTimes(1);
+          expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
+          expect(extractSpy).toHaveBeenCalledTimes(1);
+          expect(extractSpy).toHaveBeenCalledWith(req);
+          expect(checkPageSpy).toHaveBeenCalledTimes(1);
+          expect(checkPageSpy).toHaveBeenCalledWith(newPage);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("pages");
+          expect(insertOne).toHaveBeenCalledTimes(1);
+          expect(insertOne).toHaveBeenCalledWith({
+            ...newPage,
+            dateAdded: expect.any(Number),
+            dateUpdated: expect.any(Number),
+          });
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(500);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error });
+          done();
+        });
+
+    });
+
   });
 
   describe("editPage", () => {
@@ -794,7 +1007,7 @@ describe("MongoPageController", () => {
       extractSpy = jest.spyOn(mpc, "extractPageData");
     });
 
-    test("editPage will send a 200 response and send the contents of the new page to the user. The function will run insertOne", (done) => {
+    test("editPage will send a 200 response and send the contents of the new page to the user. The function will run updateOne", (done) => {
       const editPage = {
         name: "name",
         enabled: true,
@@ -1136,6 +1349,272 @@ describe("MongoPageController", () => {
         });
     });
 
+    test("If modifiedCount is 0, updateOne will send a 400 response and return an error. The function will run updateOne", (done) => {
+      const editPage = {
+        name: "name",
+        enabled: true,
+        slug: "name",
+        content: [],
+        meta: {},
+      };
+
+      const testObjectId = 69696969;
+      ObjectId.mockImplementationOnce(() => {
+        return testObjectId;
+      });
+
+      updateOne.mockImplementationOnce(async () => {
+        return {
+          modifiedCount: 0,
+        };
+      });
+
+      const id = 123;
+
+      req.body = {
+        page: {
+          id,
+          ...editPage,
+        },
+      };
+      req._authData = {
+        userType: 'admin',
+      };
+
+      const error = "Page Was Not Updated";
+      mpc.editPage(req, res)
+        .then((result) => {
+          expect(result).toBe(error);
+
+          expect(checkUserSpy).toHaveBeenCalledTimes(1);
+          expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
+          expect(extractSpy).toHaveBeenCalledTimes(1);
+          expect(extractSpy).toHaveBeenCalledWith(req);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("pages");
+          expect(updateOne).toHaveBeenCalledTimes(1);
+          expect(updateOne).toHaveBeenCalledWith(
+            {
+              _id: testObjectId,
+            },
+            {
+              $set: {
+                ...editPage,
+                dateUpdated: expect.any(Number),
+              },
+            }
+          );
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error });
+
+          done();
+        });
+    });
+
+    test("If modifiedCount is not a number, updateOne will send a 400 response and return an error. The function will run updateOne", (done) => {
+      const editPage = {
+        name: "name",
+        enabled: true,
+        slug: "name",
+        content: [],
+        meta: {},
+      };
+
+      const testObjectId = 69696969;
+      ObjectId.mockImplementationOnce(() => {
+        return testObjectId;
+      });
+
+      updateOne.mockImplementationOnce(async () => {
+        return {
+          modifiedCount: true,
+        };
+      });
+
+      const id = 123;
+
+      req.body = {
+        page: {
+          id,
+          ...editPage,
+        },
+      };
+      req._authData = {
+        userType: 'admin',
+      };
+
+      const error = "Database Error: Improper Results Returned";
+      mpc.editPage(req, res)
+        .then((result) => {
+          expect(result).toBe(error);
+
+          expect(checkUserSpy).toHaveBeenCalledTimes(1);
+          expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
+          expect(extractSpy).toHaveBeenCalledTimes(1);
+          expect(extractSpy).toHaveBeenCalledWith(req);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("pages");
+          expect(updateOne).toHaveBeenCalledTimes(1);
+          expect(updateOne).toHaveBeenCalledWith(
+            {
+              _id: testObjectId,
+            },
+            {
+              $set: {
+                ...editPage,
+                dateUpdated: expect.any(Number),
+              },
+            }
+          );
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(500);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error });
+
+          done();
+        });
+    });
+
+    test("If modifiedCount is not in the result, updateOne will send a 500 response and return an error. The function will run updateOne", (done) => {
+      const editPage = {
+        name: "name",
+        enabled: true,
+        slug: "name",
+        content: [],
+        meta: {},
+      };
+
+      const testObjectId = 69696969;
+      ObjectId.mockImplementationOnce(() => {
+        return testObjectId;
+      });
+
+      updateOne.mockImplementationOnce(async () => {
+        return {};
+      });
+
+      const id = 123;
+
+      req.body = {
+        page: {
+          id,
+          ...editPage,
+        },
+      };
+      req._authData = {
+        userType: 'admin',
+      };
+
+      const error = "Database Error: Improper Results Returned";
+      mpc.editPage(req, res)
+        .then((result) => {
+          expect(result).toBe(error);
+
+          expect(checkUserSpy).toHaveBeenCalledTimes(1);
+          expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
+          expect(extractSpy).toHaveBeenCalledTimes(1);
+          expect(extractSpy).toHaveBeenCalledWith(req);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("pages");
+          expect(updateOne).toHaveBeenCalledTimes(1);
+          expect(updateOne).toHaveBeenCalledWith(
+            {
+              _id: testObjectId,
+            },
+            {
+              $set: {
+                ...editPage,
+                dateUpdated: expect.any(Number),
+              },
+            }
+          );
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(500);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error });
+
+          done();
+        });
+    });
+
+    test("If updateOne doesn't return an object, updateOne will send a 500 response and return an error. The function will run updateOne", (done) => {
+      const editPage = {
+        name: "name",
+        enabled: true,
+        slug: "name",
+        content: [],
+        meta: {},
+      };
+
+      const testObjectId = 69696969;
+      ObjectId.mockImplementationOnce(() => {
+        return testObjectId;
+      });
+
+      updateOne.mockImplementationOnce(async () => {});
+
+      const id = 123;
+
+      req.body = {
+        page: {
+          id,
+          ...editPage,
+        },
+      };
+      req._authData = {
+        userType: 'admin',
+      };
+
+      const error = "Database Error: Improper Results Returned";
+      mpc.editPage(req, res)
+        .then((result) => {
+          expect(result).toBe(error);
+
+          expect(checkUserSpy).toHaveBeenCalledTimes(1);
+          expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
+          expect(extractSpy).toHaveBeenCalledTimes(1);
+          expect(extractSpy).toHaveBeenCalledWith(req);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("pages");
+          expect(updateOne).toHaveBeenCalledTimes(1);
+          expect(updateOne).toHaveBeenCalledWith(
+            {
+              _id: testObjectId,
+            },
+            {
+              $set: {
+                ...editPage,
+                dateUpdated: expect.any(Number),
+              },
+            }
+          );
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(500);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error });
+
+          done();
+        });
+    });
+
   });
 
   describe("deletePage", () => {
@@ -1185,7 +1664,9 @@ describe("MongoPageController", () => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith();
+          expect(json).toHaveBeenCalledWith({
+            message: "Page Deleted Successfully",
+          });
 
           done();
         });
@@ -1352,6 +1833,203 @@ describe("MongoPageController", () => {
           done();
         });
     });
+
+    test("If deletedCount is 0, deletePage will send a 400 response return an error. The function will run deleteOne", (done) => {
+      const deletePage = {
+        id: 123,
+      };
+
+      deleteOne.mockImplementationOnce(async () => {
+        return { deletedCount: 0 };
+      });
+
+      const testObjectId = 69696969;
+      ObjectId.mockImplementationOnce(() => {
+        return testObjectId;
+      });
+
+      req.body = {
+        page: deletePage,
+      };
+      req._authData = {
+        userType: 'admin',
+      };
+
+      const error = "Page Was Not Deleted";
+      mpc.deletePage(req, res)
+        .then((result) => {
+          expect(result).toBe(error);
+
+          expect(checkUserSpy).toHaveBeenCalledTimes(1);
+          expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
+          expect(extractSpy).toHaveBeenCalledTimes(1);
+          expect(extractSpy).toHaveBeenCalledWith(req);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("pages");
+          expect(deleteOne).toHaveBeenCalledTimes(1);
+          expect(deleteOne).toHaveBeenCalledWith({
+            _id: testObjectId,
+          });
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error });
+
+          done();
+        });
+    });
+
+    test("If deletedCount is not a number, deletePage will send a 500 response return an error. The function will run deleteOne", (done) => {
+      const deletePage = {
+        id: 123,
+      };
+
+      deleteOne.mockImplementationOnce(async () => {
+        return {
+          deletedCount: true,
+        };
+      });
+
+      const testObjectId = 69696969;
+      ObjectId.mockImplementationOnce(() => {
+        return testObjectId;
+      });
+
+      req.body = {
+        page: deletePage,
+      };
+      req._authData = {
+        userType: 'admin',
+      };
+
+      const error = "Database Error: Improper Results Returned";
+      mpc.deletePage(req, res)
+        .then((result) => {
+          expect(result).toBe(error);
+
+          expect(checkUserSpy).toHaveBeenCalledTimes(1);
+          expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
+          expect(extractSpy).toHaveBeenCalledTimes(1);
+          expect(extractSpy).toHaveBeenCalledWith(req);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("pages");
+          expect(deleteOne).toHaveBeenCalledTimes(1);
+          expect(deleteOne).toHaveBeenCalledWith({
+            _id: testObjectId,
+          });
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(500);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error });
+
+          done();
+        });
+    });
+
+    test("If deletedCount is not in the result, deletePage will send a 500 response return an error. The function will run deleteOne", (done) => {
+      const deletePage = {
+        id: 123,
+      };
+
+      deleteOne.mockImplementationOnce(async () => {
+        return {};
+      });
+
+      const testObjectId = 69696969;
+      ObjectId.mockImplementationOnce(() => {
+        return testObjectId;
+      });
+
+      req.body = {
+        page: deletePage,
+      };
+      req._authData = {
+        userType: 'admin',
+      };
+
+      const error = "Database Error: Improper Results Returned";
+      mpc.deletePage(req, res)
+        .then((result) => {
+          expect(result).toBe(error);
+
+          expect(checkUserSpy).toHaveBeenCalledTimes(1);
+          expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
+          expect(extractSpy).toHaveBeenCalledTimes(1);
+          expect(extractSpy).toHaveBeenCalledWith(req);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("pages");
+          expect(deleteOne).toHaveBeenCalledTimes(1);
+          expect(deleteOne).toHaveBeenCalledWith({
+            _id: testObjectId,
+          });
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(500);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error });
+
+          done();
+        });
+    });
+
+    test("If deletedPage doesn't return an object, deletePage will send a 500 response return an error. The function will run deleteOne", (done) => {
+      const deletePage = {
+        id: 123,
+      };
+
+      deleteOne.mockImplementationOnce(async () => {});
+
+      const testObjectId = 69696969;
+      ObjectId.mockImplementationOnce(() => {
+        return testObjectId;
+      });
+
+      req.body = {
+        page: deletePage,
+      };
+      req._authData = {
+        userType: 'admin',
+      };
+
+      const error = "Database Error: Improper Results Returned";
+      mpc.deletePage(req, res)
+        .then((result) => {
+          expect(result).toBe(error);
+
+          expect(checkUserSpy).toHaveBeenCalledTimes(1);
+          expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
+          expect(extractSpy).toHaveBeenCalledTimes(1);
+          expect(extractSpy).toHaveBeenCalledWith(req);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("pages");
+          expect(deleteOne).toHaveBeenCalledTimes(1);
+          expect(deleteOne).toHaveBeenCalledWith({
+            _id: testObjectId,
+          });
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(500);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error });
+
+          done();
+        });
+    });
+
   });
 
 });

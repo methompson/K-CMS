@@ -9,25 +9,31 @@ const find = jest.fn(() => {
   };
 });
 const deleteOne = jest.fn(() => {
-  return Promise.resolve();
+  return Promise.resolve({
+    deletedCount: 1,
+  });
 });
 
 const testId = "abc123";
+const toString = jest.fn(() => {
+  return testId;
+});
+const insertedId = {
+  toString,
+};
+
 const insertOne = jest.fn(() => {
-  const toString = jest.fn(() => {
-    return testId;
-  });
-  const insertedId = {
-    toString,
-  };
   const result = {
+    insertedCount: 1,
     insertedId,
   };
   return Promise.resolve(result);
 });
 
 const updateOne = jest.fn(() => {
-  return Promise.resolve();
+  return Promise.resolve({
+    modifiedCount: 1,
+  });
 });
 
 const collection = jest.fn(() => {
@@ -65,4 +71,5 @@ module.exports = {
   updateOne,
   collection,
   testId,
+  insertedId,
 };

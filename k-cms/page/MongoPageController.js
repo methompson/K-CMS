@@ -7,6 +7,7 @@ const {
   send500Error,
   isObject,
   isBoolean,
+  isNumber,
 } = require("../utilities");
 
 const PageController = require("./PageController");
@@ -162,7 +163,10 @@ class MongoPageController extends PageController {
 
     return collection.insertOne(newPage)
       .then((result) => {
-        if (isObject(result) && 'insertedCount' in result ) {
+        if (isObject(result)
+          && 'insertedCount' in result
+          && isNumber(result.insertedCount)
+        ) {
           if (result.insertedCount > 0) {
             // Assume that if insertedCount exists, insertedId also exists
             output.id = result.insertedId.toString();
@@ -171,11 +175,9 @@ class MongoPageController extends PageController {
             return 200;
           }
 
-          if (result.insertedCount > 0) {
-            const error = "Page Not Added";
-            send400Error(res, error);
-            return error;
-          }
+          const error = "Page Was Not Added";
+          send400Error(res, error);
+          return error;
         }
 
         const error = "Database Error: Improper Results Returned";
@@ -287,7 +289,10 @@ class MongoPageController extends PageController {
       }
     )
       .then((result) => {
-        if (isObject(result) && 'modifiedCount' in result ) {
+        if (isObject(result)
+          && 'modifiedCount' in result
+          && isNumber(result.modifiedCount)
+        ) {
           if (result.modifiedCount > 0) {
             const output = {
               ...setData,
@@ -297,15 +302,14 @@ class MongoPageController extends PageController {
             // _id is automatically added by MongoDB, this line Removes the _id
             // key to prevent confusion and make it similar to the MySQL controller.
             delete output._id;
+
             res.status(200).json(output);
             return 200;
           }
 
-          if (result.modifiedCount === 0) {
-            const error = "Page Not Updated";
-            send400Error(res, error);
-            return error;
-          }
+          const error = "Page Was Not Updated";
+          send400Error(res, error);
+          return error;
         }
 
         const error = "Database Error: Improper Results Returned";
@@ -358,16 +362,19 @@ class MongoPageController extends PageController {
       _id: ObjectId(pageData.id),
     })
       .then((result) => {
-        if (result.deletedCount > 0) {
-          res.status(200).json({
-            message: "Page Deleted Successfully",
-          });
+        if (isObject(result)
+          && "deletedCount" in result
+          && isNumber(result.deletedCount)
+        ) {
+          if (result.deletedCount > 0) {
+            res.status(200).json({
+              message: "Page Deleted Successfully",
+            });
 
-          return 200;
-        }
+            return 200;
+          }
 
-        if (result.deletedCount === 0) {
-          const error = "Page Not Deleted";
+          const error = "Page Was Not Deleted";
           send400Error(res, error);
           return error;
         }

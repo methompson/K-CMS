@@ -1062,7 +1062,7 @@ describe("MySQLPageController", () => {
         userType: 'admin',
       };
 
-      const error = "Page Not Added";
+      const error = "Page Was Not Added";
       mpc.addPage(req, res)
         .then((result) => {
           expect(result).toBe(error);
@@ -1636,7 +1636,7 @@ describe("MySQLPageController", () => {
         userType: 'admin',
       };
 
-      const error = "Page Not Edited";
+      const error = "Page Was Not Updated";
       mpc.editPage(req, res)
         .then((err) => {
           expect(err).toBe(error);
@@ -1909,7 +1909,7 @@ describe("MySQLPageController", () => {
         userType: 'admin',
       };
 
-      const error = "No Page Deleted";
+      const error = "Page Was Not Deleted";
       mpc.deletePage(req, res)
         .then((err) => {
           expect(err).toBe(error);

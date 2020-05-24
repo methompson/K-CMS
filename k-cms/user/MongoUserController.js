@@ -395,7 +395,6 @@ class MongoUserController extends UserController {
         { upsert: true }
       );
     })
-      // .then((result) => {
       .then((result) => {
         if (isObject(result) && 'modifiedCount' in result ) {
           if (result.modifiedCount > 0) {

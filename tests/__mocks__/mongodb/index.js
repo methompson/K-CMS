@@ -8,7 +8,9 @@ const {
   updateOne,
   collection,
   testId,
+  insertedId,
 } = require("./MongoClient");
+
 const ObjectId = require("./ObjectId");
 
 module.exports = {
@@ -22,4 +24,5 @@ module.exports = {
   collection,
   ObjectId,
   testId,
+  insertedId,
 };

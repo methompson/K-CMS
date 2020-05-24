@@ -183,7 +183,7 @@ class MySQLPageController extends PageController {
       .then(([result]) => {
         if (isObject(result) && 'affectedRows' in result ) {
           if (result.affectedRows < 1) {
-            const error = "Page Not Added";
+            const error = "Page Was Not Added";
             send400Error(res, error);
             return error;
           }
@@ -333,7 +333,7 @@ class MySQLPageController extends PageController {
             return 200;
           }
 
-          const err = "Page Not Edited";
+          const err = "Page Was Not Updated";
           send400Error(res, err);
           return err;
         }
@@ -394,7 +394,7 @@ class MySQLPageController extends PageController {
             return 200;
           }
 
-          const error = "No Page Deleted";
+          const error = "Page Was Not Deleted";
           send400Error(res, error);
           return error;
         }
