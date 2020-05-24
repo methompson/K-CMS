@@ -11,9 +11,21 @@ const find = jest.fn(() => {
 const deleteOne = jest.fn(() => {
   return Promise.resolve();
 });
+
+const testId = "abc123";
 const insertOne = jest.fn(() => {
-  return Promise.resolve();
+  const toString = jest.fn(() => {
+    return testId;
+  });
+  const insertedId = {
+    toString,
+  };
+  const result = {
+    insertedId,
+  };
+  return Promise.resolve(result);
 });
+
 const updateOne = jest.fn(() => {
   return Promise.resolve();
 });
@@ -52,4 +64,5 @@ module.exports = {
   insertOne,
   updateOne,
   collection,
+  testId,
 };

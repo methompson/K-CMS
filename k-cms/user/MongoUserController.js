@@ -218,7 +218,6 @@ class MongoUserController extends UserController {
           users: returnResults,
         });
       })
-      // .catch((err) => {
       .catch(() => {
         send500Error(res, "Database Error");
       });
@@ -275,6 +274,10 @@ class MongoUserController extends UserController {
       newUser.enabled = true;
     }
 
+    const output = {
+      ...newUser,
+    };
+
     const collection = this.db.instance.db("kcms").collection("users");
 
     // We've set a unique constraint on the username field, so we can't add a username
@@ -289,17 +292,24 @@ class MongoUserController extends UserController {
         );
       })
       .then((result) => {
-        let userId;
-        if (result.insertedCount > 0) {
-          userId = result.insertedId.toString();
+        if (isObject(result) && 'insertedCount' in result ) {
+          // Assume that if insertedCount exists, insertedId also exists
+          if (result.insertedCount > 0) {
+            output.id = result.insertedId.toString();
+            res.status(200).json(output);
+            return 200;
+          }
+
+          if (result.insertedCount === 0) {
+            const error = "User Not Added";
+            send400Error(res, error);
+            return error;
+          }
         }
 
-        res.status(200).json({
-          message: "User Added Successfully",
-          userId,
-        });
-
-        return null;
+        const error = "Database Error: Improper Results Returned";
+        send500Error(res, error);
+        return error;
       })
       .catch((err) => {
         // Do Something;
@@ -312,6 +322,118 @@ class MongoUserController extends UserController {
           send500Error(res, "Error Adding New User");
         }
 
+        return err;
+      });
+  }
+
+  /**
+   * This function will edit a user currently in the database. The method expects that
+   * getUserRequestToken has already been run and that the user's token has been decoded.
+   * It also expects that errorIfTokenDoesNotExist has been run to check that a token
+   * exists. We will not have reached this point if a token didn't exist.
+   *
+   * @param {Object} req Express Request Object
+   * @param {Object} res Express Response Object
+   * @returns {Promise} For testing purposes
+   */
+  editUser(req, res) {
+    const currentUser = req._authData;
+
+    if (!this.checkAllowedUsersForSiteMod(currentUser)) {
+      const err = "Access Denied";
+      send401Error(res, err);
+      return Promise.resolve(err);
+    }
+
+    if ( !isObject(req.body)
+      || !('updatedUser' in req.body)
+      || !('id' in req.body.updatedUser)
+      || !('data' in req.body.updatedUser)
+    ) {
+      const err = "User Data Not Provided";
+      send400Error(res, err);
+      return Promise.resolve(err);
+    }
+
+    const updatedUser = {
+      ...req.body.updatedUser.data,
+    };
+
+    let mongoId;
+    const idString = updatedUser.id;
+    delete updatedUser.id;
+    try {
+      mongoId = ObjectId(idString);
+    } catch (err) {
+      send400Error(res, invalidUserId);
+      return Promise.resolve(invalidUserId);
+    }
+
+    // We either use bcrypt to make a promise or manually make a promise.
+    let p;
+    if ('password' in updatedUser) {
+
+      if (updatedUser.password.length < this.passwordLengthMin) {
+        const err = "Password length is too short";
+        send400Error(res, err);
+        return Promise.resolve(err);
+      }
+
+      p = bcrypt.hash(updatedUser.password, 12)
+        .then((result) => {
+          updatedUser.password = result;
+        });
+    } else {
+      p = Promise.resolve();
+    }
+
+    const collection = this.db.instance.db("kcms").collection("users");
+    return p.then(() => {
+      return collection.updateOne(
+        { _id: mongoId },
+        { $set: { ...updatedUser } },
+        { upsert: true }
+      );
+    })
+      // .then((result) => {
+      .then((result) => {
+        if (isObject(result) && 'modifiedCount' in result ) {
+          if (result.modifiedCount > 0) {
+            const output = {
+              ...updatedUser,
+              id: idString,
+            };
+
+            // _id is automatically added by MongoDB, this line Removes the _id
+            // key to prevent confusion and make it similar to the MySQL controller.
+            // We also remove the password from the output.
+            delete output.password;
+            delete output._id;
+
+            res.status(200).json(output);
+            return 200;
+          }
+
+          if (result.modifiedCount === 0) {
+            const error = "User Not Updated";
+            send400Error(res, error);
+            return error;
+          }
+        }
+
+        const error = "Database Error: Improper Results Returned";
+        send500Error(res, error);
+        return error;
+      })
+      .catch((err) => {
+        if ( isObject(err)
+          && 'errmsg' in err
+          && err.errmsg.indexOf("E11000" >= 0)
+        ) {
+          send401Error(res, "Username Already Exists");
+        } else {
+          send500Error(res, "Error Updating User");
+        }
         return err;
       });
   }
@@ -368,99 +490,29 @@ class MongoUserController extends UserController {
     return collection.deleteOne({
       _id: id,
     })
-      // .then((result) => {
-      .then(() => {
-        res.status(200).json({
-          message: "User Deleted Successfully",
-        });
+      .then((result) => {
+        if (isObject(result) && 'deletedCount' in result ) {
+          if (result.deletedCount > 0) {
+            res.status(200).json({
+              message: "User Deleted Successfully",
+            });
+
+            return 200;
+          }
+
+          if (result.deletedCount === 0) {
+            const error = "User Not Deleted";
+            send400Error(res, error);
+            return error;
+          }
+        }
+
+        const error = "Database Error: Improper Results Returned";
+        send500Error(res, error);
+        return error;
       })
       .catch((err) => {
         send500Error(res, "Error Deleting User");
-        return err;
-      });
-  }
-
-  /**
-   * This function will edit a user currently in the database. The method expects that
-   * getUserRequestToken has already been run and that the user's token has been decoded.
-   * It also expects that errorIfTokenDoesNotExist has been run to check that a token
-   * exists. We will not have reached this point if a token didn't exist.
-   *
-   * @param {Object} req Express Request Object
-   * @param {Object} res Express Response Object
-   * @returns {Promise} For testing purposes
-   */
-  editUser(req, res) {
-    const currentUser = req._authData;
-
-    if (!this.checkAllowedUsersForSiteMod(currentUser)) {
-      send401Error(res, "Access Denied");
-      return Promise.resolve("Access Denied");
-    }
-
-    if ( !isObject(req.body)
-      || !('updatedUser' in req.body)
-      || !('id' in req.body.updatedUser)
-      || !('data' in req.body.updatedUser)
-    ) {
-      const err = "User Data Not Provided";
-      send400Error(res, err);
-      return Promise.resolve(err);
-    }
-
-    const updatedUser = {
-      ...req.body.updatedUser.data,
-    };
-
-    let id;
-    try {
-      id = ObjectId(req.body.updatedUser.id);
-    } catch (err) {
-      send400Error(res, invalidUserId);
-      return Promise.resolve(invalidUserId);
-    }
-
-    // We either use bcrypt to make a promise or manually make a promise.
-    let p;
-    if ('password' in updatedUser) {
-
-      if (updatedUser.password.length < this.passwordLengthMin) {
-        const err = "Password length is too short";
-        send400Error(res, err);
-        return Promise.resolve(err);
-      }
-
-      p = bcrypt.hash(updatedUser.password, 12)
-        .then((result) => {
-          updatedUser.password = result;
-        });
-    } else {
-      p = Promise.resolve();
-    }
-
-    const collection = this.db.instance.db("kcms").collection("users");
-    return p.then(() => {
-      return collection.updateOne(
-        { _id: id },
-        { $set: { ...updatedUser } },
-        { upsert: true }
-      );
-    })
-      // .then((result) => {
-      .then(() => {
-        res.status(200).json({
-          message: "User Updated Successfully",
-        });
-      })
-      .catch((err) => {
-        if ( isObject(err)
-          && 'errmsg' in err
-          && err.errmsg.indexOf("E11000" >= 0)
-        ) {
-          send401Error(res, "Username Already Exists");
-        } else {
-          send500Error(res, "Error Updating User");
-        }
         return err;
       });
   }

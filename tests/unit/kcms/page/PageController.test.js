@@ -5,6 +5,13 @@ const PluginHandler = require("../../../../k-cms/plugin-handler");
 
 const utilities = require("../../../../k-cms/utilities");
 
+const longString = `1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+                    1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+                    1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+                    1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+                    1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+                    1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890`;
+
 describe("PageController", () => {
   let pc;
   let ph;
@@ -204,6 +211,7 @@ describe("PageController", () => {
         content: [],
       };
     });
+
     test("checkPageData will return null if there are no errors with the pageData object sent to it", () => {
       expect(pc.checkPageData(pd)).toBe(null);
     });
@@ -230,62 +238,59 @@ describe("PageController", () => {
       const pd2 = { ...pd };
       const pd3 = { ...pd };
       const pd4 = { ...pd };
+      const pd5 = { ...pd };
+      const pd6 = { ...pd };
+      const pd7 = { ...pd };
+      const pd8 = { ...pd };
+      const pd9 = { ...pd };
 
       pd1.name = 69;
       pd2.enabled = 69;
       pd3.slug = 69;
       pd4.content = 69;
+      pd5.name = "";
+      pd6.name = longString;
+      pd7.slug = "";
+      pd8.slug = longString;
+      pd9.slug = "~!#";
 
-      expect(pc.checkPageData(pd1)).toBe("Invalid Page Name");
+      expect(pc.checkPageData(pd1)).toBe("Invalid Name Type");
       expect(pc.checkPageData(pd2)).toBe("Invalid Page Data (Enabled)");
-      expect(pc.checkPageData(pd3)).toBe("Invalid Page Slug");
+      expect(pc.checkPageData(pd3)).toBe("Invalid Slug Type");
       expect(pc.checkPageData(pd4)).toBe("Invalid Page Data");
-    });
-
-    test("checkPageData will return specific errors if the pageData values don't conform to specific parameters", () => {
-      const pd1 = { ...pd };
-      const pd2 = { ...pd };
-
-      pd1.name = "";
-      expect(pc.checkPageData(pd1)).toBe("Invalid Page Name");
-
-      pd2.slug = "";
-      expect(pc.checkPageData(pd2)).toBe("Invalid Page Slug");
-      pd2.slug = "+";
-      expect(pc.checkPageData(pd2)).toBe("Invalid Page Slug");
-      pd2.slug = "a+c";
-      expect(pc.checkPageData(pd2)).toBe("Invalid Page Slug");
-      pd2.slug = "$";
-      expect(pc.checkPageData(pd2)).toBe("Invalid Page Slug");
-      pd2.slug = "%";
-      expect(pc.checkPageData(pd2)).toBe("Invalid Page Slug");
-      pd2.slug = "alkdjflaksjdflakjsdflkasjd&lknasldkfnalskdjfalskj";
-      expect(pc.checkPageData(pd2)).toBe("Invalid Page Slug");
-
+      expect(pc.checkPageData(pd5)).toBe("Invalid Name Length");
+      expect(pc.checkPageData(pd6)).toBe("Invalid Name Length");
+      expect(pc.checkPageData(pd7)).toBe("Invalid Slug Length");
+      expect(pc.checkPageData(pd8)).toBe("Invalid Slug Length");
+      expect(pc.checkPageData(pd9)).toBe("Invalid Characters in Slug");
     });
   });
 
   describe("checkSlug", () => {
     test("checkSlug returns true if the values passed to it only include lower case alphabet, numbers and hyphens", () => {
-      expect(pc.checkSlug("abcdefghijklmnopqrstuvwxyz1234567890-")).toBe(true);
+      expect(pc.checkSlug("abcdefghijklmnopqrstuvwxyz1234567890-")).toBe(null);
     });
 
-    test("checkSlug returns false if the value passed to it includes any character other than lower case alphabet, number and hyphen", () => {
-      expect(pc.checkSlug("abc&def")).toBe(false);
-      expect(pc.checkSlug("abc+def")).toBe(false);
-      expect(pc.checkSlug("abc%def")).toBe(false);
-      expect(pc.checkSlug("abc$def")).toBe(false);
-      expect(pc.checkSlug("abc#def")).toBe(false);
-      expect(pc.checkSlug("abc@def")).toBe(false);
+    test("checkSlug returns an error if the value passed to it includes any character other than lower case alphabet, number and hyphen", () => {
+      expect(pc.checkSlug("abc&def")).toBe("Invalid Characters in Slug");
+      expect(pc.checkSlug("abc+def")).toBe("Invalid Characters in Slug");
+      expect(pc.checkSlug("abc%def")).toBe("Invalid Characters in Slug");
+      expect(pc.checkSlug("abc$def")).toBe("Invalid Characters in Slug");
+      expect(pc.checkSlug("abc#def")).toBe("Invalid Characters in Slug");
+      expect(pc.checkSlug("abc@def")).toBe("Invalid Characters in Slug");
     });
 
-    test("checkSlug returns false if the value passed to it is not a string or an empty string", () => {
-      expect(pc.checkSlug("")).toBe(false);
-      expect(pc.checkSlug(69)).toBe(false);
-      expect(pc.checkSlug(true)).toBe(false);
-      expect(pc.checkSlug([])).toBe(false);
-      expect(pc.checkSlug({})).toBe(false);
-      expect(pc.checkSlug(() => {})).toBe(false);
+    test("checkSlug returns an error if the value passed to it is not a string or an empty string", () => {
+      expect(pc.checkSlug(69)).toBe("Invalid Slug Type");
+      expect(pc.checkSlug(true)).toBe("Invalid Slug Type");
+      expect(pc.checkSlug([])).toBe("Invalid Slug Type");
+      expect(pc.checkSlug({})).toBe("Invalid Slug Type");
+      expect(pc.checkSlug(() => {})).toBe("Invalid Slug Type");
+    });
+
+    test("checkSlug returns an error if the value passed to it is too short or too long", () => {
+      expect(pc.checkSlug("")).toBe("Invalid Slug Length");
+      expect(pc.checkSlug(longString)).toBe("Invalid Slug Length");
     });
   });
 

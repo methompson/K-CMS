@@ -7,6 +7,7 @@ const {
   send404Error,
   send500Error,
   isObject,
+  isBoolean,
 } = require("../utilities");
 
 const PageController = require("./PageController");
@@ -46,13 +47,11 @@ class MySQLPageController extends PageController {
       return Promise.resolve(err);
     }
 
-    const { slug } = req.params;
-
     let query = "SELECT id, enabled, name, slug, content, meta, dateUpdated, dateAdded FROM pages WHERE slug = ?";
-    const queryParams = [slug];
+    const queryParams = [req.params.slug];
 
     // This section determines if the user is an editor (someone who can see
-    // non-enabled pages). If they are not an admin, enabled is set to true
+    // non-enabled pages). If they are not an editor, enabled is set to true
     if ( !('_authData' in req)
       || !req._authData
       || !this.editors.includes(req._authData.userType)
@@ -68,13 +67,13 @@ class MySQLPageController extends PageController {
       .then(([results]) => {
         if (results.length > 0) {
           res.status(200).json(results[0]);
-          return;
+          return 200;
         }
 
         send404Error(res);
+        return 404;
       })
       .catch((err) => {
-        console.log(err);
         send500Error(res, "Database Error");
 
         return err;
@@ -107,15 +106,15 @@ class MySQLPageController extends PageController {
     const promisePool = this.db.instance.promise();
     return promisePool.execute(query, queryParams)
       .then(([results]) => {
+        let returnResults = [];
         if (results.length > 0) {
-          res.status(200).json(results);
-          return;
+          returnResults = results;
         }
 
-        res.status(200).json();
+        res.status(200).json(returnResults);
+        return 200;
       })
       .catch((err) => {
-        console.log(err);
         send500Error(res, "Database Error");
 
         return err;
@@ -131,7 +130,6 @@ class MySQLPageController extends PageController {
    */
   addPage(req, res) {
     if (!this.checkAllowedUsersForSiteMod(req._authData)) {
-      console.log("Access Denied");
       send401Error(res, "");
       return Promise.resolve("Access Denied");
     }
@@ -148,6 +146,10 @@ class MySQLPageController extends PageController {
       send400Error(res, pageErr);
       return Promise.resolve(pageErr);
     }
+
+    const meta = 'meta' in pageData
+      ? pageData.meta
+      : {};
 
     const now = new Date();
 
@@ -171,7 +173,7 @@ class MySQLPageController extends PageController {
       pageData.slug,
       pageData.enabled,
       JSON.stringify(pageData.content),
-      JSON.stringify(pageData.meta),
+      JSON.stringify(meta),
       now,
       now,
     ];
@@ -179,14 +181,19 @@ class MySQLPageController extends PageController {
     const promisePool = this.db.instance.promise();
     return promisePool.execute(query, queryParams)
       .then(([result]) => {
-        console.log(result);
-        if ('affectedRows' in result && result.affectedRows === 1) {
+        if (isObject(result) && 'affectedRows' in result ) {
+          if (result.affectedRows < 1) {
+            const error = "Page Not Added";
+            send400Error(res, error);
+            return error;
+          }
+
           const returnData = {
             name: pageData.name,
             slug: pageData.slug,
             enabled: pageData.enabled,
             content: pageData.content,
-            meta: {},
+            meta,
             dateAdded: now.getTime(),
             dateUpdated: now.getTime(),
           };
@@ -196,19 +203,24 @@ class MySQLPageController extends PageController {
           }
 
           res.status(200).json(returnData);
-        } else {
-          send401Error(res, "No Page Added");
-        }
-      })
-      .catch((err) => {
-        if (isObject(err) && 'code' in err) {
-          if (err.code === 'ER_DUP_ENTRY') {
-            send400Error(res, "Page Slug Already Exists");
-            return;
-          }
+          return 200;
         }
 
-        send500Error(res, "Error Adding New Page");
+        const error = "Database Error: Improper Results Returned";
+        send500Error(res, error);
+        return error;
+      })
+      .catch((err) => {
+        if (isObject(err)
+          && 'code' in err
+          && err.code === 'ER_DUP_ENTRY'
+        ) {
+          send400Error(res, "Page Slug Already Exists");
+        } else {
+          send500Error(res, "Error Adding New Page");
+        }
+
+        return err;
       });
   }
 
@@ -221,9 +233,9 @@ class MySQLPageController extends PageController {
    */
   editPage(req, res) {
     if (!this.checkAllowedUsersForSiteMod(req._authData)) {
-      console.log("Access Denied");
-      send401Error(res, "");
-      return Promise.resolve("Access Denied");
+      const err = "Access Denied";
+      send401Error(res, err);
+      return Promise.resolve(err);
     }
 
     const pageData = this.extractPageData(req);
@@ -239,12 +251,6 @@ class MySQLPageController extends PageController {
       return Promise.resolve(err);
     }
 
-    const pageErr = this.checkPageData(pageData);
-    if (pageErr) {
-      send400Error(res, pageErr);
-      return Promise.resolve(pageErr);
-    }
-
     const now = new Date();
     const output = {};
 
@@ -253,27 +259,59 @@ class MySQLPageController extends PageController {
     let query = "UPDATE pages SET ";
     const queryParams = [];
 
-    if ('name' in pageData) {
-      query += "name = ?, ";
-      queryParams.push(pageData.name);
-      output.name = pageData.name;
-    }
     if ('slug' in pageData) {
+      const slugErr = this.checkSlug(pageData.slug);
+      // We are only worrying about doing these actions if a slug was passed.
+      if (slugErr) {
+        send400Error(res, slugErr);
+        return Promise.resolve(slugErr);
+      }
+
       query += "slug = ?, ";
       queryParams.push(pageData.slug);
       output.slug = pageData.slug;
     }
+
+    if ('name' in pageData) {
+      const nameErr = this.checkName(pageData.name);
+      if (nameErr) {
+        send400Error(res, nameErr);
+        return Promise.resolve(nameErr);
+      }
+
+      query += "name = ?, ";
+      queryParams.push(pageData.name);
+      output.name = pageData.name;
+    }
+
     if ('enabled' in pageData) {
+      if (!isBoolean(pageData.enabled)) {
+        const err = "Invalid Enabled Data Type";
+        send400Error(res, err);
+        return Promise.resolve(err);
+      }
       query += "enabled = ?, ";
       queryParams.push(pageData.enabled);
       output.enabled = pageData.enabled;
     }
+
     if ('content' in pageData) {
+      if (!Array.isArray(pageData.content)) {
+        const err = "Invalid Content Data Type";
+        send400Error(res, err);
+        return Promise.resolve(err);
+      }
       query += "content = ?, ";
       queryParams.push(JSON.stringify(pageData.content));
       output.content = pageData.content;
     }
+
     if ('meta' in pageData) {
+      if (!isObject(pageData.meta)) {
+        const err = "Invalid Meta Data Type";
+        send400Error(res, err);
+        return Promise.resolve(err);
+      }
       query += "meta = ?, ";
       queryParams.push(JSON.stringify(pageData.meta));
       output.meta = pageData.meta;
@@ -289,24 +327,32 @@ class MySQLPageController extends PageController {
     const promisePool = this.db.instance.promise();
     return promisePool.execute(query, queryParams)
       .then(([result]) => {
-        if (isObject(result)
-          && "affectedRows" in result
-          && result.affectedRows > 0
-        ) {
-          res.status(200).json(output);
-          return;
+        if (isObject(result) && "affectedRows" in result) {
+          if (result.affectedRows > 0) {
+            res.status(200).json(output);
+            return 200;
+          }
+
+          const err = "Page Not Edited";
+          send400Error(res, err);
+          return err;
         }
 
-        send400Error(res, "No Page Edited");
+        const error = "Database Error: Improper Results Returned";
+        send500Error(res, error);
+        return error;
       })
       .catch((err) => {
-        if (isObject(err) && 'code' in err) {
-          if (err.code === 'ER_DUP_ENTRY') {
-            send400Error(res, "Page Slug Already Exists");
-            return;
-          }
+        if (isObject(err)
+          && 'code' in err
+          && err.code === 'ER_DUP_ENTRY'
+        ) {
+          send400Error(res, "Page Slug Already Exists");
+        } else {
+          send500Error(res, "Error Editing Page");
         }
-        send500Error(res, "Error Editing Page");
+
+        return err;
       });
   }
 
@@ -319,9 +365,9 @@ class MySQLPageController extends PageController {
    */
   deletePage(req, res) {
     if (!this.checkAllowedUsersForSiteMod(req._authData)) {
-      console.log("Access Denied");
-      send401Error(res, "");
-      return Promise.resolve("Access Denied");
+      const err = "Access Denied";
+      send401Error(res, err);
+      return Promise.resolve(err);
     }
 
     const pageData = this.extractPageData(req);
@@ -345,18 +391,22 @@ class MySQLPageController extends PageController {
         if (isObject(result) && "affectedRows" in result) {
           if (result.affectedRows > 0) {
             res.status(200).json();
-          } else {
-            send400Error(res, "No Page Deleted");
+            return 200;
           }
 
-          return;
+          const error = "No Page Deleted";
+          send400Error(res, error);
+          return error;
         }
 
-        throw "No Results Returned";
+        const error = "Database Error: Improper Results Returned";
+        send500Error(res, error);
+        return error;
       })
       .catch((err) => {
-        console.log(err);
-        send500Error(res, "Error Editing Page");
+        send500Error(res, "Error Deleting Page");
+
+        return err;
       });
   }
 }

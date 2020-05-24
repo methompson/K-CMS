@@ -10,6 +10,7 @@ const {
   updateOne,
   collection,
   ObjectId,
+  testId,
 } = require("mongodb");
 const endModule = require("../../../../k-cms/utilities/endOnError");
 
@@ -45,6 +46,13 @@ const PluginHandler = require("../../../../k-cms/plugin-handler");
 const res = new http.ServerResponse();
 
 const errorText = "Test Error";
+const longString = `1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+                    1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+                    1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+                    1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+                    1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+                    1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+                    1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890`;
 
 describe("MongoPageController", () => {
   let db;
@@ -123,6 +131,7 @@ describe("MongoPageController", () => {
         test: 'test',
         id: 'id',
       };
+
       findOne.mockImplementationOnce(() => {
         return Promise.resolve(doc);
       });
@@ -136,7 +145,8 @@ describe("MongoPageController", () => {
       };
 
       mpc.getPageBySlug(req, res)
-        .then(() => {
+        .then((result) => {
+          expect(result).toBe(200);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -157,9 +167,16 @@ describe("MongoPageController", () => {
         test: 'test',
         id: 'id',
       };
-      findOne.mockImplementationOnce(() => {
-        return Promise.resolve(doc);
-      });
+      findOne
+        .mockImplementationOnce(() => {
+          return Promise.resolve(doc);
+        })
+        .mockImplementationOnce(() => {
+          return Promise.resolve(doc);
+        })
+        .mockImplementationOnce(() => {
+          return Promise.resolve(doc);
+        });
 
       req._authData = {
         userType: 'viewer',
@@ -170,36 +187,30 @@ describe("MongoPageController", () => {
       };
 
       mpc.getPageBySlug(req, res)
-        .then(() => {
-          expect(findOne).toHaveBeenCalledWith({
-            ...req.params,
-            enabled: true,
-          });
+        .then((result) => {
+          expect(result).toBe(200);
 
-          findOne.mockClear();
           delete req._authData.userType;
           return mpc.getPageBySlug(req, res);
         })
-        .then(() => {
-          expect(findOne).toHaveBeenCalledWith({
-            ...req.params,
-            enabled: true,
-          });
+        .then((result) => {
+          expect(result).toBe(200);
 
-          findOne.mockClear();
           req._authData = null;
           return mpc.getPageBySlug(req, res);
         })
-        .then(() => {
-          expect(findOne).toHaveBeenCalledWith({
-            ...req.params,
-            enabled: true,
-          });
+        .then((result) => {
+          expect(result).toBe(200);
+
+          expect(findOne).toHaveBeenCalledTimes(3);
+          expect(findOne).toHaveBeenNthCalledWith(1, { ...req.params, enabled: true });
+          expect(findOne).toHaveBeenNthCalledWith(2, { ...req.params, enabled: true });
+          expect(findOne).toHaveBeenNthCalledWith(3, { ...req.params, enabled: true });
           done();
         });
     });
 
-    test("getPageBySlug will send a 404 status and an empty object if the document isn't found", (done) => {
+    test("getPageBySlug will send a 404 status and an error if the document isn't found", (done) => {
       findOne.mockImplementationOnce(() => {
         return Promise.resolve(null);
       });
@@ -213,7 +224,9 @@ describe("MongoPageController", () => {
       };
 
       mpc.getPageBySlug(req, res)
-        .then(() => {
+        .then((result) => {
+          expect(result).toBe(404);
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -234,11 +247,12 @@ describe("MongoPageController", () => {
     test("getPageBySlug will send a 400 error if no parameters are sent", (done) => {
       mpc.getPageBySlug(req, res)
         .then((err) => {
+          expect(err).toBe("Invalid Page Data Sent");
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
           expect(findOne).toHaveBeenCalledTimes(0);
 
-          expect(err).toBe("Invalid Page Data Sent");
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -253,11 +267,12 @@ describe("MongoPageController", () => {
       req.params = {};
       mpc.getPageBySlug(req, res)
         .then((err) => {
+          expect(err).toBe("Invalid Page Data Sent");
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
           expect(findOne).toHaveBeenCalledTimes(0);
 
-          expect(err).toBe("Invalid Page Data Sent");
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -280,6 +295,8 @@ describe("MongoPageController", () => {
 
       mpc.getPageBySlug(req, res)
         .then((err) => {
+          expect(err).toBe(error);
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -290,7 +307,6 @@ describe("MongoPageController", () => {
             enabled: true,
           });
 
-          expect(err).toBe(error);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
           expect(json).toHaveBeenCalledTimes(1);
@@ -329,11 +345,8 @@ describe("MongoPageController", () => {
       };
 
       mpc.getAllPages(req, res)
-        .then(() => {
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(200);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith(docs);
+        .then((result) => {
+          expect(result).toBe(200);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
@@ -342,6 +355,12 @@ describe("MongoPageController", () => {
           expect(findToArray).toHaveBeenCalledTimes(1);
           expect(find).toHaveBeenCalledTimes(1);
           expect(find).toHaveBeenCalledWith({});
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(200);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith(docs);
+
           done();
         });
     });
@@ -363,17 +382,20 @@ describe("MongoPageController", () => {
       });
 
       mpc.getAllPages(req, res)
-        .then(() => {
+        .then((result) => {
+          expect(result).toBe(200);
           req._authData = {};
 
           return mpc.getAllPages(req, res);
         })
-        .then(() => {
+        .then((result) => {
+          expect(result).toBe(200);
           req._authData = { userType: 'viewer' };
 
           return mpc.getAllPages(req, res);
         })
-        .then(() => {
+        .then((result) => {
+          expect(result).toBe(200);
           expect(find).toHaveBeenCalledTimes(3);
           expect(find).toHaveBeenNthCalledWith(1, { enabled: true });
           expect(find).toHaveBeenNthCalledWith(2, { enabled: true });
@@ -394,13 +416,15 @@ describe("MongoPageController", () => {
 
     });
 
-    test("getAllPages will send a 200 status code and an empty object if no documents exist", (done) => {
+    test("getAllPages will send a 200 status code and an empty array if no documents exist", (done) => {
       findToArray.mockImplementationOnce(() => {
         return Promise.resolve(null);
       });
 
       mpc.getAllPages(req, res)
-        .then(() => {
+        .then((result) => {
+          expect(result).toBe(200);
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -414,7 +438,7 @@ describe("MongoPageController", () => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith();
+          expect(json).toHaveBeenCalledWith([]);
           done();
         });
     });
@@ -426,6 +450,8 @@ describe("MongoPageController", () => {
 
       mpc.getAllPages(req, res)
         .then((err) => {
+          expect(err).toBe(errorText);
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -436,7 +462,6 @@ describe("MongoPageController", () => {
             enabled: true,
           });
 
-          expect(err).toBe(errorText);
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
           expect(json).toHaveBeenCalledWith({ error: "Database Error" });
@@ -448,6 +473,15 @@ describe("MongoPageController", () => {
   });
 
   describe("addPage", () => {
+    let checkUserSpy;
+    let extractSpy;
+    let checkPageSpy;
+
+    beforeEach(() => {
+      checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
+      extractSpy = jest.spyOn(mpc, "extractPageData");
+      checkPageSpy = jest.spyOn(mpc, "checkPageData");
+    });
 
     test("addPage will send a 200 response and send the contents of the new page to the user. The function will run insertOne", (done) => {
       const newPage = {
@@ -457,10 +491,6 @@ describe("MongoPageController", () => {
         content: [],
       };
 
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
-      const checkPageSpy = jest.spyOn(mpc, "checkPageData");
-
       req.body = {
         page: newPage,
       };
@@ -469,7 +499,9 @@ describe("MongoPageController", () => {
       };
 
       mpc.addPage(req, res)
-        .then(() => {
+        .then((result) => {
+          expect(result).toBe(200);
+
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
@@ -486,11 +518,13 @@ describe("MongoPageController", () => {
             dateAdded: expect.any(Number),
             dateUpdated: expect.any(Number),
           });
+
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
             ...newPage,
+            id: testId,
             dateAdded: expect.any(Number),
             dateUpdated: expect.any(Number),
           });
@@ -507,10 +541,6 @@ describe("MongoPageController", () => {
         content: [],
       };
 
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
-      const checkPageSpy = jest.spyOn(mpc, "checkPageData");
-
       req.body = {
         page: newPage,
       };
@@ -521,6 +551,7 @@ describe("MongoPageController", () => {
       mpc.addPage(req, res)
         .then((err) => {
           expect(err).toBe("Access Denied");
+
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(0);
@@ -528,6 +559,7 @@ describe("MongoPageController", () => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
           expect(insertOne).toHaveBeenCalledTimes(0);
+
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(401);
           expect(json).toHaveBeenCalledTimes(1);
@@ -537,10 +569,6 @@ describe("MongoPageController", () => {
     });
 
     test("If there's no page data included in the request, addPage will throw an error and send a 400 error", (done) => {
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
-      const checkPageSpy = jest.spyOn(mpc, "checkPageData");
-
       req._authData = {
         userType: 'editor',
       };
@@ -550,14 +578,17 @@ describe("MongoPageController", () => {
       mpc.addPage(req, res)
         .then((err) => {
           expect(err).toBe(error);
+
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
           expect(checkPageSpy).toHaveBeenCalledTimes(0);
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
           expect(insertOne).toHaveBeenCalledTimes(0);
+
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -574,105 +605,74 @@ describe("MongoPageController", () => {
         content: [],
       };
 
-      const newPage1 = { ...newPage };
-      const newPage2 = { ...newPage };
-      const newPage3 = { ...newPage };
-      const newPage4 = { ...newPage };
-      const newPage5 = { ...newPage };
-      const newPage6 = { ...newPage };
-      const newPage7 = { ...newPage };
-      const newPage8 = { ...newPage };
+      const pages = [];
+      for (let x = 0; x < 11; ++x) {
+        pages[x] = { page: { ...newPage } };
+      }
 
-      delete newPage1.name;
-      delete newPage2.enabled;
-      delete newPage3.slug;
-      delete newPage4.content;
-      newPage5.slug = "(*&^%";
-      newPage6.name = "";
-      newPage7.enabled = "true";
-      newPage8.content = "true";
+      delete pages[0].page.name;
+      delete pages[1].page.enabled;
+      delete pages[2].page.slug;
+      delete pages[3].page.content;
+      pages[4].page.slug = "(*&^%";
+      pages[5].page.name = "";
+      pages[6].page.enabled = "true";
+      pages[7].page.content = "true";
+      pages[8].page.slug = "";
+      pages[9].page.slug = longString;
+      pages[10].page.name = longString;
 
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
-      const checkPageSpy = jest.spyOn(mpc, "checkPageData");
+      pages[0].error = "Invalid Parameters sent";
+      pages[1].error = "Invalid Parameters sent";
+      pages[2].error = "Invalid Parameters sent";
+      pages[3].error = "Invalid Parameters sent";
+      pages[4].error = "Invalid Characters in Slug";
+      pages[5].error = "Invalid Name Length";
+      pages[6].error = "Invalid Page Data (Enabled)";
+      pages[7].error = "Invalid Page Data";
+      pages[8].error = "Invalid Slug Length";
+      pages[9].error = "Invalid Slug Length";
+      pages[10].error = "Invalid Name Length";
 
       req._authData = {
         userType: 'admin',
       };
 
-      const req1 = { ...req, body: { page: newPage1 } };
-      const req2 = { ...req, body: { page: newPage2 } };
-      const req3 = { ...req, body: { page: newPage3 } };
-      const req4 = { ...req, body: { page: newPage4 } };
-      const req5 = { ...req, body: { page: newPage5 } };
-      const req6 = { ...req, body: { page: newPage6 } };
-      const req7 = { ...req, body: { page: newPage7 } };
-      const req8 = { ...req, body: { page: newPage8 } };
+      const requests = [];
+      const promises = [];
 
-      const p1 = mpc.addPage(req1, res).then((err) => { expect(err).toBe("Invalid Parameters sent"); });
-      const p2 = mpc.addPage(req2, res).then((err) => { expect(err).toBe("Invalid Parameters sent"); });
-      const p3 = mpc.addPage(req3, res).then((err) => { expect(err).toBe("Invalid Parameters sent"); });
-      const p4 = mpc.addPage(req4, res).then((err) => { expect(err).toBe("Invalid Parameters sent"); });
-      const p5 = mpc.addPage(req5, res).then((err) => { expect(err).toBe("Invalid Page Slug"); });
-      const p6 = mpc.addPage(req6, res).then((err) => { expect(err).toBe("Invalid Page Name"); });
-      const p7 = mpc.addPage(req7, res).then((err) => { expect(err).toBe("Invalid Page Data (Enabled)"); });
-      const p8 = mpc.addPage(req8, res).then((err) => { expect(err).toBe("Invalid Page Data"); });
+      for (let x = 0, len = pages.length; x < len; ++x) {
+        const { page, error } = pages[x];
 
-      Promise.all([p1, p2, p3, p4, p5, p6, p7, p8])
+        requests[x] = { ...req, body: { page } };
+        promises[x] = mpc.addPage(requests[x], res).then((err) => {
+          expect(err).toBe(error);
+        });
+      }
+
+      Promise.all(promises)
         .then(() => {
-          expect(checkUserSpy).toHaveBeenCalledTimes(8);
-          expect(checkUserSpy).toHaveBeenNthCalledWith(1, req._authData);
-          expect(checkUserSpy).toHaveBeenNthCalledWith(2, req._authData);
-          expect(checkUserSpy).toHaveBeenNthCalledWith(3, req._authData);
-          expect(checkUserSpy).toHaveBeenNthCalledWith(4, req._authData);
-          expect(checkUserSpy).toHaveBeenNthCalledWith(5, req._authData);
-          expect(checkUserSpy).toHaveBeenNthCalledWith(6, req._authData);
-          expect(checkUserSpy).toHaveBeenNthCalledWith(7, req._authData);
-          expect(checkUserSpy).toHaveBeenNthCalledWith(8, req._authData);
-
-          expect(extractSpy).toHaveBeenCalledTimes(8);
-          expect(extractSpy).toHaveBeenNthCalledWith(1, req1);
-          expect(extractSpy).toHaveBeenNthCalledWith(2, req2);
-          expect(extractSpy).toHaveBeenNthCalledWith(3, req3);
-          expect(extractSpy).toHaveBeenNthCalledWith(4, req4);
-          expect(extractSpy).toHaveBeenNthCalledWith(5, req5);
-          expect(extractSpy).toHaveBeenNthCalledWith(6, req6);
-          expect(extractSpy).toHaveBeenNthCalledWith(7, req7);
-          expect(extractSpy).toHaveBeenNthCalledWith(8, req8);
-
-          expect(checkPageSpy).toHaveBeenCalledTimes(8);
-          expect(checkPageSpy).toHaveBeenNthCalledWith(1, newPage1);
-          expect(checkPageSpy).toHaveBeenNthCalledWith(2, newPage2);
-          expect(checkPageSpy).toHaveBeenNthCalledWith(3, newPage3);
-          expect(checkPageSpy).toHaveBeenNthCalledWith(4, newPage4);
-          expect(checkPageSpy).toHaveBeenNthCalledWith(5, newPage5);
-          expect(checkPageSpy).toHaveBeenNthCalledWith(6, newPage6);
-          expect(checkPageSpy).toHaveBeenNthCalledWith(7, newPage7);
-          expect(checkPageSpy).toHaveBeenNthCalledWith(8, newPage8);
+          const totalRequests = pages.length;
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
           expect(insertOne).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(8);
-          expect(status).toHaveBeenNthCalledWith(1, 400);
-          expect(status).toHaveBeenNthCalledWith(2, 400);
-          expect(status).toHaveBeenNthCalledWith(3, 400);
-          expect(status).toHaveBeenNthCalledWith(4, 400);
-          expect(status).toHaveBeenNthCalledWith(5, 400);
-          expect(status).toHaveBeenNthCalledWith(6, 400);
-          expect(status).toHaveBeenNthCalledWith(7, 400);
-          expect(status).toHaveBeenNthCalledWith(8, 400);
+          expect(checkUserSpy).toHaveBeenCalledTimes(totalRequests);
+          expect(extractSpy).toHaveBeenCalledTimes(totalRequests);
+          expect(checkPageSpy).toHaveBeenCalledTimes(totalRequests);
+          expect(status).toHaveBeenCalledTimes(totalRequests);
+          expect(json).toHaveBeenCalledTimes(totalRequests);
 
-          expect(json).toHaveBeenCalledTimes(8);
-          expect(json).toHaveBeenNthCalledWith(1, { error: "Invalid Parameters sent" });
-          expect(json).toHaveBeenNthCalledWith(2, { error: "Invalid Parameters sent" });
-          expect(json).toHaveBeenNthCalledWith(3, { error: "Invalid Parameters sent" });
-          expect(json).toHaveBeenNthCalledWith(4, { error: "Invalid Parameters sent" });
-          expect(json).toHaveBeenNthCalledWith(5, { error: "Invalid Page Slug" });
-          expect(json).toHaveBeenNthCalledWith(6, { error: "Invalid Page Name" });
-          expect(json).toHaveBeenNthCalledWith(7, { error: "Invalid Page Data (Enabled)" });
-          expect(json).toHaveBeenNthCalledWith(8, { error: "Invalid Page Data" });
+          for (let x = 0; x < totalRequests; ++x) {
+            const { page, error } = pages[x];
+            expect(checkUserSpy).toHaveBeenNthCalledWith(x + 1, req._authData);
+            expect(extractSpy).toHaveBeenNthCalledWith(x + 1, requests[x]);
+            expect(checkPageSpy).toHaveBeenNthCalledWith(x + 1, page);
+            expect(status).toHaveBeenNthCalledWith(x + 1, 400);
+            expect(json).toHaveBeenNthCalledWith(x + 1, { error });
+          }
+
           done();
         });
     });
@@ -690,10 +690,6 @@ describe("MongoPageController", () => {
         content: [],
       };
 
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
-      const checkPageSpy = jest.spyOn(mpc, "checkPageData");
-
       req.body = {
         page: newPage,
       };
@@ -704,12 +700,14 @@ describe("MongoPageController", () => {
       mpc.addPage(req, res)
         .then((err) => {
           expect(err).toBe(error);
+
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
           expect(checkPageSpy).toHaveBeenCalledTimes(1);
           expect(checkPageSpy).toHaveBeenCalledWith(newPage);
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -720,6 +718,7 @@ describe("MongoPageController", () => {
             dateAdded: expect.any(Number),
             dateUpdated: expect.any(Number),
           });
+
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
           expect(json).toHaveBeenCalledTimes(1);
@@ -745,10 +744,6 @@ describe("MongoPageController", () => {
         content: [],
       };
 
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
-      const checkPageSpy = jest.spyOn(mpc, "checkPageData");
-
       req.body = {
         page: newPage,
       };
@@ -759,12 +754,14 @@ describe("MongoPageController", () => {
       mpc.addPage(req, res)
         .then((err) => {
           expect(err).toBe(error);
+
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
           expect(checkPageSpy).toHaveBeenCalledTimes(1);
           expect(checkPageSpy).toHaveBeenCalledWith(newPage);
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -775,8 +772,9 @@ describe("MongoPageController", () => {
             dateAdded: expect.any(Number),
             dateUpdated: expect.any(Number),
           });
+
           expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(401);
+          expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
             error: "Page Slug Already Exists",
@@ -788,6 +786,13 @@ describe("MongoPageController", () => {
   });
 
   describe("editPage", () => {
+    let checkUserSpy;
+    let extractSpy;
+
+    beforeEach(() => {
+      checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
+      extractSpy = jest.spyOn(mpc, "extractPageData");
+    });
 
     test("editPage will send a 200 response and send the contents of the new page to the user. The function will run insertOne", (done) => {
       const editPage = {
@@ -795,6 +800,7 @@ describe("MongoPageController", () => {
         enabled: true,
         slug: "name",
         content: [],
+        meta: {},
       };
 
       const testObjectId = 69696969;
@@ -802,13 +808,11 @@ describe("MongoPageController", () => {
         return testObjectId;
       });
 
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
-      const checkPageSpy = jest.spyOn(mpc, "checkPageData");
+      const id = 123;
 
       req.body = {
         page: {
-          id: 123,
+          id,
           ...editPage,
         },
       };
@@ -817,13 +821,12 @@ describe("MongoPageController", () => {
       };
 
       mpc.editPage(req, res)
-        .then(() => {
+        .then((result) => {
+          expect(result).toBe(200);
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
-          expect(checkPageSpy).toHaveBeenCalledTimes(1);
-          expect(checkPageSpy).toHaveBeenCalledWith(req.body.page);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -845,6 +848,7 @@ describe("MongoPageController", () => {
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
             ...editPage,
+            id,
             dateUpdated: expect.any(Number),
           });
           done();
@@ -859,10 +863,6 @@ describe("MongoPageController", () => {
         content: [],
       };
 
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
-      const checkPageSpy = jest.spyOn(mpc, "checkPageData");
-
       req.body = {
         page: {
           id: 123,
@@ -876,26 +876,25 @@ describe("MongoPageController", () => {
       mpc.editPage(req, res)
         .then((err) => {
           expect(err).toBe("Access Denied");
+
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(0);
-          expect(checkPageSpy).toHaveBeenCalledTimes(0);
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
           expect(insertOne).toHaveBeenCalledTimes(0);
+
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(401);
           expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: "" });
+          expect(json).toHaveBeenCalledWith({ error: err });
+
           done();
         });
     });
 
     test("If no page data is included, editPage will return an error and send a 400 error", (done) => {
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
-      const checkPageSpy = jest.spyOn(mpc, "checkPageData");
-
       req._authData = {
         userType: 'editor',
       };
@@ -905,14 +904,16 @@ describe("MongoPageController", () => {
       mpc.editPage(req, res)
         .then((err) => {
           expect(err).toBe(error);
+
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
-          expect(checkPageSpy).toHaveBeenCalledTimes(0);
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
           expect(insertOne).toHaveBeenCalledTimes(0);
+
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
@@ -929,10 +930,6 @@ describe("MongoPageController", () => {
         content: [],
       };
 
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
-      const checkPageSpy = jest.spyOn(mpc, "checkPageData");
-
       req.body = {
         page: editPage,
       };
@@ -945,135 +942,79 @@ describe("MongoPageController", () => {
       mpc.editPage(req, res)
         .then((err) => {
           expect(err).toBe(error);
+
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
-          expect(checkPageSpy).toHaveBeenCalledTimes(0);
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
           expect(insertOne).toHaveBeenCalledTimes(0);
+
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({ error });
+
           done();
         });
     });
 
     test("If the page data included in the request dones't include required data or the data is invalid, editPage will throw an error and send a 400 error", (done) => {
-      const editPage = {
-        name: "name",
-        enabled: true,
-        slug: "name",
-        content: [],
-      };
+      const pages = [
+        { page: { name: "" }, error: "Invalid Name Length" },
+        { page: { name: longString }, error: "Invalid Name Length" },
+        { page: { name: null }, error: "Invalid Name Type" },
+        { page: { enabled: "true" }, error: "Invalid Enabled Data Type" },
+        { page: { enabled: null }, error: "Invalid Enabled Data Type" },
+        { page: { slug: "" }, error: "Invalid Slug Length" },
+        { page: { slug: "!" }, error: "Invalid Characters in Slug" },
+        { page: { slug: longString }, error: "Invalid Slug Length" },
+        { page: { slug: null }, error: "Invalid Slug Type" },
+        { page: { content: {} }, error: "Invalid Content Data Type" },
+        { page: { content: null }, error: "Invalid Content Data Type" },
+        { page: { meta: null }, error: "Invalid Meta Data Type" },
+        { page: { meta: [] }, error: "Invalid Meta Data Type" },
+      ];
 
-      const editPage1 = { ...editPage };
-      const editPage2 = { ...editPage };
-      const editPage3 = { ...editPage };
-      const editPage4 = { ...editPage };
-      const editPage5 = { ...editPage };
-      const editPage6 = { ...editPage };
-      const editPage7 = { ...editPage };
-      const editPage8 = { ...editPage };
-
-      delete editPage1.name;
-      delete editPage2.enabled;
-      delete editPage3.slug;
-      delete editPage4.content;
-      editPage5.slug = "(*&^%";
-      editPage6.name = "";
-      editPage7.enabled = "true";
-      editPage8.content = "true";
-
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
-      const checkPageSpy = jest.spyOn(mpc, "checkPageData");
-
-      req.body = {
-        page: {
-          id: 123,
-          ...editPage,
-        },
-      };
       req._authData = {
         userType: 'admin',
       };
 
-      const req1 = { ...req, body: { page: { id: 123, ...editPage1 } } };
-      const req2 = { ...req, body: { page: { id: 123, ...editPage2 } } };
-      const req3 = { ...req, body: { page: { id: 123, ...editPage3 } } };
-      const req4 = { ...req, body: { page: { id: 123, ...editPage4 } } };
-      const req5 = { ...req, body: { page: { id: 123, ...editPage5 } } };
-      const req6 = { ...req, body: { page: { id: 123, ...editPage6 } } };
-      const req7 = { ...req, body: { page: { id: 123, ...editPage7 } } };
-      const req8 = { ...req, body: { page: { id: 123, ...editPage8 } } };
+      const requests = [];
+      const promises = [];
+      for (let x = 0, len = pages.length; x < len; ++x) {
+        const { page, error } = pages[x];
 
-      const p1 = mpc.editPage(req1, res).then((err) => { expect(err).toBe("Invalid Parameters sent"); });
-      const p2 = mpc.editPage(req2, res).then((err) => { expect(err).toBe("Invalid Parameters sent"); });
-      const p3 = mpc.editPage(req3, res).then((err) => { expect(err).toBe("Invalid Parameters sent"); });
-      const p4 = mpc.editPage(req4, res).then((err) => { expect(err).toBe("Invalid Parameters sent"); });
-      const p5 = mpc.editPage(req5, res).then((err) => { expect(err).toBe("Invalid Page Slug"); });
-      const p6 = mpc.editPage(req6, res).then((err) => { expect(err).toBe("Invalid Page Name"); });
-      const p7 = mpc.editPage(req7, res).then((err) => { expect(err).toBe("Invalid Page Data (Enabled)"); });
-      const p8 = mpc.editPage(req8, res).then((err) => { expect(err).toBe("Invalid Page Data"); });
+        requests[x] = { ...req, body: { page: { id: 123, ...page } } };
+        promises[x] = mpc.editPage(requests[x], res).then((err) => {
+          expect(err).toBe(error);
+        });
+      }
 
-      Promise.all([p1, p2, p3, p4, p5, p6, p7, p8])
+      Promise.all(promises)
         .then(() => {
-          expect(checkUserSpy).toHaveBeenCalledTimes(8);
-          expect(checkUserSpy).toHaveBeenNthCalledWith(1, req._authData);
-          expect(checkUserSpy).toHaveBeenNthCalledWith(2, req._authData);
-          expect(checkUserSpy).toHaveBeenNthCalledWith(3, req._authData);
-          expect(checkUserSpy).toHaveBeenNthCalledWith(4, req._authData);
-          expect(checkUserSpy).toHaveBeenNthCalledWith(5, req._authData);
-          expect(checkUserSpy).toHaveBeenNthCalledWith(6, req._authData);
-          expect(checkUserSpy).toHaveBeenNthCalledWith(7, req._authData);
-          expect(checkUserSpy).toHaveBeenNthCalledWith(8, req._authData);
-
-          expect(extractSpy).toHaveBeenCalledTimes(8);
-          expect(extractSpy).toHaveBeenNthCalledWith(1, req1);
-          expect(extractSpy).toHaveBeenNthCalledWith(2, req2);
-          expect(extractSpy).toHaveBeenNthCalledWith(3, req3);
-          expect(extractSpy).toHaveBeenNthCalledWith(4, req4);
-          expect(extractSpy).toHaveBeenNthCalledWith(5, req5);
-          expect(extractSpy).toHaveBeenNthCalledWith(6, req6);
-          expect(extractSpy).toHaveBeenNthCalledWith(7, req7);
-          expect(extractSpy).toHaveBeenNthCalledWith(8, req8);
-
-          expect(checkPageSpy).toHaveBeenCalledTimes(8);
-          expect(checkPageSpy).toHaveBeenNthCalledWith(1, req1.body.page);
-          expect(checkPageSpy).toHaveBeenNthCalledWith(2, req2.body.page);
-          expect(checkPageSpy).toHaveBeenNthCalledWith(3, req3.body.page);
-          expect(checkPageSpy).toHaveBeenNthCalledWith(4, req4.body.page);
-          expect(checkPageSpy).toHaveBeenNthCalledWith(5, req5.body.page);
-          expect(checkPageSpy).toHaveBeenNthCalledWith(6, req6.body.page);
-          expect(checkPageSpy).toHaveBeenNthCalledWith(7, req7.body.page);
-          expect(checkPageSpy).toHaveBeenNthCalledWith(8, req8.body.page);
-
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
           expect(insertOne).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(8);
-          expect(status).toHaveBeenNthCalledWith(1, 400);
-          expect(status).toHaveBeenNthCalledWith(2, 400);
-          expect(status).toHaveBeenNthCalledWith(3, 400);
-          expect(status).toHaveBeenNthCalledWith(4, 400);
-          expect(status).toHaveBeenNthCalledWith(5, 400);
-          expect(status).toHaveBeenNthCalledWith(6, 400);
-          expect(status).toHaveBeenNthCalledWith(7, 400);
-          expect(status).toHaveBeenNthCalledWith(8, 400);
+          const totalPages = pages.length;
 
-          expect(json).toHaveBeenCalledTimes(8);
-          expect(json).toHaveBeenNthCalledWith(1, { error: "Invalid Parameters sent" });
-          expect(json).toHaveBeenNthCalledWith(2, { error: "Invalid Parameters sent" });
-          expect(json).toHaveBeenNthCalledWith(3, { error: "Invalid Parameters sent" });
-          expect(json).toHaveBeenNthCalledWith(4, { error: "Invalid Parameters sent" });
-          expect(json).toHaveBeenNthCalledWith(5, { error: "Invalid Page Slug" });
-          expect(json).toHaveBeenNthCalledWith(6, { error: "Invalid Page Name" });
-          expect(json).toHaveBeenNthCalledWith(7, { error: "Invalid Page Data (Enabled)" });
-          expect(json).toHaveBeenNthCalledWith(8, { error: "Invalid Page Data" });
+          expect(checkUserSpy).toHaveBeenCalledTimes(totalPages);
+          expect(extractSpy).toHaveBeenCalledTimes(totalPages);
+          expect(status).toHaveBeenCalledTimes(totalPages);
+          expect(json).toHaveBeenCalledTimes(totalPages);
+          for (let x = 0, len = totalPages; x < len; ++x) {
+            const request = requests[x];
+            const { error } = pages[x];
+
+            expect(checkUserSpy).toHaveBeenNthCalledWith(x + 1, req._authData);
+            expect(extractSpy).toHaveBeenNthCalledWith(x + 1, request);
+            expect(status).toHaveBeenNthCalledWith(x + 1, 400);
+            expect(json).toHaveBeenNthCalledWith(x + 1, { error });
+          }
+
           done();
         });
     });
@@ -1091,10 +1032,6 @@ describe("MongoPageController", () => {
         content: [],
       };
 
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
-      const checkPageSpy = jest.spyOn(mpc, "checkPageData");
-
       req.body = {
         page: {
           id: 123,
@@ -1112,8 +1049,6 @@ describe("MongoPageController", () => {
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
-          expect(checkPageSpy).toHaveBeenCalledTimes(1);
-          expect(checkPageSpy).toHaveBeenCalledWith(req.body.page);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -1155,10 +1090,6 @@ describe("MongoPageController", () => {
         content: [],
       };
 
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
-      const checkPageSpy = jest.spyOn(mpc, "checkPageData");
-
       req.body = {
         page: {
           id: 123,
@@ -1176,8 +1107,7 @@ describe("MongoPageController", () => {
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
-          expect(checkPageSpy).toHaveBeenCalledTimes(1);
-          expect(checkPageSpy).toHaveBeenCalledWith(req.body.page);
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -1194,12 +1124,14 @@ describe("MongoPageController", () => {
               },
             }
           );
+
           expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(401);
+          expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
             error: "Page Slug Already Exists",
           });
+
           done();
         });
     });
@@ -1207,14 +1139,18 @@ describe("MongoPageController", () => {
   });
 
   describe("deletePage", () => {
+    let checkUserSpy;
+    let extractSpy;
+
+    beforeEach(() => {
+      checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
+      extractSpy = jest.spyOn(mpc, "extractPageData");
+    });
 
     test("deletePage will send a 200 response and send the contents of the new page to the user. The function will run insertOne", (done) => {
       const deletePage = {
         id: 123,
       };
-
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
 
       const testObjectId = 69696969;
       ObjectId.mockImplementationOnce(() => {
@@ -1229,11 +1165,14 @@ describe("MongoPageController", () => {
       };
 
       mpc.deletePage(req, res)
-        .then(() => {
+        .then((result) => {
+          expect(result).toBe(200);
+
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -1242,10 +1181,12 @@ describe("MongoPageController", () => {
           expect(deleteOne).toHaveBeenCalledWith({
             _id: testObjectId,
           });
+
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith();
+
           done();
         });
     });
@@ -1254,9 +1195,6 @@ describe("MongoPageController", () => {
       const deletePage = {
         id: 123,
       };
-
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
 
       const testObjectId = 69696969;
       ObjectId.mockImplementationOnce(() => {
@@ -1270,27 +1208,28 @@ describe("MongoPageController", () => {
         userType: 'viewer',
       };
 
+      const error = "Access Denied";
       mpc.deletePage(req, res)
         .then((err) => {
-          expect(err).toBe("Access Denied");
+          expect(err).toBe(error);
+
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(0);
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
           expect(insertOne).toHaveBeenCalledTimes(0);
+
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(401);
           expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: "" });
+          expect(json).toHaveBeenCalledWith({ error });
           done();
         });
     });
 
     test("If no page data is included, deletePage will throw an error and send a 400 error", (done) => {
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
-
       const testObjectId = 69696969;
       ObjectId.mockImplementationOnce(() => {
         return testObjectId;
@@ -1305,26 +1244,27 @@ describe("MongoPageController", () => {
       mpc.deletePage(req, res)
         .then((err) => {
           expect(err).toBe(error);
+
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
           expect(insertOne).toHaveBeenCalledTimes(0);
+
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({ error });
+
           done();
         });
     });
 
     test("If no id is included in the page data, deletePage will throw an error and send a 400 error", (done) => {
       const deletePage = {};
-
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
 
       const testObjectId = 69696969;
       ObjectId.mockImplementationOnce(() => {
@@ -1343,17 +1283,21 @@ describe("MongoPageController", () => {
       mpc.deletePage(req, res)
         .then((err) => {
           expect(err).toBe(error);
+
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
           expect(insertOne).toHaveBeenCalledTimes(0);
+
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({ error });
+
           done();
         });
     });
@@ -1367,9 +1311,6 @@ describe("MongoPageController", () => {
       const deletePage = {
         id: 123,
       };
-
-      const checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      const extractSpy = jest.spyOn(mpc, "extractPageData");
 
       const testObjectId = 69696969;
       ObjectId.mockImplementationOnce(() => {
@@ -1386,10 +1327,12 @@ describe("MongoPageController", () => {
       mpc.deletePage(req, res)
         .then((err) => {
           expect(err).toBe(error);
+
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
+
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
@@ -1398,12 +1341,14 @@ describe("MongoPageController", () => {
           expect(deleteOne).toHaveBeenCalledWith({
             _id: testObjectId,
           });
+
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
             error: "Error Deleting Page",
           });
+
           done();
         });
     });

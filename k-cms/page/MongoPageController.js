@@ -6,9 +6,12 @@ const {
   send404Error,
   send500Error,
   isObject,
+  isBoolean,
 } = require("../utilities");
 
 const PageController = require("./PageController");
+
+const pageDataNotProvided = "Page Data Not Provided";
 
 // PageController Object
 // db.type is a string that determines the type of database
@@ -64,16 +67,17 @@ class MongoPageController extends PageController {
     const collection = this.db.instance.db("kcms").collection("pages");
     return collection.findOne(findParams)
       .then((result) => {
-        if (result) {
-          res.status(200).json(result);
-          return;
+        if (!result) {
+          send404Error(res);
+          return 404;
         }
 
-        send404Error(res);
+        res.status(200).json(result);
+        return 200;
       })
       .catch((err) => {
-        console.log(err);
         send500Error(res, "Database Error");
+
         return err;
       });
   }
@@ -101,17 +105,19 @@ class MongoPageController extends PageController {
     return collection
       .find(findParams)
       .toArray()
-      .then((result) => {
-        if (result) {
-          res.status(200).json(result);
-          return;
+      .then((results) => {
+
+        if (results) {
+          res.status(200).json(results);
+        } else {
+          res.status(200).json([]);
         }
 
-        send404Error(res);
+        return 200;
       })
       .catch((err) => {
-        console.log(err);
         send500Error(res, "Database Error");
+
         return err;
       });
   }
@@ -125,16 +131,14 @@ class MongoPageController extends PageController {
    */
   addPage(req, res) {
     if (!this.checkAllowedUsersForSiteMod(req._authData)) {
-      console.log("Access Denied");
-      send401Error(res, "");
+      send401Error(res, "Access Denied");
       return Promise.resolve("Access Denied");
     }
 
     const pageData = this.extractPageData(req);
     if (!pageData) {
-      const err = "Invalid Page Data Sent";
-      send400Error(res, err);
-      return Promise.resolve(err);
+      send400Error(res, pageDataNotProvided);
+      return Promise.resolve(pageDataNotProvided);
     }
 
     const pageErr = this.checkPageData(pageData);
@@ -146,21 +150,44 @@ class MongoPageController extends PageController {
     const now = new Date().getTime();
 
     const collection = this.db.instance.db("kcms").collection("pages");
-    const setData = {
+    const newPage = {
       ...pageData,
       dateAdded: now,
       dateUpdated: now,
     };
-    return collection.insertOne(setData)
-      .then(() => {
-        res.status(200).json(setData);
+
+    const output = {
+      ...newPage,
+    };
+
+    return collection.insertOne(newPage)
+      .then((result) => {
+        if (isObject(result) && 'insertedCount' in result ) {
+          if (result.insertedCount > 0) {
+            // Assume that if insertedCount exists, insertedId also exists
+            output.id = result.insertedId.toString();
+
+            res.status(200).json(output);
+            return 200;
+          }
+
+          if (result.insertedCount > 0) {
+            const error = "Page Not Added";
+            send400Error(res, error);
+            return error;
+          }
+        }
+
+        const error = "Database Error: Improper Results Returned";
+        send500Error(res, error);
+        return error;
       })
       .catch((err) => {
         if ( isObject(err)
           && 'errmsg' in err
           && err.errmsg.indexOf("E11000" >= 0)
         ) {
-          send401Error(res, "Page Slug Already Exists");
+          send400Error(res, "Page Slug Already Exists");
         } else {
           send500Error(res, "Error Adding New Page");
         }
@@ -178,8 +205,9 @@ class MongoPageController extends PageController {
    */
   editPage(req, res) {
     if (!this.checkAllowedUsersForSiteMod(req._authData)) {
-      send401Error(res, "");
-      return Promise.resolve("Access Denied");
+      const err = "Access Denied";
+      send401Error(res, err);
+      return Promise.resolve(err);
     }
 
     const pageData = this.extractPageData(req);
@@ -195,17 +223,57 @@ class MongoPageController extends PageController {
       return Promise.resolve(err);
     }
 
-    const pageErr = this.checkPageData(pageData);
-    if (pageErr) {
-      send400Error(res, pageErr);
-      return Promise.resolve(pageErr);
+    if ('slug' in pageData) {
+      const slugErr = this.checkSlug(pageData.slug);
+      // We are only worrying about doing these actions if a slug was passed.
+      if (slugErr) {
+        send400Error(res, slugErr);
+        return Promise.resolve(slugErr);
+      }
+    }
+
+    if ('name' in pageData) {
+      const nameErr = this.checkName(pageData.name);
+      if (nameErr) {
+        send400Error(res, nameErr);
+        return Promise.resolve(nameErr);
+      }
+    }
+
+    if ('enabled' in pageData) {
+      if (!isBoolean(pageData.enabled)) {
+        const err = "Invalid Enabled Data Type";
+        send400Error(res, err);
+        return Promise.resolve(err);
+      }
+    }
+
+    if ('content' in pageData) {
+      if (!Array.isArray(pageData.content)) {
+        const err = "Invalid Content Data Type";
+        send400Error(res, err);
+        return Promise.resolve(err);
+      }
+    }
+
+    if ('meta' in pageData) {
+      if (!isObject(pageData.meta)) {
+        const err = "Invalid Meta Data Type";
+        send400Error(res, err);
+        return Promise.resolve(err);
+      }
     }
 
     const now = new Date().getTime();
+
+    // Output contains all of the information passed into
     const setData = {
       ...pageData,
       dateUpdated: now,
     };
+
+    // We don't want to save the id to the MongoDB document as 'id', so we extract
+    // it out as a variable and remove it from the set data that's being updated
     const { id } = pageData;
     delete setData.id;
 
@@ -218,16 +286,38 @@ class MongoPageController extends PageController {
         $set: setData,
       }
     )
-      .then(() => {
-        res.status(200).json(setData);
+      .then((result) => {
+        if (isObject(result) && 'modifiedCount' in result ) {
+          if (result.modifiedCount > 0) {
+            const output = {
+              ...setData,
+              id,
+            };
+
+            // _id is automatically added by MongoDB, this line Removes the _id
+            // key to prevent confusion and make it similar to the MySQL controller.
+            delete output._id;
+            res.status(200).json(output);
+            return 200;
+          }
+
+          if (result.modifiedCount === 0) {
+            const error = "Page Not Updated";
+            send400Error(res, error);
+            return error;
+          }
+        }
+
+        const error = "Database Error: Improper Results Returned";
+        send500Error(res, error);
+        return error;
       })
       .catch((err) => {
-        // console.log(err);
         if ( isObject(err)
           && 'errmsg' in err
           && err.errmsg.indexOf("E11000" >= 0)
         ) {
-          send401Error(res, "Page Slug Already Exists");
+          send400Error(res, "Page Slug Already Exists");
         } else {
           send500Error(res, "Error Editing Page");
         }
@@ -245,8 +335,9 @@ class MongoPageController extends PageController {
    */
   deletePage(req, res) {
     if (!this.checkAllowedUsersForSiteMod(req._authData)) {
-      send401Error(res, "");
-      return Promise.resolve("Access Denied");
+      const err = "Access Denied";
+      send401Error(res, err);
+      return Promise.resolve(err);
     }
 
     const pageData = this.extractPageData(req);
@@ -266,11 +357,26 @@ class MongoPageController extends PageController {
     return collection.deleteOne({
       _id: ObjectId(pageData.id),
     })
-      .then(() => {
-        res.status(200).json();
+      .then((result) => {
+        if (result.deletedCount > 0) {
+          res.status(200).json({
+            message: "Page Deleted Successfully",
+          });
+
+          return 200;
+        }
+
+        if (result.deletedCount === 0) {
+          const error = "Page Not Deleted";
+          send400Error(res, error);
+          return error;
+        }
+
+        const error = "Database Error: Improper Results Returned";
+        send500Error(res, error);
+        return error;
       })
       .catch((err) => {
-        console.log(err);
         send500Error(res, "Error Deleting Page");
         return err;
       });

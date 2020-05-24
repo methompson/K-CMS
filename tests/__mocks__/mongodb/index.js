@@ -7,6 +7,7 @@ const {
   insertOne,
   updateOne,
   collection,
+  testId,
 } = require("./MongoClient");
 const ObjectId = require("./ObjectId");
 
@@ -20,4 +21,5 @@ module.exports = {
   updateOne,
   collection,
   ObjectId,
+  testId,
 };

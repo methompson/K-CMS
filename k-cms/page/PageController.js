@@ -93,16 +93,18 @@ class PageController {
     }
 
     // Then we'll check that the slug is correct:
-    if (!isString(pageData.name) || pageData.name.length < 1) {
-      return "Invalid Page Name";
+    const nameErr = this.checkName(pageData.name);
+    if (nameErr) {
+      return nameErr;
     }
 
     if (!isBoolean(pageData.enabled)) {
       return "Invalid Page Data (Enabled)";
     }
 
-    if (!isString(pageData.slug) || pageData.slug.length < 1 || !this.checkSlug(pageData.slug)) {
-      return "Invalid Page Slug";
+    const slugErr = this.checkSlug(pageData.slug);
+    if (slugErr) {
+      return slugErr;
     }
 
     if (!Array.isArray(pageData.content)) {
@@ -122,8 +124,12 @@ class PageController {
    * @param {String} slug the slug string to check
    */
   checkSlug(slug) {
-    if (!isString(slug) || slug.length < 1) {
-      return false;
+    if (!isString(slug)) {
+      return "Invalid Slug Type";
+    }
+
+    if (slug.length < 1 || slug.length > 512) {
+      return "Invalid Slug Length";
     }
 
     const regex = RegExp(/[^a-z0-9-]+/g);
@@ -131,7 +137,23 @@ class PageController {
     // We return not regex.test because if the regular expression is set up to return true if it
     // finds any illegal characters. We want checkSlug to return true if the slug is valid.
     // Thus, if regex.test returns true, the slug is not valid.
-    return !regex.test(slug);
+    if (regex.test(slug)) {
+      return "Invalid Characters in Slug";
+    }
+
+    return null;
+  }
+
+  checkName(name) {
+    if (!isString(name)) {
+      return "Invalid Name Type";
+    }
+
+    if (name.length < 1 || name.length > 512) {
+      return "Invalid Name Length";
+    }
+
+    return null;
   }
 
   // Interfaces to be defined on a per-database basis
