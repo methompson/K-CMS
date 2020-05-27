@@ -18,6 +18,7 @@ const UserController = require("./UserController");
 const invalidCredentials = "Invalid Credentials";
 const invalidUserId = "Invalid User Id";
 const userDataNotProvided = "User Data Not Provided";
+const accessDenied = "Access Denied";
 
 class MongoUserController extends UserController {
   constructor(database, pluginHandler) {
@@ -103,6 +104,8 @@ class MongoUserController extends UserController {
         res.status(200).json({
           token,
         });
+
+        return 200;
       })
       .catch((err) => {
         this.pluginHandler.runLifecycleHook('loginFailed');
@@ -126,9 +129,8 @@ class MongoUserController extends UserController {
   getUser(req, res) {
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteInfo(req._authData)) {
-      const error = "Acccess Denied";
-      send401Error(res, error);
-      return Promise.resolve(error);
+      send401Error(res, accessDenied);
+      return Promise.resolve(accessDenied);
     }
 
     if (!('id' in req.params)) {
@@ -186,9 +188,8 @@ class MongoUserController extends UserController {
   getAllUsers(req, res) {
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteMod(req._authData)) {
-      const error = "Acccess Denied";
-      send401Error(res, error);
-      return Promise.resolve(error);
+      send401Error(res, accessDenied);
+      return Promise.resolve(accessDenied);
     }
 
     const page = isObject(req.params)
@@ -247,9 +248,8 @@ class MongoUserController extends UserController {
     const user = req._authData;
 
     if (!this.checkAllowedUsersForSiteMod(user)) {
-      const error = "Acccess Denied";
-      send401Error(res, error);
-      return Promise.resolve(error);
+      send401Error(res, accessDenied);
+      return Promise.resolve(accessDenied);
     }
 
     if (!isObject(req.body) || !('newUser' in req.body)) {
@@ -280,10 +280,6 @@ class MongoUserController extends UserController {
       newUser.enabled = true;
     }
 
-    const output = {
-      ...newUser,
-    };
-
     const collection = this.db.instance.db("kcms").collection("users");
 
     // We've set a unique constraint on the username field, so we can't add a username
@@ -304,7 +300,11 @@ class MongoUserController extends UserController {
         ) {
           // Assume that if insertedCount exists, insertedId also exists
           if (result.insertedCount > 0) {
-            output.id = result.insertedId.toString();
+            const output = {
+              message: "User Added Successfully",
+              id: result.insertedId.toString(),
+            };
+
             res.status(200).json(output);
             return 200;
           }
@@ -355,9 +355,8 @@ class MongoUserController extends UserController {
     const currentUser = req._authData;
 
     if (!this.checkAllowedUsersForSiteMod(currentUser)) {
-      const error = "Acccess Denied";
-      send401Error(res, error);
-      return Promise.resolve(error);
+      send401Error(res, accessDenied);
+      return Promise.resolve(accessDenied);
     }
 
     if ( !isObject(req.body)
@@ -375,8 +374,7 @@ class MongoUserController extends UserController {
     };
 
     let mongoId;
-    const idString = updatedUser.id;
-    delete updatedUser.id;
+    const idString = req.body.updatedUser.id;
     try {
       mongoId = ObjectId(idString);
     } catch (err) {
@@ -471,9 +469,8 @@ class MongoUserController extends UserController {
 
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteMod(user)) {
-      const error = "Acccess Denied";
-      send401Error(res, error);
-      return Promise.resolve(error);
+      send401Error(res, accessDenied);
+      return Promise.resolve(accessDenied);
     }
 
     // Check that the appropriate data was sent to the function

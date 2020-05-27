@@ -8,7 +8,7 @@ const endOnErrorMod = require("../../../../k-cms/utilities/endOnError");
 
 jest.mock("../../../../k-cms/utilities/endOnError", () => {
   const endOnError = jest.fn((err) => {
-    console.log(err);
+    // console.log(err);
   });
   return {
     endOnError,

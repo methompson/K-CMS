@@ -17,6 +17,7 @@ const UserController = require("./UserController");
 
 const invalidCredentials = "Invalid Credentials";
 const userDataNotProvided = "User Data Not Provided";
+const accessDenied = "Access Denied";
 
 class MySQLUserController extends UserController {
   constructor(database, pluginHandler) {
@@ -58,10 +59,9 @@ class MySQLUserController extends UserController {
       || !('username' in req.body)
       || !('password' in req.body)
     ) {
-      const err = "User Data Not Provided";
       this.pluginHandler.runLifecycleHook('loginFailed');
-      send401Error(res, err);
-      return Promise.resolve(err);
+      send401Error(res, userDataNotProvided);
+      return Promise.resolve(userDataNotProvided);
     }
     const { username, password } = req.body;
 
@@ -120,6 +120,8 @@ class MySQLUserController extends UserController {
         res.status(200).json({
           token,
         });
+
+        return 200;
       })
       .catch((err) => {
         if (err === invalidCredentials) {
@@ -142,9 +144,8 @@ class MySQLUserController extends UserController {
   getUser(req, res) {
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteInfo(req._authData)) {
-      const error = "Acccess Denied";
-      send401Error(res, error);
-      return Promise.resolve(error);
+      send401Error(res, accessDenied);
+      return Promise.resolve(accessDenied);
     }
 
     if (!('id' in req.params)) {
@@ -206,9 +207,8 @@ class MySQLUserController extends UserController {
   getAllUsers(req, res) {
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteMod(req._authData)) {
-      const error = "Acccess Denied";
-      send401Error(res, error);
-      return Promise.resolve(error);
+      send401Error(res, accessDenied);
+      return Promise.resolve(accessDenied);
     }
 
     const page = isObject(req.params)
@@ -284,9 +284,8 @@ class MySQLUserController extends UserController {
     const user = req._authData;
 
     if (!this.checkAllowedUsersForSiteMod(user)) {
-      const error = "Acccess Denied";
-      send401Error(res, error);
-      return Promise.resolve(error);
+      send401Error(res, accessDenied);
+      return Promise.resolve(accessDenied);
     }
 
     if (!isObject(req.body) || !('newUser' in req.body)) {
@@ -317,13 +316,6 @@ class MySQLUserController extends UserController {
       newUser.enabled = true;
     }
 
-    const output = {
-      username: newUser.username,
-      email: newUser.email,
-      userType: newUser.userType,
-      enabled: newUser.enabled,
-    };
-
     // We've set a unique constraint on the username field, so we can't add a username
     // that already exists.
     return bcrypt.hash(newUser.password, 12)
@@ -336,21 +328,18 @@ class MySQLUserController extends UserController {
           query += ", firstName";
           values += ", ?";
           queryParams.push(newUser.firstName);
-          output.firstName = newUser.firstName;
         }
 
         if ('lastName' in newUser) {
           query += ", lastName";
           values += ", ?";
           queryParams.push(newUser.lastName);
-          output.lastName = newUser.lastName;
         }
 
         if ('userMeta' in newUser) {
           query += ", userMeta";
           values += ", ?";
           queryParams.push(JSON.stringify(newUser.userMeta));
-          output.userMeta = newUser.userMeta;
         }
 
         const now = new Date();
@@ -358,8 +347,6 @@ class MySQLUserController extends UserController {
         values += ", ?, ?)";
         queryParams.push(now);
         queryParams.push(now);
-        output.dateAdded = now;
-        output.dateUpdated = now;
 
         const promisePool = this.db.instance.promise();
         return promisePool.execute(`${query} ${values}`, queryParams)
@@ -372,7 +359,7 @@ class MySQLUserController extends UserController {
 
               if (results.affectedRows > 0) {
                 res.status(200).json({
-                  ...output,
+                  message: "User Added Successfully",
                   id: results.insertId,
                 });
                 return 200;
@@ -424,9 +411,8 @@ class MySQLUserController extends UserController {
     const currentUser = req._authData;
 
     if (!this.checkAllowedUsersForSiteMod(currentUser)) {
-      const error = "Acccess Denied";
-      send401Error(res, error);
-      return Promise.resolve(error);
+      send401Error(res, accessDenied);
+      return Promise.resolve(accessDenied);
     }
 
     if ( !isObject(req.body)
@@ -434,9 +420,8 @@ class MySQLUserController extends UserController {
       || !('id' in req.body.updatedUser)
       || !('data' in req.body.updatedUser)
     ) {
-      const err = "User Data Not Provided";
-      send400Error(res, err);
-      return Promise.resolve(err);
+      send400Error(res, userDataNotProvided);
+      return Promise.resolve(userDataNotProvided);
     }
 
     const updatedUser = {
@@ -575,9 +560,8 @@ class MySQLUserController extends UserController {
 
     // Check that the user is allowed to perform this work
     if (!this.checkAllowedUsersForSiteMod(user)) {
-      const error = "Acccess Denied";
-      send401Error(res, error);
-      return Promise.resolve(error);
+      send401Error(res, accessDenied);
+      return Promise.resolve(accessDenied);
     }
 
     // Check that the appropriate data was sent to the function
@@ -585,9 +569,8 @@ class MySQLUserController extends UserController {
       || !('deletedUser' in req.body)
       || !('id' in req.body.deletedUser)
     ) {
-      const err = "User Data Not Provided";
-      send400Error(res, err);
-      return Promise.resolve(err);
+      send400Error(res, userDataNotProvided);
+      return Promise.resolve(userDataNotProvided);
     }
 
     // Check that the user isn't trying to delete themself and causing an issue
