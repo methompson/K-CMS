@@ -72,7 +72,7 @@ describe("makePageController", () => {
       expect(result.db).toBe(db);
     });
 
-    test("makePageController will return an instance of a MySQLPageController if you pass an appropriate object containing a database", () => {
+    test("makePageController will return an instance of a MySQLPageController if you pass an appropriate object containing a database with inappropriate PluginHandler objects", () => {
       let result;
 
       result = makePageController(db, {});

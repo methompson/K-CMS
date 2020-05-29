@@ -9,7 +9,7 @@ const MySQLUserController = require("../../../../k-cms/user/MySQLUserController"
 const endOnErrorMod = require("../../../../k-cms/utilities/endOnError");
 
 jest.mock("../../../../k-cms/utilities/endOnError", () => {
-  const endOnError = jest.fn((err) => {
+  const endOnError = jest.fn(() => {
     // console.log(err);
   });
   return {
@@ -122,7 +122,6 @@ describe("makeUserController", () => {
       instance: client,
     };
 
-    const ph = new PluginHandler();
     const userController = makeUserController(db, ph);
 
     expect(userController instanceof MongoUserController).toBe(false);
@@ -139,7 +138,6 @@ describe("makeUserController", () => {
       type: "mongo",
     };
 
-    const ph = new PluginHandler();
     const userController = makeUserController(db, ph);
 
     expect(userController instanceof MongoUserController).toBe(false);
@@ -156,7 +154,6 @@ describe("makeUserController", () => {
       type: "mongo",
     };
 
-    const ph = new PluginHandler();
     const userController = makeUserController(db, ph);
 
     expect(userController instanceof MongoUserController).toBe(false);
@@ -170,7 +167,6 @@ describe("makeUserController", () => {
       type: "mongodb",
     };
 
-    const ph = new PluginHandler();
     makeUserController(db, ph);
 
     expect(endOnError).toHaveBeenCalledTimes(1);
@@ -179,7 +175,6 @@ describe("makeUserController", () => {
 
   test("makeUserController will return null if there is no db object", () => {
     endOnError.mockClear();
-    const ph = new PluginHandler();
     const userController = makeUserController(null, ph);
 
     expect(endOnError).toHaveBeenCalledTimes(0);
@@ -192,7 +187,6 @@ describe("makeUserController", () => {
       type: "mongodb",
     };
 
-    const ph = new PluginHandler();
     makeUserController(db, ph);
 
     expect(endOnError).toHaveBeenCalledTimes(1);
