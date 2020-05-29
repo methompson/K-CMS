@@ -336,10 +336,12 @@ class MySQLUserController extends UserController {
           queryParams.push(newUser.lastName);
         }
 
+        query += ", userMeta";
+        values += ", ?";
         if ('userMeta' in newUser) {
-          query += ", userMeta";
-          values += ", ?";
           queryParams.push(JSON.stringify(newUser.userMeta));
+        } else {
+          queryParams.push(JSON.stringify({}));
         }
 
         const now = new Date();

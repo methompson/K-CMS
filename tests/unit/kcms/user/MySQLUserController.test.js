@@ -14,6 +14,7 @@ global.jwtSecret = jwtSecret;
 const invalidCredentials = "Invalid Credentials";
 const userDataNotProvided = "User Data Not Provided";
 const accessDenied = "Access Denied";
+const dbError = "Database Error: Improper Results Returned";
 
 jest.mock("http", () => {
   const json = jest.fn(() => {});
@@ -777,7 +778,7 @@ describe("MySQLUserController", () => {
   });
 
   describe("addUser", () => {
-    test("addUser will run bcrypt.hash, insertOne, send a 200 code and a specific message if a properly structured request is sent", (done) => {
+    test("addUser will run bcrypt.hash, insertOne, send a 200 code and a specific message if a properly structured request with required values is sent.", (done) => {
       req._authData = {
         userType: "admin",
       };
@@ -800,17 +801,108 @@ describe("MySQLUserController", () => {
 
       let sqlQuery = "INSERT INTO users (username, email, password, userType, enabled";
       let values = "VALUES (?, ?, ?, ?, ?";
+
+      sqlQuery += ", userMeta";
+      values += ", ?";
+
       const queryParams = [
         newUser.username,
         newUser.email,
         hashedPass,
         newUser.userType,
         newUser.enabled,
+        JSON.stringify({}),
         expect.any(Date),
         expect.any(Date),
       ];
       sqlQuery += ", dateAdded, dateUpdated)";
       values += ", ?, ?)";
+
+      const userId = 69;
+      mysql.execute.mockImplementationOnce(() => {
+        const results = {
+          affectedRows: 1,
+          insertId: userId,
+        };
+        return Promise.resolve([
+          results,
+        ]);
+      });
+
+      muc.addUser(req, res)
+        .then((result) => {
+          expect(result).toBe(200);
+
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+          expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(200);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            message: "User Added Successfully",
+            id: userId,
+          });
+
+          done();
+        });
+    });
+
+    test("addUser will run bcrypt.hash, insertOne, send a 200 code and a specific message if a properly structured request with all possible values is sent.", (done) => {
+      req._authData = {
+        userType: "admin",
+      };
+
+      const newUser = {
+        username: "test user",
+        firstName: "Test",
+        lastName: "User",
+        userMeta: {
+          sex: "male",
+        },
+        password: "test password",
+        email: "test@email.io",
+        userType: "viewer",
+        enabled: true,
+      };
+      req.body = {
+        newUser,
+      };
+
+      const hashedPass = "abc123_69";
+      bcrypt.hash.mockImplementationOnce(() => {
+        return Promise.resolve(hashedPass);
+      });
+
+      let sqlQuery = "INSERT INTO users (username, email, password, userType, enabled";
+      let values = "VALUES (?, ?, ?, ?, ?";
+
+      sqlQuery += ", firstName";
+      values += ", ?";
+      sqlQuery += ", lastName";
+      values += ", ?";
+      sqlQuery += ", userMeta";
+      values += ", ?";
+
+      sqlQuery += ", dateAdded, dateUpdated)";
+      values += ", ?, ?)";
+
+      const queryParams = [
+        newUser.username,
+        newUser.email,
+        hashedPass,
+        newUser.userType,
+        newUser.enabled,
+        newUser.firstName,
+        newUser.lastName,
+        JSON.stringify(newUser.userMeta),
+        expect.any(Date),
+        expect.any(Date),
+      ];
 
       const userId = 69;
       mysql.execute.mockImplementationOnce(() => {
@@ -869,12 +961,16 @@ describe("MySQLUserController", () => {
 
       let sqlQuery = "INSERT INTO users (username, email, password, userType, enabled";
       let values = "VALUES (?, ?, ?, ?, ?";
+      sqlQuery += ", userMeta";
+      values += ", ?";
+
       const queryParams = [
         newUser.username,
         newUser.email,
         hashedPass,
         "subscriber",
         true,
+        JSON.stringify({}),
         expect.any(Date),
         expect.any(Date),
       ];
@@ -1234,12 +1330,17 @@ describe("MySQLUserController", () => {
 
         sqlQuery = "INSERT INTO users (username, email, password, userType, enabled";
         values = "VALUES (?, ?, ?, ?, ?";
+
+        sqlQuery += ", userMeta";
+        values += ", ?";
+
         queryParams = [
           newUser.username,
           newUser.email,
           hashedPass,
           newUser.userType,
           newUser.enabled,
+          JSON.stringify({}),
           expect.any(Date),
           expect.any(Date),
         ];
@@ -1351,6 +1452,231 @@ describe("MySQLUserController", () => {
           });
       });
 
+      test("addUser will send a 500 error if execute doesn't resolve to an array", (done) => {
+        bcrypt.hash.mockImplementationOnce(() => {
+          return Promise.resolve(hashedPass);
+        });
+
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.resolve();
+        });
+
+        muc.addUser(req, res)
+          .then(() => {
+            // expect(result).toBe(dbError);
+
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
+
+            expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+            expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(500);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error: "Error Adding User",
+            });
+
+            done();
+          });
+      });
+
+      test("addUser will send a 500 error if execute resolves to an empty array", (done) => {
+        bcrypt.hash.mockImplementationOnce(() => {
+          return Promise.resolve(hashedPass);
+        });
+
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.resolve([]);
+        });
+
+        muc.addUser(req, res)
+          .then((result) => {
+            expect(result).toBe(dbError);
+
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
+
+            expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+            expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(500);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error: dbError,
+            });
+
+            done();
+          });
+      });
+
+      test("addUser will send a 500 error if execute resolves to a value that does not contain an object", (done) => {
+        bcrypt.hash.mockImplementationOnce(() => {
+          return Promise.resolve(hashedPass);
+        });
+
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.resolve([true]);
+        });
+
+        muc.addUser(req, res)
+          .then((result) => {
+            expect(result).toBe(dbError);
+
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
+
+            expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+            expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(500);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error: dbError,
+            });
+
+            done();
+          });
+      });
+
+      test("addUser will send a 500 error if execute resolves to a value that is an object, but affectedRows is not in the object", (done) => {
+        bcrypt.hash.mockImplementationOnce(() => {
+          return Promise.resolve(hashedPass);
+        });
+
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.resolve([{}]);
+        });
+
+        muc.addUser(req, res)
+          .then((result) => {
+            expect(result).toBe(dbError);
+
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
+
+            expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+            expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(500);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error: dbError,
+            });
+
+            done();
+          });
+      });
+
+      test("addUser will send a 500 error if execute resolves to a value that is an object, but affectedRows is not a number", (done) => {
+        bcrypt.hash.mockImplementationOnce(() => {
+          return Promise.resolve(hashedPass);
+        });
+
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.resolve([{
+            affectedRows: "1",
+          }]);
+        });
+
+        muc.addUser(req, res)
+          .then((result) => {
+            expect(result).toBe(dbError);
+
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
+
+            expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+            expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(500);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error: dbError,
+            });
+
+            done();
+          });
+      });
+
+      test("addUser will send a 500 error if execute resolves to a value that is an object and affectedRows is a number, but insertId is not in the object", (done) => {
+        bcrypt.hash.mockImplementationOnce(() => {
+          return Promise.resolve(hashedPass);
+        });
+
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.resolve([{
+            affectedRows: 1,
+          }]);
+        });
+
+        muc.addUser(req, res)
+          .then((result) => {
+            expect(result).toBe(dbError);
+
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
+
+            expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+            expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(500);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error: dbError,
+            });
+
+            done();
+          });
+      });
+
+      test("addUser will send a 400 error if execute resolves to a value that is an object and affectedRows is 0", (done) => {
+        bcrypt.hash.mockImplementationOnce(() => {
+          return Promise.resolve(hashedPass);
+        });
+
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.resolve([{
+            affectedRows: 0,
+            insertId: "1",
+          }]);
+        });
+
+        const error = "User Was Not Added";
+        muc.addUser(req, res)
+          .then((result) => {
+            expect(result).toBe(error);
+
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(`${sqlQuery} ${values}`, queryParams);
+
+            expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+            expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(400);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error,
+            });
+
+            done();
+          });
+      });
+
     });
 
   });
@@ -1368,6 +1694,12 @@ describe("MySQLUserController", () => {
         data: {
           username: "test user",
           password: "test password",
+          firstName: "Test",
+          lastName: "User",
+          email: "Test@test.test",
+          userMeta: {
+            sex: "male",
+          },
           userType: "viewer",
           enabled: true,
         },
@@ -1378,15 +1710,23 @@ describe("MySQLUserController", () => {
       const sqlQuery = "UPDATE users SET "
         + "username = ?, "
         + "password = ?, "
+        + "firstName = ?, "
+        + "lastName = ?, "
+        + "email = ?, "
         + "userType = ?, "
         + "enabled = ?, "
+        + "userMeta = ?, "
         + "dateUpdated = ? WHERE id = ?";
 
       const queryParams = [
         updatedUser.data.username,
         hashPass,
+        updatedUser.data.firstName,
+        updatedUser.data.lastName,
+        updatedUser.data.email,
         updatedUser.data.userType,
         updatedUser.data.enabled,
+        JSON.stringify(updatedUser.data.userMeta),
         expect.any(Date),
         updatedUser.id,
       ];
@@ -1416,6 +1756,63 @@ describe("MySQLUserController", () => {
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(1);
           expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(200);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            message: "User Updated Successfully",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 200 code and run updateOne even if no data is passed", (done) => {
+      req._authData = {
+        userType: "admin",
+      };
+
+      const userId = "69";
+      const updatedUser = {
+        id: userId,
+        data: {},
+      };
+
+      const hashPass = "hashed pass";
+
+      const sqlQuery = "UPDATE users SET "
+        + "dateUpdated = ? WHERE id = ?";
+
+      const queryParams = [
+        expect.any(Date),
+        updatedUser.id,
+      ];
+
+      req.body = {
+        updatedUser,
+      };
+
+      const queryResult = {
+        affectedRows: 1,
+      };
+      mysql.execute.mockImplementation(() => {
+        return Promise.resolve([queryResult]);
+      });
+
+      bcrypt.hash.mockImplementationOnce(() => {
+        return Promise.resolve(hashPass);
+      });
+
+      muc.editUser(req, res)
+        .then((result) => {
+          expect(result).toBe(200);
+
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
@@ -1708,24 +2105,19 @@ describe("MySQLUserController", () => {
         id: userId,
         data: {
           username: "test user",
-          password: "test password",
           userType: "viewer",
           enabled: true,
         },
       };
 
-      const hashPass = "hashed pass";
-
       const sqlQuery = "UPDATE users SET "
         + "username = ?, "
-        + "password = ?, "
         + "userType = ?, "
         + "enabled = ?, "
         + "dateUpdated = ? WHERE id = ?";
 
       const queryParams = [
         updatedUser.data.username,
-        hashPass,
         updatedUser.data.userType,
         updatedUser.data.enabled,
         expect.any(Date),
@@ -1742,15 +2134,11 @@ describe("MySQLUserController", () => {
         };
       });
 
-      test("editUser will send a 500 code if Execute throws a non-specific error", (done) => {
+      test("editUser will send a 500 code if execute throws a non-specific error", (done) => {
         const error = "Test Error";
 
         mysql.execute.mockImplementationOnce(() => {
           return Promise.reject(error);
-        });
-
-        bcrypt.hash.mockImplementationOnce(() => {
-          return Promise.resolve(hashPass);
         });
 
         muc.editUser(req, res)
@@ -1761,8 +2149,7 @@ describe("MySQLUserController", () => {
             expect(mysql.execute).toHaveBeenCalledTimes(1);
             expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
-            expect(bcrypt.hash).toHaveBeenCalledTimes(1);
-            expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+            expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
             expect(status).toHaveBeenCalledTimes(1);
             expect(status).toHaveBeenCalledWith(500);
@@ -1775,17 +2162,13 @@ describe("MySQLUserController", () => {
           });
       });
 
-      test("editUser will send a 401 code if execute throws a specific error re duplicate email", (done) => {
+      test("editUser will send a 400 code if execute throws a specific error re duplicate email", (done) => {
         const error = {
           code: "ER_DUP_ENTRY",
           message: "Duplicate entry 'test@test.test' for key 'users.email'",
         };
         mysql.execute.mockImplementationOnce(() => {
           return Promise.reject(error);
-        });
-
-        bcrypt.hash.mockImplementationOnce(() => {
-          return Promise.resolve(hashPass);
         });
 
         muc.editUser(req, res)
@@ -1796,8 +2179,7 @@ describe("MySQLUserController", () => {
             expect(mysql.execute).toHaveBeenCalledTimes(1);
             expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
-            expect(bcrypt.hash).toHaveBeenCalledTimes(1);
-            expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+            expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
             expect(status).toHaveBeenCalledTimes(1);
             expect(status).toHaveBeenCalledWith(400);
@@ -1810,17 +2192,13 @@ describe("MySQLUserController", () => {
           });
       });
 
-      test("editUser will send a 401 code if execute throws a specific error re duplicate username", (done) => {
+      test("editUser will send a 400 code if execute throws a specific error re duplicate username", (done) => {
         const error = {
           code: "ER_DUP_ENTRY",
           message: "Duplicate entry 'test@test.test' for key 'users.username'",
         };
         mysql.execute.mockImplementationOnce(() => {
           return Promise.reject(error);
-        });
-
-        bcrypt.hash.mockImplementationOnce(() => {
-          return Promise.resolve(hashPass);
         });
 
         muc.editUser(req, res)
@@ -1831,14 +2209,175 @@ describe("MySQLUserController", () => {
             expect(mysql.execute).toHaveBeenCalledTimes(1);
             expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
-            expect(bcrypt.hash).toHaveBeenCalledTimes(1);
-            expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+            expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
             expect(status).toHaveBeenCalledTimes(1);
             expect(status).toHaveBeenCalledWith(400);
             expect(json).toHaveBeenCalledTimes(1);
             expect(json).toHaveBeenCalledWith({
               error: "Username Already Exists",
+            });
+
+            done();
+          });
+      });
+
+      test("editUser will send a 500 code if execute doesn't resolve to an array", (done) => {
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.resolve();
+        });
+
+        muc.editUser(req, res)
+          .then(() => {
+            // expect(result).toBe(dbError);
+
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+            expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(500);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error: "Error Updating User",
+            });
+
+            done();
+          });
+      });
+
+      test("editUser will send a 500 code if execute resolves to an empty array", (done) => {
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.resolve([]);
+        });
+
+        muc.editUser(req, res)
+          .then((result) => {
+            expect(result).toBe(dbError);
+
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+            expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(500);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error: dbError,
+            });
+
+            done();
+          });
+      });
+
+      test("editUser will send a 500 code if execute resolves to an array where the first element isn't an object", (done) => {
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.resolve([true]);
+        });
+
+        muc.editUser(req, res)
+          .then((result) => {
+            expect(result).toBe(dbError);
+
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+            expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(500);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error: dbError,
+            });
+
+            done();
+          });
+      });
+
+      test("editUser will send a 500 code if execute resolves to an array where the first element is an object, but doesn't contain affectedRows", (done) => {
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.resolve([{}]);
+        });
+
+        muc.editUser(req, res)
+          .then((result) => {
+            expect(result).toBe(dbError);
+
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+            expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(500);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error: dbError,
+            });
+
+            done();
+          });
+      });
+
+      test("editUser will send a 500 code if execute resolves to an array where the first element is an object with affectedRows, but the value isn't a string", (done) => {
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.resolve([{
+            affectedRows: "1",
+          }]);
+        });
+
+        muc.editUser(req, res)
+          .then((result) => {
+            expect(result).toBe(dbError);
+
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+            expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(500);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error: dbError,
+            });
+
+            done();
+          });
+      });
+
+      test("editUser will send a 400 code if execute resolves to an array where the first element is an object with affectedRows, but its value is 0", (done) => {
+        mysql.execute.mockImplementationOnce(() => {
+          return Promise.resolve([{
+            affectedRows: 0,
+          }]);
+        });
+
+        const error = "User Was Not Updated";
+
+        muc.editUser(req, res)
+          .then((result) => {
+            expect(result).toBe(error);
+
+            expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledTimes(1);
+            expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+            expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(400);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error,
             });
 
             done();
@@ -2101,6 +2640,191 @@ describe("MySQLUserController", () => {
           expect(status).toHaveBeenCalledWith(500);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({ error: "Error Deleting User" });
+
+          done();
+        });
+
+    });
+
+    test("deleteUser will send a 500 error if execute doesn't resolve to an array", (done) => {
+      req._authData = {
+        userType: "admin",
+        id: 69,
+      };
+
+      const delId = 96;
+      req.body = {
+        deletedUser: {
+          id: delId,
+        },
+      };
+
+      mysql.execute.mockImplementationOnce(() => {
+        return Promise.resolve();
+      });
+
+      const queryParams = [delId];
+
+      muc.deleteUser(req, res)
+        .then(() => {
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(500);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error: "Error Deleting User" });
+
+          done();
+        });
+
+    });
+
+    test("deleteUser will send a 500 error if execute resolves to an empty array", (done) => {
+      req._authData = {
+        userType: "admin",
+        id: 69,
+      };
+
+      const delId = 96;
+      req.body = {
+        deletedUser: {
+          id: delId,
+        },
+      };
+
+      mysql.execute.mockImplementationOnce(() => {
+        return Promise.resolve([]);
+      });
+
+      const queryParams = [delId];
+
+      muc.deleteUser(req, res)
+        .then((result) => {
+          expect(result).toBe(dbError);
+
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(500);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error: dbError });
+
+          done();
+        });
+
+    });
+
+    test("deleteUser will send a 500 error if execute resolves to an array, but the first result is not an object", (done) => {
+      req._authData = {
+        userType: "admin",
+        id: 69,
+      };
+
+      const delId = 96;
+      req.body = {
+        deletedUser: {
+          id: delId,
+        },
+      };
+
+      mysql.execute.mockImplementationOnce(() => {
+        return Promise.resolve([true]);
+      });
+
+      const queryParams = [delId];
+
+      muc.deleteUser(req, res)
+        .then((result) => {
+          expect(result).toBe(dbError);
+
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(500);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error: dbError });
+
+          done();
+        });
+
+    });
+
+    test("deleteUser will send a 500 error if execute resolves to an array, the first result is an object, but affectedRows is not in the object", (done) => {
+      req._authData = {
+        userType: "admin",
+        id: 69,
+      };
+
+      const delId = 96;
+      req.body = {
+        deletedUser: {
+          id: delId,
+        },
+      };
+
+      mysql.execute.mockImplementationOnce(() => {
+        return Promise.resolve([{}]);
+      });
+
+      const queryParams = [delId];
+
+      muc.deleteUser(req, res)
+        .then((result) => {
+          expect(result).toBe(dbError);
+
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(500);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error: dbError });
+
+          done();
+        });
+
+    });
+
+    test("deleteUser will send a 500 error if execute resolves to an array, the first result is an object, affectedRows is in the object, the value is not a number", (done) => {
+      req._authData = {
+        userType: "admin",
+        id: 69,
+      };
+
+      const delId = 96;
+      req.body = {
+        deletedUser: {
+          id: delId,
+        },
+      };
+
+      mysql.execute.mockImplementationOnce(() => {
+        return Promise.resolve([{
+          affectedRows: "1",
+        }]);
+      });
+
+      const queryParams = [delId];
+
+      muc.deleteUser(req, res)
+        .then((result) => {
+          expect(result).toBe(dbError);
+
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(500);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({ error: dbError });
 
           done();
         });
