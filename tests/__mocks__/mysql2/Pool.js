@@ -1,4 +1,6 @@
-function Pool() {}
+function Pool(options) {
+  this.options = options;
+}
 
 const execute = jest.fn(() => {
   return Promise.resolve();

@@ -3,12 +3,15 @@ const KCMSPlugin = require("../../../plugin");
 describe("KCMSPlugin", () => {
   let pl;
   let opt;
+  let init;
 
   beforeEach(() => {
+    init = jest.fn(() => {});
     opt = {
       about: {},
       enabled: true,
       config: [],
+      init,
     };
 
     pl = new KCMSPlugin(opt);
@@ -21,6 +24,7 @@ describe("KCMSPlugin", () => {
       expect(pl.enabled).toBe(opt.enabled);
       expect(pl.config).toBe(opt.config);
       expect(pl.hooks).toMatchObject({});
+      expect(pl.init).toBe(init);
 
       const opt2 = {
         about: { title: "Title" },
@@ -32,17 +36,20 @@ describe("KCMSPlugin", () => {
       expect(pl.enabled).toBe(opt2.enabled);
       expect(pl.config).toBe(opt2.config);
       expect(pl.hooks).toMatchObject({});
+      expect(pl.init).toStrictEqual(expect.any(Function));
     });
 
-    test("When a new plugin is made without enabled or config in the options, a default enabled value and default config value will be set", () => {
+    test("When a new plugin is made without init, enabled or config in the options, a default enabled value and default config value will be set", () => {
       opt = {
         about: {},
       };
+
       pl = new KCMSPlugin(opt);
       expect(pl.about).toMatchObject(opt.about);
       expect(pl.enabled).toBe(true);
       expect(pl.config).toMatchObject([]);
       expect(pl.hooks).toMatchObject({});
+      expect(pl.init).toStrictEqual(expect.any(Function));
     });
 
     test("When a new plugin is made without an about value in the options object, a plugin won't have any defined parameters", () => {
@@ -191,6 +198,60 @@ describe("KCMSPlugin", () => {
       expect('enabled' in pl).toBe(false);
 
     });
+  });
+
+  describe("initializePlugin", () => {
+    test("Initialize Plugin will run a plugin's init function, if it exists", (done) => {
+      pl.initializePlugin()
+        .then(() => {
+          expect(init).toHaveBeenCalledTimes(1);
+          done();
+        });
+    });
+
+    test("Initialize plugin will return the value returned by the initialization function", (done) => {
+      const returnValue = "69";
+      const newInit = jest.fn(() => {
+        return returnValue;
+      });
+      opt.init = newInit;
+
+      const pl1 = new KCMSPlugin(opt);
+
+      pl1.initializePlugin()
+        .then((result) => {
+          expect(result).toBe(returnValue);
+          expect(newInit).toHaveBeenCalledTimes(1);
+
+          done();
+        });
+    });
+
+    test("If the init function was changed after the plugin was constructed, the plugin function will return null if the init member value is not a function", (done) => {
+      pl.init = true;
+
+      pl.initializePlugin()
+        .then((result) => {
+          expect(result).toBe(null);
+          expect(init).toHaveBeenCalledTimes(0);
+
+          done();
+        });
+    });
+
+    test("If a plugin is generated without an init function, it will still run and won't return null", (done) => {
+      delete opt.init;
+
+      pl = new KCMSPlugin(opt);
+
+      pl.initializePlugin()
+        .then((result) => {
+          expect(result).not.toBe(null);
+
+          done();
+        });
+    });
+
   });
 
   describe("addHook", () => {

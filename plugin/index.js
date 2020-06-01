@@ -1,4 +1,4 @@
-const { isString, isFunction } = require("../k-cms/utilities");
+const { isString, isFunction, isObject } = require("../k-cms/utilities");
 
 class KCMSPlugin {
   /**
@@ -6,7 +6,15 @@ class KCMSPlugin {
    *
    * @param {Object} options Object of configuration settings.
    */
-  constructor(opt = {}) {
+  constructor(opt) {
+    // We'll set about to null to automatically disable the plugin unless it's valid.
+    this.about = null;
+
+    // If options aren't an object, we just return
+    if (!isObject(opt)) {
+      return;
+    }
+
     const options = {
       ...opt,
     };
@@ -14,8 +22,15 @@ class KCMSPlugin {
     // If there's no about option passed, we need to kill the plugin. The about option will give information
     // about the plugin that is useful in determining which options belong to which plugin.
     if (!('about' in options)) {
-      this.about = null;
       return;
+    }
+
+    if ("init" in options
+      && isFunction(options.init)
+    ) {
+      this.init = options.init;
+    } else {
+      this.init = () => {};
     }
 
     // TODO I have to define an about schema
@@ -71,6 +86,24 @@ class KCMSPlugin {
       return;
     }
     this.enabled = false;
+  }
+
+  /**
+   * Runs an initialization function for the plugin. This function should be where
+   * plugins initialiize the database for their needs.
+   *
+   * @param {Object} dbInstance Instance of the database for the app
+   */
+  initializePlugin(dbInstance) {
+    let result = null;
+
+    this.dbInstance = dbInstance;
+
+    if (isFunction(this.init)) {
+      result = this.init(dbInstance);
+    }
+
+    return Promise.resolve(result);
   }
 
   /**

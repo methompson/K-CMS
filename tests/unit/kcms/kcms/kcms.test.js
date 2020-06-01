@@ -325,14 +325,15 @@ describe("KCMS Class", () => {
         config: [],
       });
 
+      const addPluginsSpy = jest.spyOn(PluginHandler.prototype, "addPlugins");
+
       opt.plugins = [plugin0, plugin1];
       cms = new KCMS(opt);
 
       expect(cms.pluginHandler instanceof PluginHandler).toBe(true);
       expect(cms.pluginHandler.db).toBe(db);
       expect(Array.isArray(cms.pluginHandler.plugins)).toBe(true);
-      expect(cms.pluginHandler.plugins[0]).toBe(plugin0);
-      expect(cms.pluginHandler.plugins[1]).toBe(plugin1);
+      expect(addPluginsSpy).toHaveBeenCalledTimes(1);
     });
 
   });

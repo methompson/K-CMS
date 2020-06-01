@@ -25,7 +25,8 @@ class KCMS {
 
     this.db = makeDatabaseClient(options.db);
 
-    this.pluginHandler = new PluginHandler(this.db, options.plugins);
+    this.pluginHandler = new PluginHandler(this.db);
+    this.pluginHandler.addPlugins(options.plugins);
 
     const app = express();
 

@@ -1,6 +1,6 @@
 const { endOnError, isObject } = require("../utilities");
 const { getMongoDb } = require("./getMongoDb");
-const { getMySQLDb } = require("./getMySQLdb");
+const { getMySQLDb } = require("./getMySQLDb");
 
 /**
  * Accepts an object of parameters and makes a Database client

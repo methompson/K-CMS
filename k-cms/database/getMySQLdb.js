@@ -1,6 +1,11 @@
 const mysql = require('mysql2');
 
-const { endOnError, isObject } = require("../utilities");
+const {
+  endOnError,
+  isObject,
+  isString,
+  isNumber,
+} = require("../utilities");
 
 /**
  * Creates a MySQL client (UNFINISHED)
@@ -17,11 +22,11 @@ function getMySQLDb(options) {
     return false;
   }
 
-  const host = "host" in options ? options.host : "";
-  const database = "databaseName" in options ? options.databaseName : "";
-  const user = "username" in options ? options.username : "";
-  const password = "password" in options ? options.password : "";
-  const port = "port" in options ? options.port : 3306;
+  const host = "host" in options && isString(options.host) ? options.host : "";
+  const database = "databaseName" in options && isString(options.databaseName) ? options.databaseName : "";
+  const user = "username" in options && isString(options.username) ? options.username : "";
+  const password = "password" in options && isString(options.password) ? options.password : "";
+  const port = "port" in options && isNumber(options.port) ? options.port : 3306;
 
   if ( host.length === 0
     || database.length === 0
