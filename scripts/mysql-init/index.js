@@ -1,4 +1,4 @@
-const { getMySQLDb } = require("../../k-cms/database/getMySQLdb");
+const { getMySQLDb } = require("../../k-cms/database/getMySQLDb");
 const initTables = require("./init-tables");
 const addAdminUser = require("./add-admin-user");
 

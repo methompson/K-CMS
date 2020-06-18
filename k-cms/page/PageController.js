@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 /* eslint-disable lines-between-class-members */
 // These rules are disabled because the PageController class has some empty functions
 // with variable parameters that are used as interfaces.
@@ -10,6 +9,7 @@ const {
   isString,
   isBoolean,
   isObject,
+  checkSlug,
 } = require("../utilities");
 
 class PageController {
@@ -46,12 +46,14 @@ class PageController {
   /**
    * Checks whether a user is in the list of user types that are alowed to
    * add or modify pages.
+   *
    * @param {Object} authToken The decoded JWT authorization token
    */
   checkAllowedUsersForSiteMod(authToken) {
     if (!isObject(authToken) || !('userType' in authToken)) {
       return false;
     }
+
     return this.editors.includes(authToken.userType);
   }
 
@@ -89,7 +91,7 @@ class PageController {
       || !('slug' in pageData)
       || !('content' in pageData)
     ) {
-      return "Invalid Parameters sent";
+      return "Invalid Parameters Sent";
     }
 
     // Then we'll check that the slug is correct:
@@ -124,24 +126,7 @@ class PageController {
    * @param {String} slug the slug string to check
    */
   checkSlug(slug) {
-    if (!isString(slug)) {
-      return "Invalid Slug Type";
-    }
-
-    if (slug.length < 1 || slug.length > 512) {
-      return "Invalid Slug Length";
-    }
-
-    const regex = RegExp(/[^a-z0-9-]+/g);
-
-    // We return not regex.test because if the regular expression is set up to return true if it
-    // finds any illegal characters. We want checkSlug to return true if the slug is valid.
-    // Thus, if regex.test returns true, the slug is not valid.
-    if (regex.test(slug)) {
-      return "Invalid Characters in Slug";
-    }
-
-    return null;
+    return checkSlug(slug);
   }
 
   checkName(name) {
@@ -157,11 +142,11 @@ class PageController {
   }
 
   // Interfaces to be defined on a per-database basis
-  getPageBySlug(req, res) {}
-  getAllPages(req, res) {}
-  addPage(req, res) {}
-  editPage(req, res) {}
-  deletePage(req, res) {}
+  getPageBySlug() {}
+  getAllPages() {}
+  addPage() {}
+  editPage() {}
+  deletePage() {}
 }
 
 module.exports = PageController;

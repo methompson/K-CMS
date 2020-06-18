@@ -10,9 +10,9 @@ const {
   isBoolean,
 } = require("../utilities");
 
-const PageController = require("./PageController");
+const BlogController = require("./BlogController");
 
-class MySQLPageController extends PageController {
+class MySQLBlogController extends BlogController {
   constructor(database, pluginHandler) {
     super(pluginHandler);
 
@@ -32,31 +32,33 @@ class MySQLPageController extends PageController {
   }
 
   /**
-   * Gets a MySQL Row based on the page slug sent.
+   * Gets a MySQL Row based on the blog post slug sent.
    *
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
    * @return {Promise} Returns a promise (for testing purposes)
    */
-  getPageBySlug(req, res) {
+  getBlogPostBySlug(req, res) {
     if ( !('params' in req)
       || !('slug' in req.params)
     ) {
-      const err = "Invalid Page Data Sent";
+      const err = "Invalid Blog Post Data Sent";
       send400Error(res, err);
       return Promise.resolve(err);
     }
 
-    let query = "SELECT id, enabled, name, slug, content, meta, dateUpdated, dateAdded FROM pages WHERE slug = ?";
+    let query = "SELECT id, draft, public, name, slug, content, meta, dateUpdated, dateAdded FROM blogPosts WHERE slug = ?";
     const queryParams = [req.params.slug];
 
     // This section determines if the user is an editor (someone who can see
-    // non-enabled pages). If they are not an editor, enabled is set to true
+    // draft or non-public blog posts). If they are not an editor, draft is set to false
+    // and public is set to true
     if ( !('_authData' in req)
       || !req._authData
       || !this.editors.includes(req._authData.userType)
     ) {
-      query += " AND enabled = ?";
+      query += " AND draft = ? AND public = ?";
+      queryParams.push(false);
       queryParams.push(true);
     }
 
@@ -74,32 +76,34 @@ class MySQLPageController extends PageController {
         return 404;
       })
       .catch((err) => {
-        send500Error(res, "Database Error");
+        send500Error(res, `Database Error, ${err}`);
 
         return err;
       });
   }
 
   /**
-   * Retrieves a list of pages. If the user is not logged in, they will receive a
-   * list of public pages. If the user is logged in and their user type is a
-   * part of the list of editor types, they will get a full list of pages.
+   * Retrieves a list of blog posts. If the user is not logged in, they will receive a
+   * list of public blog posts. If the user is logged in and their user type is a
+   * part of the list of editor types, they will get a full list of blog posts.
    *
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
    * @returns {Promise} Returns a promise (for testing purposes)
    */
-  getAllPages(req, res) {
-    let query = "SELECT id, enabled, name, slug, content, meta, dateUpdated, dateAdded FROM pages";
+  getAllBlogPosts(req, res) {
+    let query = "SELECT id, draft, public, name, slug, content, meta, dateUpdated, dateAdded FROM blogPosts";
     const queryParams = [];
 
     // This section determines if the user is an editor (someone who can see
-    // non-enabled pages). If they are not an admin, enabled is set to true
+    // draft or non-public blog posts). If they are not an editor, draft is set to false
+    // and public is set to true
     if ( !('_authData' in req)
       || !req._authData
       || !this.editors.includes(req._authData.userType)
     ) {
-      query += " WHERE enabled = ?";
+      query += " WHERE draft = ? AND public = ?";
+      queryParams.push(false);
       queryParams.push(true);
     }
 
@@ -122,42 +126,43 @@ class MySQLPageController extends PageController {
   }
 
   /**
-   * Adds a page to the database.
+   * Adds a blog post to the database.
    *
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
    * @returns {Promise}
    */
-  addPage(req, res) {
+  addBlogPost(req, res) {
     if (!this.checkAllowedUsersForSiteMod(req._authData)) {
       send401Error(res, "");
       return Promise.resolve("Access Denied");
     }
 
-    const pageData = this.extractPageData(req);
-    if (!pageData) {
-      const err = "Invalid Page Data Sent";
+    const blogPostData = this.extractBlogPostData(req);
+    if (!blogPostData) {
+      const err = "Invalid Blog Post Data Sent";
       send400Error(res, err);
       return Promise.resolve(err);
     }
 
-    const pageErr = this.checkPageData(pageData);
-    if (pageErr) {
-      send400Error(res, pageErr);
-      return Promise.resolve(pageErr);
+    const blogErr = this.checkBlogData(blogPostData);
+    if (blogErr) {
+      send400Error(res, blogErr);
+      return Promise.resolve(blogErr);
     }
 
-    const meta = 'meta' in pageData
-      ? pageData.meta
+    const meta = 'meta' in blogPostData
+      ? blogPostData.meta
       : {};
 
     const now = new Date();
 
     const query = `
-      INSERT INTO pages (
+      INSERT INTO blogPosts (
         name,
         slug,
-        enabled,
+        draft,
+        public
         content,
         meta,
         dateAdded,
@@ -169,10 +174,11 @@ class MySQLPageController extends PageController {
     `;
 
     const queryParams = [
-      pageData.name,
-      pageData.slug,
-      pageData.enabled,
-      JSON.stringify(pageData.content),
+      blogPostData.name,
+      blogPostData.slug,
+      blogPostData.draft,
+      blogPostData.public,
+      JSON.stringify(blogPostData.content),
       JSON.stringify(meta),
       now,
       now,
@@ -183,16 +189,17 @@ class MySQLPageController extends PageController {
       .then(([result]) => {
         if (isObject(result) && 'affectedRows' in result ) {
           if (result.affectedRows < 1) {
-            const error = "Page Was Not Added";
+            const error = "Blog Post Was Not Added";
             send400Error(res, error);
             return error;
           }
 
           const returnData = {
-            name: pageData.name,
-            slug: pageData.slug,
-            enabled: pageData.enabled,
-            content: pageData.content,
+            name: blogPostData.name,
+            slug: blogPostData.slug,
+            draft: blogPostData.draft,
+            public: blogPostData.public,
+            content: blogPostData.content,
             meta,
             dateAdded: now.getTime(),
             dateUpdated: now.getTime(),
@@ -215,9 +222,9 @@ class MySQLPageController extends PageController {
           && 'code' in err
           && err.code === 'ER_DUP_ENTRY'
         ) {
-          send400Error(res, "Page Slug Already Exists");
+          send400Error(res, "Blog Post Slug Already Exists");
         } else {
-          send500Error(res, "Error Adding New Page");
+          send500Error(res, "Error Adding New Blog Post");
         }
 
         return err;
@@ -225,28 +232,28 @@ class MySQLPageController extends PageController {
   }
 
   /**
-   * Edits a page in the database.
+   * Edits a blog post in the database.
    *
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
    * @returns {Promise}
    */
-  editPage(req, res) {
+  editBlogPost(req, res) {
     if (!this.checkAllowedUsersForSiteMod(req._authData)) {
       const err = "Access Denied";
       send401Error(res, err);
       return Promise.resolve(err);
     }
 
-    const pageData = this.extractPageData(req);
-    if (!pageData) {
-      const err = "Invalid Page Data Sent";
+    const blogPostData = this.extractBlogPostData(req);
+    if (!blogPostData) {
+      const err = "Invalid Blog Post Data Sent";
       send400Error(res, err);
       return Promise.resolve(err);
     }
 
-    if (!('id' in pageData)) {
-      const err = "Invalid Page Data. No Id Provided.";
+    if (!('id' in blogPostData)) {
+      const err = "Invalid Blog Post Data. No Id Provided.";
       send400Error(res, err);
       return Promise.resolve(err);
     }
@@ -256,11 +263,11 @@ class MySQLPageController extends PageController {
 
     // We build the query string one part at a time.
     // We let the user only update the portions they want to update
-    let query = "UPDATE pages SET ";
+    let query = "UPDATE blogPosts SET ";
     const queryParams = [];
 
-    if ('slug' in pageData) {
-      const slugErr = this.checkSlug(pageData.slug);
+    if ('slug' in blogPostData) {
+      const slugErr = this.checkSlug(blogPostData.slug);
       // We are only worrying about doing these actions if a slug was passed.
       if (slugErr) {
         send400Error(res, slugErr);
@@ -268,61 +275,72 @@ class MySQLPageController extends PageController {
       }
 
       query += "slug = ?, ";
-      queryParams.push(pageData.slug);
-      output.slug = pageData.slug;
+      queryParams.push(blogPostData.slug);
+      output.slug = blogPostData.slug;
     }
 
-    if ('name' in pageData) {
-      const nameErr = this.checkName(pageData.name);
+    if ('name' in blogPostData) {
+      const nameErr = this.checkName(blogPostData.name);
       if (nameErr) {
         send400Error(res, nameErr);
         return Promise.resolve(nameErr);
       }
 
       query += "name = ?, ";
-      queryParams.push(pageData.name);
-      output.name = pageData.name;
+      queryParams.push(blogPostData.name);
+      output.name = blogPostData.name;
     }
 
-    if ('enabled' in pageData) {
-      if (!isBoolean(pageData.enabled)) {
-        const err = "Invalid Enabled Data Type";
+    if ('draft' in blogPostData) {
+      if (!isBoolean(blogPostData.draft)) {
+        const err = "Invalid Draft Data Type";
         send400Error(res, err);
         return Promise.resolve(err);
       }
-      query += "enabled = ?, ";
-      queryParams.push(pageData.enabled);
-      output.enabled = pageData.enabled;
+      query += "draft = ?, ";
+      queryParams.push(blogPostData.draft);
+      output.draft = blogPostData.draft;
     }
 
-    if ('content' in pageData) {
-      if (!Array.isArray(pageData.content)) {
+    if ('public' in blogPostData) {
+      if (!isBoolean(blogPostData.public)) {
+        const err = "Invalid Public Data Type";
+        send400Error(res, err);
+        return Promise.resolve(err);
+      }
+      query += "public = ?, ";
+      queryParams.push(blogPostData.public);
+      output.public = blogPostData.public;
+    }
+
+    if ('content' in blogPostData) {
+      if (!Array.isArray(blogPostData.content)) {
         const err = "Invalid Content Data Type";
         send400Error(res, err);
         return Promise.resolve(err);
       }
       query += "content = ?, ";
-      queryParams.push(JSON.stringify(pageData.content));
-      output.content = pageData.content;
+      queryParams.push(JSON.stringify(blogPostData.content));
+      output.content = blogPostData.content;
     }
 
-    if ('meta' in pageData) {
-      if (!isObject(pageData.meta)) {
+    if ('meta' in blogPostData) {
+      if (!isObject(blogPostData.meta)) {
         const err = "Invalid Meta Data Type";
         send400Error(res, err);
         return Promise.resolve(err);
       }
       query += "meta = ?, ";
-      queryParams.push(JSON.stringify(pageData.meta));
-      output.meta = pageData.meta;
+      queryParams.push(JSON.stringify(blogPostData.meta));
+      output.meta = blogPostData.meta;
     }
 
     query += "dateUpdated = ? WHERE id = ?";
     queryParams.push(now);
-    queryParams.push(pageData.id);
+    queryParams.push(blogPostData.id);
 
     output.dateUpdated = now;
-    output.id = pageData.id;
+    output.id = blogPostData.id;
 
     const promisePool = this.db.instance.promise();
     return promisePool.execute(query, queryParams)
@@ -333,7 +351,7 @@ class MySQLPageController extends PageController {
             return 200;
           }
 
-          const err = "Page Was Not Updated";
+          const err = "Blog Post Was Not Updated";
           send400Error(res, err);
           return err;
         }
@@ -347,9 +365,9 @@ class MySQLPageController extends PageController {
           && 'code' in err
           && err.code === 'ER_DUP_ENTRY'
         ) {
-          send400Error(res, "Page Slug Already Exists");
+          send400Error(res, "Blog Post Slug Already Exists");
         } else {
-          send500Error(res, "Error Editing Page");
+          send500Error(res, "Error Editing Blog Post");
         }
 
         return err;
@@ -357,34 +375,34 @@ class MySQLPageController extends PageController {
   }
 
   /**
-   * Deletes a page in the database.
+   * Deletes a Blog Post in the database.
    *
    * @param {Object} req Express Request Object
    * @param {Object} res Express Response Object
    * @returns {Promise}
    */
-  deletePage(req, res) {
+  deleteBlogPost(req, res) {
     if (!this.checkAllowedUsersForSiteMod(req._authData)) {
       const err = "Access Denied";
       send401Error(res, err);
       return Promise.resolve(err);
     }
 
-    const pageData = this.extractPageData(req);
-    if (!pageData) {
-      const err = "Invalid Page Data Sent";
+    const blogPostData = this.extractBlogPostData(req);
+    if (!blogPostData) {
+      const err = "Invalid Blog Post Data Sent";
       send400Error(res, err);
       return Promise.resolve(err);
     }
 
-    if (!('id' in pageData)) {
-      const err = "Invalid Page Data. No Id Provided.";
+    if (!('id' in blogPostData)) {
+      const err = "Invalid Blog Post Data. No Id Provided.";
       send400Error(res, err);
       return Promise.resolve(err);
     }
 
-    const query = "DELETE from pages WHERE id = ?";
-    const queryParams = [pageData.id];
+    const query = "DELETE from blogPosts WHERE id = ?";
+    const queryParams = [blogPostData.id];
     const promisePool = this.db.instance.promise();
     return promisePool.execute(query, queryParams)
       .then(([result]) => {
@@ -394,7 +412,7 @@ class MySQLPageController extends PageController {
             return 200;
           }
 
-          const error = "Page Was Not Deleted";
+          const error = "Blog Post Was Not Deleted";
           send400Error(res, error);
           return error;
         }
@@ -404,11 +422,11 @@ class MySQLPageController extends PageController {
         return error;
       })
       .catch((err) => {
-        send500Error(res, "Error Deleting Page");
+        send500Error(res, "Error Deleting Blog Post");
 
         return err;
       });
   }
 }
 
-module.exports = MySQLPageController;
+module.exports = MySQLBlogController;
