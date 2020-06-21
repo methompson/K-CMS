@@ -227,10 +227,10 @@ describe("PageController", () => {
       delete pd3.slug;
       delete pd4.content;
 
-      expect(pc.checkPageData(pd1)).toBe("Invalid Parameters sent");
-      expect(pc.checkPageData(pd2)).toBe("Invalid Parameters sent");
-      expect(pc.checkPageData(pd3)).toBe("Invalid Parameters sent");
-      expect(pc.checkPageData(pd4)).toBe("Invalid Parameters sent");
+      expect(pc.checkPageData(pd1)).toBe("Invalid Parameters Sent");
+      expect(pc.checkPageData(pd2)).toBe("Invalid Parameters Sent");
+      expect(pc.checkPageData(pd3)).toBe("Invalid Parameters Sent");
+      expect(pc.checkPageData(pd4)).toBe("Invalid Parameters Sent");
     });
 
     test("checkPageData will return specific errors if the pageData values aren't the right type", () => {

@@ -41,7 +41,7 @@ jest.mock("../../../../k-cms/utilities/endOnError", () => {
 
 const { json, status } = http;
 
-const MongoPageController = require("../../../../k-cms/page/MongoPageController");
+const MongoBlogController = require("../../../../k-cms/blog/MongoBlogController");
 const PluginHandler = require("../../../../k-cms/plugin-handler");
 
 const res = new http.ServerResponse();
@@ -55,10 +55,10 @@ const longString = `123456789012345678901234567890123456789012345678901234567890
                     1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
                     1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890`;
 
-describe("MongoPageController", () => {
+describe("MongoBlogController", () => {
   let db;
   let ph;
-  let mpc;
+  let mbc;
   let req;
   let router;
 
@@ -71,7 +71,7 @@ describe("MongoPageController", () => {
 
     ph = new PluginHandler();
 
-    mpc = new MongoPageController(db, ph);
+    mbc = new MongoBlogController(db, ph);
     router = express.Router();
     router.get.mockClear();
     router.post.mockClear();
@@ -92,32 +92,32 @@ describe("MongoPageController", () => {
   });
 
   describe("Instantiation", () => {
-    test("When a new MongoPageController is instantiated, a database, a pluginHandler, editors and an authenticator are added to the object's data. 5 routes are set", () => {
-      mpc = new MongoPageController(db, ph);
+    test("When a new MongoBlogController is instantiated, a database, a pluginHandler, editors and an authenticator are added to the object's data. 5 routes are set", () => {
+      mbc = new MongoBlogController(db, ph);
 
       expect(router.get).toHaveBeenCalledTimes(2);
-      expect(router.get).toHaveBeenNthCalledWith(1, '/all-pages', expect.any(Function));
+      expect(router.get).toHaveBeenNthCalledWith(1, '/all-blog-posts', expect.any(Function));
       expect(router.get).toHaveBeenNthCalledWith(2, '/:slug', expect.any(Function));
 
       expect(router.post).toHaveBeenCalledTimes(3);
-      expect(router.post).toHaveBeenNthCalledWith(1, '/add-page', expect.any(Function), expect.any(Function));
-      expect(router.post).toHaveBeenNthCalledWith(2, '/edit-page', expect.any(Function), expect.any(Function));
-      expect(router.post).toHaveBeenNthCalledWith(3, '/delete-page', expect.any(Function), expect.any(Function));
+      expect(router.post).toHaveBeenNthCalledWith(1, '/add-blog-post', expect.any(Function), expect.any(Function));
+      expect(router.post).toHaveBeenNthCalledWith(2, '/edit-blog-post', expect.any(Function), expect.any(Function));
+      expect(router.post).toHaveBeenNthCalledWith(3, '/delete-blog-post', expect.any(Function), expect.any(Function));
 
-      expect(mpc.db).toBe(db);
-      expect(mpc.pluginHandler).toBe(ph);
+      expect(mbc.db).toBe(db);
+      expect(mbc.pluginHandler).toBe(ph);
     });
 
-    test("When a PageController is instantiated without a database or an improper database, the Node process will exit", () => {
+    test("When a BlogController is instantiated without a database or an improper database, the Node process will exit", () => {
       const endSpy = jest.spyOn(endModule, "endOnError");
-      mpc = new MongoPageController();
+      mbc = new MongoBlogController();
 
       db = {
         instance: {},
         type: "mongodb",
       };
 
-      mpc = new MongoPageController(db);
+      mbc = new MongoBlogController(db);
 
       expect(endSpy).toHaveBeenCalledTimes(2);
       expect(endSpy).toHaveBeenNthCalledWith(1, "Invalid Database Object Sent");
@@ -125,9 +125,9 @@ describe("MongoPageController", () => {
     });
   });
 
-  describe("getPageBySlug", () => {
+  describe("getBlogPostBySlug", () => {
 
-    test("getPageBySlug will send a document if the proper data is passed to it and the slug returns data from the database", (done) => {
+    test("getBlogPostBySlug will send a document if the proper data is passed to it and the slug returns data from the database", (done) => {
       const doc = {
         test: 'test',
         id: 'id',
@@ -145,13 +145,13 @@ describe("MongoPageController", () => {
         slug: 'testSlug',
       };
 
-      mpc.getPageBySlug(req, res)
+      mbc.getBlogPostBySlug(req, res)
         .then((result) => {
           expect(result).toBe(200);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(findOne).toHaveBeenCalledTimes(1);
           expect(findOne).toHaveBeenCalledWith(req.params);
 
@@ -163,7 +163,7 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("getPageBySlug will perform a search with enabled = true if the user is not in the editor array or there is no _authData in the request", (done) => {
+    test("getBlogPostBySlug will perform a search with draft = false and public = true if the user is not in the editor array or there is no _authData in the request", (done) => {
       const doc = {
         test: 'test',
         id: 'id',
@@ -187,31 +187,31 @@ describe("MongoPageController", () => {
         slug: 'testSlug',
       };
 
-      mpc.getPageBySlug(req, res)
+      mbc.getBlogPostBySlug(req, res)
         .then((result) => {
           expect(result).toBe(200);
 
           delete req._authData.userType;
-          return mpc.getPageBySlug(req, res);
+          return mbc.getBlogPostBySlug(req, res);
         })
         .then((result) => {
           expect(result).toBe(200);
 
           req._authData = null;
-          return mpc.getPageBySlug(req, res);
+          return mbc.getBlogPostBySlug(req, res);
         })
         .then((result) => {
           expect(result).toBe(200);
 
           expect(findOne).toHaveBeenCalledTimes(3);
-          expect(findOne).toHaveBeenNthCalledWith(1, { ...req.params, enabled: true });
-          expect(findOne).toHaveBeenNthCalledWith(2, { ...req.params, enabled: true });
-          expect(findOne).toHaveBeenNthCalledWith(3, { ...req.params, enabled: true });
+          expect(findOne).toHaveBeenNthCalledWith(1, { ...req.params, draft: false, public: true });
+          expect(findOne).toHaveBeenNthCalledWith(2, { ...req.params, draft: false, public: true });
+          expect(findOne).toHaveBeenNthCalledWith(3, { ...req.params, draft: false, public: true });
           done();
         });
     });
 
-    test("getPageBySlug will send a 404 status and an error if the document isn't found", (done) => {
+    test("getBlogPostBySlug will send a 404 status and an error if the document isn't found", (done) => {
       findOne.mockImplementationOnce(() => {
         return Promise.resolve(null);
       });
@@ -224,14 +224,14 @@ describe("MongoPageController", () => {
         slug: 'testSlug',
       };
 
-      mpc.getPageBySlug(req, res)
+      mbc.getBlogPostBySlug(req, res)
         .then((result) => {
           expect(result).toBe(404);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(findOne).toHaveBeenCalledTimes(1);
           expect(findOne).toHaveBeenCalledWith(req.params);
 
@@ -245,10 +245,10 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("getPageBySlug will send a 400 error if no parameters are sent", (done) => {
-      mpc.getPageBySlug(req, res)
+    test("getBlogPostBySlug will send a 400 error if no parameters are sent", (done) => {
+      mbc.getBlogPostBySlug(req, res)
         .then((err) => {
-          expect(err).toBe("Invalid Page Data Sent");
+          expect(err).toBe("Invalid Blog Post Data Sent");
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
@@ -258,17 +258,17 @@ describe("MongoPageController", () => {
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
-            error: "Invalid Page Data Sent",
+            error: "Invalid Blog Post Data Sent",
           });
           done();
         });
     });
 
-    test("getPageBySlug will send a 400 error if parameters are sent, but no slug is sent", (done) => {
+    test("getBlogPostBySlug will send a 400 error if parameters are sent, but no slug is sent", (done) => {
       req.params = {};
-      mpc.getPageBySlug(req, res)
+      mbc.getBlogPostBySlug(req, res)
         .then((err) => {
-          expect(err).toBe("Invalid Page Data Sent");
+          expect(err).toBe("Invalid Blog Post Data Sent");
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
@@ -278,13 +278,13 @@ describe("MongoPageController", () => {
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
-            error: "Invalid Page Data Sent",
+            error: "Invalid Blog Post Data Sent",
           });
           done();
         });
     });
 
-    test("getPageBySlug will throw an error and send a 500 error if findOne throws an error", (done) => {
+    test("getBlogPostBySlug will throw an error and send a 500 error if findOne throws an error", (done) => {
       req.params = {
         slug: 'testSlug',
       };
@@ -294,18 +294,19 @@ describe("MongoPageController", () => {
         return Promise.reject(error);
       });
 
-      mpc.getPageBySlug(req, res)
+      mbc.getBlogPostBySlug(req, res)
         .then((err) => {
           expect(err).toBe(error);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(findOne).toHaveBeenCalledTimes(1);
           expect(findOne).toHaveBeenCalledWith({
             ...req.params,
-            enabled: true,
+            public: true,
+            draft: false,
           });
 
           expect(status).toHaveBeenCalledTimes(1);
@@ -320,12 +321,12 @@ describe("MongoPageController", () => {
 
   });
 
-  describe("getAllPages", () => {
+  describe("getAllBlogPosts", () => {
     beforeEach(() => {
       findToArray.mockClear();
     });
 
-    test("getAllPages will send a 200 response and send the results of a search from the db collection", (done) => {
+    test("getAllBlogPosts will send a 200 response and send the results of a search from the db collection", (done) => {
       const docs = [
         {
           test: 'test1',
@@ -345,14 +346,14 @@ describe("MongoPageController", () => {
         userType: 'admin',
       };
 
-      mpc.getAllPages(req, res)
+      mbc.getAllBlogPosts(req, res)
         .then((result) => {
           expect(result).toBe(200);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(findToArray).toHaveBeenCalledTimes(1);
           expect(find).toHaveBeenCalledTimes(1);
           expect(find).toHaveBeenCalledWith({});
@@ -366,7 +367,7 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("getAllPages will send a 200 response and results of a search from the db collection. The actual search will vary if the user is not in the editors list or no auth data exists", (done) => {
+    test("getAllBlogPosts will send a 200 response and results of a search from the db collection. The actual search will vary if the user is not in the editors list or no auth data exists", (done) => {
       const docs = [
         {
           test: 'test1',
@@ -382,25 +383,25 @@ describe("MongoPageController", () => {
         return Promise.resolve(docs);
       });
 
-      mpc.getAllPages(req, res)
+      mbc.getAllBlogPosts(req, res)
         .then((result) => {
           expect(result).toBe(200);
           req._authData = {};
 
-          return mpc.getAllPages(req, res);
+          return mbc.getAllBlogPosts(req, res);
         })
         .then((result) => {
           expect(result).toBe(200);
           req._authData = { userType: 'viewer' };
 
-          return mpc.getAllPages(req, res);
+          return mbc.getAllBlogPosts(req, res);
         })
         .then((result) => {
           expect(result).toBe(200);
           expect(find).toHaveBeenCalledTimes(3);
-          expect(find).toHaveBeenNthCalledWith(1, { enabled: true });
-          expect(find).toHaveBeenNthCalledWith(2, { enabled: true });
-          expect(find).toHaveBeenNthCalledWith(3, { enabled: true });
+          expect(find).toHaveBeenNthCalledWith(1, { draft: false, public: true });
+          expect(find).toHaveBeenNthCalledWith(2, { draft: false, public: true });
+          expect(find).toHaveBeenNthCalledWith(3, { draft: false, public: true });
 
           expect(status).toHaveBeenCalledTimes(3);
           expect(status).toHaveBeenNthCalledWith(1, 200);
@@ -417,24 +418,22 @@ describe("MongoPageController", () => {
 
     });
 
-    test("getAllPages will send a 200 status code and an empty array if no documents exist", (done) => {
+    test("getAllBlogPosts will send a 200 status code and an empty array if no documents exist", (done) => {
       findToArray.mockImplementationOnce(() => {
         return Promise.resolve(null);
       });
 
-      mpc.getAllPages(req, res)
+      mbc.getAllBlogPosts(req, res)
         .then((result) => {
           expect(result).toBe(200);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(findToArray).toHaveBeenCalledTimes(1);
           expect(find).toHaveBeenCalledTimes(1);
-          expect(find).toHaveBeenCalledWith({
-            enabled: true,
-          });
+          expect(find).toHaveBeenCalledWith({ draft: false, public: true });
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
@@ -444,24 +443,22 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("getAllPages will throw an error if collection.find.toArray throws an error", (done) => {
+    test("getAllBlogPosts will throw an error if collection.find.toArray throws an error", (done) => {
       findToArray.mockImplementationOnce(() => {
         return Promise.reject(errorText);
       });
 
-      mpc.getAllPages(req, res)
+      mbc.getAllBlogPosts(req, res)
         .then((err) => {
           expect(err).toBe(errorText);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(findToArray).toHaveBeenCalledTimes(1);
           expect(find).toHaveBeenCalledTimes(1);
-          expect(find).toHaveBeenCalledWith({
-            enabled: true,
-          });
+          expect(find).toHaveBeenCalledWith({ draft: false, public: true });
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(500);
@@ -473,33 +470,34 @@ describe("MongoPageController", () => {
 
   });
 
-  describe("addPage", () => {
+  describe("addBlogPost", () => {
     let checkUserSpy;
     let extractSpy;
-    let checkPageSpy;
+    let checkBlogSpy;
 
     beforeEach(() => {
-      checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      extractSpy = jest.spyOn(mpc, "extractPageData");
-      checkPageSpy = jest.spyOn(mpc, "checkPageData");
+      checkUserSpy = jest.spyOn(mbc, "checkAllowedUsersForBlogMod");
+      extractSpy = jest.spyOn(mbc, "extractBlogPostData");
+      checkBlogSpy = jest.spyOn(mbc, "checkBlogData");
     });
 
-    test("addPage will send a 200 response and send the contents of the new page to the user. The function will run insertOne", (done) => {
-      const newPage = {
+    test("addBlogPost will send a 200 response and send the contents of the new blog post to the user. The function will run insertOne", (done) => {
+      const newBlog = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
       };
 
       req.body = {
-        page: newPage,
+        blogPost: newBlog,
       };
       req._authData = {
         userType: 'admin',
       };
 
-      mpc.addPage(req, res)
+      mbc.addBlogPost(req, res)
         .then((result) => {
           expect(result).toBe(200);
 
@@ -507,15 +505,15 @@ describe("MongoPageController", () => {
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
-          expect(checkPageSpy).toHaveBeenCalledTimes(1);
-          expect(checkPageSpy).toHaveBeenCalledWith(newPage);
+          expect(checkBlogSpy).toHaveBeenCalledTimes(1);
+          expect(checkBlogSpy).toHaveBeenCalledWith(newBlog);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(insertOne).toHaveBeenCalledTimes(1);
           expect(insertOne).toHaveBeenCalledWith({
-            ...newPage,
+            ...newBlog,
             dateAdded: expect.any(Number),
             dateUpdated: expect.any(Number),
           });
@@ -524,7 +522,7 @@ describe("MongoPageController", () => {
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
-            ...newPage,
+            ...newBlog,
             id: testId,
             dateAdded: expect.any(Number),
             dateUpdated: expect.any(Number),
@@ -534,30 +532,31 @@ describe("MongoPageController", () => {
 
     });
 
-    test("If the user isn't allowed to modify the page, addPage will throw an error and send a 401 error", (done) => {
-      const newPage = {
+    test("If the user isn't allowed to modify the blog post, addBlogPost will throw an error and send a 401 error", (done) => {
+      const newBlog = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
       };
 
       req.body = {
-        page: newPage,
+        blogPost: newBlog,
       };
       req._authData = {
         userType: 'viewer',
       };
 
       const error = "Access Denied";
-      mpc.addPage(req, res)
+      mbc.addBlogPost(req, res)
         .then((err) => {
           expect(err).toBe(error);
 
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(0);
-          expect(checkPageSpy).toHaveBeenCalledTimes(0);
+          expect(checkBlogSpy).toHaveBeenCalledTimes(0);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
           expect(insertOne).toHaveBeenCalledTimes(0);
@@ -570,14 +569,14 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If there's no page data included in the request, addPage will throw an error and send a 400 error", (done) => {
+    test("If there's no blog post data included in the request, addBlogPost will throw an error and send a 400 error", (done) => {
       req._authData = {
         userType: 'editor',
       };
 
-      const error = "Page Data Not Provided";
+      const error = "Blog Post Data Not Provided";
 
-      mpc.addPage(req, res)
+      mbc.addBlogPost(req, res)
         .then((err) => {
           expect(err).toBe(error);
 
@@ -585,7 +584,7 @@ describe("MongoPageController", () => {
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
-          expect(checkPageSpy).toHaveBeenCalledTimes(0);
+          expect(checkBlogSpy).toHaveBeenCalledTimes(0);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
@@ -599,42 +598,48 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If the page data included in the request doesn't include required data or the data is invalid, addPage will throw an error and send a 400 error", (done) => {
-      const newPage = {
+    test("If the blogPost data included in the request doesn't include required data or the data is invalid, addBlogPost will throw an error and send a 400 error", (done) => {
+      const newBlog = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
       };
 
-      const pages = [];
-      for (let x = 0; x < 11; ++x) {
-        pages[x] = { page: { ...newPage } };
+      const blogs = [];
+      for (let x = 0; x <= 12; ++x) {
+        blogs[x] = { blogPost: { ...newBlog } };
       }
 
-      delete pages[0].page.name;
-      delete pages[1].page.enabled;
-      delete pages[2].page.slug;
-      delete pages[3].page.content;
-      pages[4].page.slug = "(*&^%";
-      pages[5].page.name = "";
-      pages[6].page.enabled = "true";
-      pages[7].page.content = "true";
-      pages[8].page.slug = "";
-      pages[9].page.slug = longString;
-      pages[10].page.name = longString;
+      delete blogs[0].blogPost.name;
+      delete blogs[1].blogPost.public;
+      delete blogs[2].blogPost.draft;
+      delete blogs[3].blogPost.slug;
+      delete blogs[4].blogPost.content;
+      blogs[5].blogPost.slug = "(*&^%";
+      blogs[6].blogPost.slug = "";
+      blogs[7].blogPost.slug = longString;
+      blogs[8].blogPost.name = "";
+      blogs[9].blogPost.name = longString;
+      blogs[10].blogPost.public = "true";
+      blogs[11].blogPost.draft = "true";
+      blogs[12].blogPost.content = "true";
 
-      pages[0].error = "Invalid Parameters Sent";
-      pages[1].error = "Invalid Parameters Sent";
-      pages[2].error = "Invalid Parameters Sent";
-      pages[3].error = "Invalid Parameters Sent";
-      pages[4].error = "Invalid Characters in Slug";
-      pages[5].error = "Invalid Name Length";
-      pages[6].error = "Invalid Page Data (Enabled)";
-      pages[7].error = "Invalid Page Data";
-      pages[8].error = "Invalid Slug Length";
-      pages[9].error = "Invalid Slug Length";
-      pages[10].error = "Invalid Name Length";
+      blogs[0].error = "Invalid Parameters Sent";
+      blogs[1].error = "Invalid Parameters Sent";
+      blogs[2].error = "Invalid Parameters Sent";
+      blogs[3].error = "Invalid Parameters Sent";
+      blogs[4].error = "Invalid Parameters Sent";
+
+      blogs[5].error = "Invalid Characters in Slug";
+      blogs[6].error = "Invalid Slug Length";
+      blogs[7].error = "Invalid Slug Length";
+      blogs[8].error = "Invalid Name Length";
+      blogs[9].error = "Invalid Name Length";
+      blogs[10].error = "Invalid Blog Post Data (public)";
+      blogs[11].error = "Invalid Blog Post Data (draft)";
+      blogs[12].error = "Invalid Blog Post Data";
 
       req._authData = {
         userType: 'admin',
@@ -643,18 +648,18 @@ describe("MongoPageController", () => {
       const requests = [];
       const promises = [];
 
-      for (let x = 0, len = pages.length; x < len; ++x) {
-        const { page, error } = pages[x];
+      for (let x = 0, len = blogs.length; x < len; ++x) {
+        const { blogPost, error } = blogs[x];
 
-        requests[x] = { ...req, body: { page } };
-        promises[x] = mpc.addPage(requests[x], res).then((err) => {
+        requests[x] = { ...req, body: { blogPost } };
+        promises[x] = mbc.addBlogPost(requests[x], res).then((err) => {
           expect(err).toBe(error);
         });
       }
 
       Promise.all(promises)
         .then(() => {
-          const totalRequests = pages.length;
+          const totalRequests = blogs.length;
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
           expect(collection).toHaveBeenCalledTimes(0);
@@ -662,15 +667,15 @@ describe("MongoPageController", () => {
 
           expect(checkUserSpy).toHaveBeenCalledTimes(totalRequests);
           expect(extractSpy).toHaveBeenCalledTimes(totalRequests);
-          expect(checkPageSpy).toHaveBeenCalledTimes(totalRequests);
+          expect(checkBlogSpy).toHaveBeenCalledTimes(totalRequests);
           expect(status).toHaveBeenCalledTimes(totalRequests);
           expect(json).toHaveBeenCalledTimes(totalRequests);
 
           for (let x = 0; x < totalRequests; ++x) {
-            const { page, error } = pages[x];
+            const { blogPost, error } = blogs[x];
             expect(checkUserSpy).toHaveBeenNthCalledWith(x + 1, req._authData);
             expect(extractSpy).toHaveBeenNthCalledWith(x + 1, requests[x]);
-            expect(checkPageSpy).toHaveBeenNthCalledWith(x + 1, page);
+            expect(checkBlogSpy).toHaveBeenNthCalledWith(x + 1, blogPost);
             expect(status).toHaveBeenNthCalledWith(x + 1, 400);
             expect(json).toHaveBeenNthCalledWith(x + 1, { error });
           }
@@ -679,27 +684,28 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If insertOne throws an error, addPage will throw an error and send an HTTP 500 error", (done) => {
+    test("If insertOne throws an error, addBlogPost will throw an error and send an HTTP 500 error", (done) => {
       const error = "test error";
       insertOne.mockImplementationOnce(() => {
         return Promise.reject(error);
       });
 
-      const newPage = {
+      const newBlog = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
       };
 
       req.body = {
-        page: newPage,
+        blogPost: newBlog,
       };
       req._authData = {
         userType: 'admin',
       };
 
-      mpc.addPage(req, res)
+      mbc.addBlogPost(req, res)
         .then((err) => {
           expect(err).toBe(error);
 
@@ -707,16 +713,16 @@ describe("MongoPageController", () => {
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
-          expect(checkPageSpy).toHaveBeenCalledTimes(1);
-          expect(checkPageSpy).toHaveBeenCalledWith(newPage);
+          expect(checkBlogSpy).toHaveBeenCalledTimes(1);
+          expect(checkBlogSpy).toHaveBeenCalledWith(newBlog);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(insertOne).toHaveBeenCalledTimes(1);
           expect(insertOne).toHaveBeenCalledWith({
-            ...newPage,
+            ...newBlog,
             dateAdded: expect.any(Number),
             dateUpdated: expect.any(Number),
           });
@@ -725,13 +731,13 @@ describe("MongoPageController", () => {
           expect(status).toHaveBeenCalledWith(500);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
-            error: "Error Adding New Page",
+            error: "Error Adding New Blog Post",
           });
           done();
         });
     });
 
-    test("If insertOne throws an error indicating the slug already exists, addPage will throw an error and send an HTTP 401 error", (done) => {
+    test("If insertOne throws an error indicating the slug already exists, addBlogPost will throw an error and send an HTTP 401 error", (done) => {
       const error = {
         errmsg: "E11000 Error",
       };
@@ -739,21 +745,22 @@ describe("MongoPageController", () => {
         return Promise.reject(error);
       });
 
-      const newPage = {
+      const newBlog = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
       };
 
       req.body = {
-        page: newPage,
+        blogPost: newBlog,
       };
       req._authData = {
         userType: 'admin',
       };
 
-      mpc.addPage(req, res)
+      mbc.addBlogPost(req, res)
         .then((err) => {
           expect(err).toBe(error);
 
@@ -761,16 +768,16 @@ describe("MongoPageController", () => {
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
-          expect(checkPageSpy).toHaveBeenCalledTimes(1);
-          expect(checkPageSpy).toHaveBeenCalledWith(newPage);
+          expect(checkBlogSpy).toHaveBeenCalledTimes(1);
+          expect(checkBlogSpy).toHaveBeenCalledWith(newBlog);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(insertOne).toHaveBeenCalledTimes(1);
           expect(insertOne).toHaveBeenCalledWith({
-            ...newPage,
+            ...newBlog,
             dateAdded: expect.any(Number),
             dateUpdated: expect.any(Number),
           });
@@ -779,22 +786,23 @@ describe("MongoPageController", () => {
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
-            error: "Page Slug Already Exists",
+            error: "Blog Post Slug Already Exists",
           });
           done();
         });
     });
 
-    test("If insertedCount is 0, addPage will send a 400 response and return an error. The function will run insertOne", (done) => {
-      const newPage = {
+    test("If insertedCount is 0, addBlogPost will send a 400 response and return an error. The function will run insertOne", (done) => {
+      const newBlog = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
       };
 
       req.body = {
-        page: newPage,
+        blogPost: newBlog,
       };
       req._authData = {
         userType: 'admin',
@@ -807,8 +815,8 @@ describe("MongoPageController", () => {
         };
       });
 
-      const error = "Page Was Not Added";
-      mpc.addPage(req, res)
+      const error = "Blog Post Was Not Added";
+      mbc.addBlogPost(req, res)
         .then((result) => {
           expect(result).toBe(error);
 
@@ -816,16 +824,16 @@ describe("MongoPageController", () => {
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
-          expect(checkPageSpy).toHaveBeenCalledTimes(1);
-          expect(checkPageSpy).toHaveBeenCalledWith(newPage);
+          expect(checkBlogSpy).toHaveBeenCalledTimes(1);
+          expect(checkBlogSpy).toHaveBeenCalledWith(newBlog);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(insertOne).toHaveBeenCalledTimes(1);
           expect(insertOne).toHaveBeenCalledWith({
-            ...newPage,
+            ...newBlog,
             dateAdded: expect.any(Number),
             dateUpdated: expect.any(Number),
           });
@@ -839,16 +847,17 @@ describe("MongoPageController", () => {
 
     });
 
-    test("If insertedCount is not in the result, addPage will send a 500 response and return an error. The function will run insertOne", (done) => {
-      const newPage = {
+    test("If insertedCount is not in the result, addBlogPost will send a 500 response and return an error. The function will run insertOne", (done) => {
+      const newBlog = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
       };
 
       req.body = {
-        page: newPage,
+        blogPost: newBlog,
       };
       req._authData = {
         userType: 'admin',
@@ -861,7 +870,7 @@ describe("MongoPageController", () => {
       });
 
       const error = "Database Error: Improper Results Returned";
-      mpc.addPage(req, res)
+      mbc.addBlogPost(req, res)
         .then((result) => {
           expect(result).toBe(error);
 
@@ -869,16 +878,16 @@ describe("MongoPageController", () => {
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
-          expect(checkPageSpy).toHaveBeenCalledTimes(1);
-          expect(checkPageSpy).toHaveBeenCalledWith(newPage);
+          expect(checkBlogSpy).toHaveBeenCalledTimes(1);
+          expect(checkBlogSpy).toHaveBeenCalledWith(newBlog);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(insertOne).toHaveBeenCalledTimes(1);
           expect(insertOne).toHaveBeenCalledWith({
-            ...newPage,
+            ...newBlog,
             dateAdded: expect.any(Number),
             dateUpdated: expect.any(Number),
           });
@@ -892,16 +901,17 @@ describe("MongoPageController", () => {
 
     });
 
-    test("If insertedCount is not a number, addPage will send a 500 response and return an error. The function will run insertOne", (done) => {
-      const newPage = {
+    test("If insertedCount is not a number, addBlogPost will send a 500 response and return an error. The function will run insertOne", (done) => {
+      const newBlog = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
       };
 
       req.body = {
-        page: newPage,
+        blogPost: newBlog,
       };
       req._authData = {
         userType: 'admin',
@@ -915,7 +925,7 @@ describe("MongoPageController", () => {
       });
 
       const error = "Database Error: Improper Results Returned";
-      mpc.addPage(req, res)
+      mbc.addBlogPost(req, res)
         .then((result) => {
           expect(result).toBe(error);
 
@@ -923,16 +933,16 @@ describe("MongoPageController", () => {
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
-          expect(checkPageSpy).toHaveBeenCalledTimes(1);
-          expect(checkPageSpy).toHaveBeenCalledWith(newPage);
+          expect(checkBlogSpy).toHaveBeenCalledTimes(1);
+          expect(checkBlogSpy).toHaveBeenCalledWith(newBlog);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(insertOne).toHaveBeenCalledTimes(1);
           expect(insertOne).toHaveBeenCalledWith({
-            ...newPage,
+            ...newBlog,
             dateAdded: expect.any(Number),
             dateUpdated: expect.any(Number),
           });
@@ -946,16 +956,17 @@ describe("MongoPageController", () => {
 
     });
 
-    test("If addPage doesn't return an object, addPage will send a 500 response and return an error. The function will run insertOne", (done) => {
-      const newPage = {
+    test("If addBlogPost doesn't return an object, addBlogPost will send a 500 response and return an error. The function will run insertOne", (done) => {
+      const newBlog = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
       };
 
       req.body = {
-        page: newPage,
+        blogPost: newBlog,
       };
       req._authData = {
         userType: 'admin',
@@ -965,7 +976,7 @@ describe("MongoPageController", () => {
       });
 
       const error = "Database Error: Improper Results Returned";
-      mpc.addPage(req, res)
+      mbc.addBlogPost(req, res)
         .then((result) => {
           expect(result).toBe(error);
 
@@ -973,16 +984,16 @@ describe("MongoPageController", () => {
           expect(checkUserSpy).toHaveBeenCalledWith(req._authData);
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
-          expect(checkPageSpy).toHaveBeenCalledTimes(1);
-          expect(checkPageSpy).toHaveBeenCalledWith(newPage);
+          expect(checkBlogSpy).toHaveBeenCalledTimes(1);
+          expect(checkBlogSpy).toHaveBeenCalledWith(newBlog);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(insertOne).toHaveBeenCalledTimes(1);
           expect(insertOne).toHaveBeenCalledWith({
-            ...newPage,
+            ...newBlog,
             dateAdded: expect.any(Number),
             dateUpdated: expect.any(Number),
           });
@@ -998,19 +1009,20 @@ describe("MongoPageController", () => {
 
   });
 
-  describe("editPage", () => {
+  describe("editBlogPost", () => {
     let checkUserSpy;
     let extractSpy;
 
     beforeEach(() => {
-      checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      extractSpy = jest.spyOn(mpc, "extractPageData");
+      checkUserSpy = jest.spyOn(mbc, "checkAllowedUsersForBlogMod");
+      extractSpy = jest.spyOn(mbc, "extractBlogPostData");
     });
 
-    test("editPage will send a 200 response and send the contents of the new page to the user. The function will run updateOne", (done) => {
-      const editPage = {
+    test("editBlogPost will send a 200 response and send the contents of the new blog post to the user. The function will run updateOne", (done) => {
+      const editBlogPost = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
         meta: {},
@@ -1024,16 +1036,16 @@ describe("MongoPageController", () => {
       const id = 123;
 
       req.body = {
-        page: {
+        blogPost: {
           id,
-          ...editPage,
+          ...editBlogPost,
         },
       };
       req._authData = {
         userType: 'admin',
       };
 
-      mpc.editPage(req, res)
+      mbc.editBlogPost(req, res)
         .then((result) => {
           expect(result).toBe(200);
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
@@ -1043,7 +1055,7 @@ describe("MongoPageController", () => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(updateOne).toHaveBeenCalledTimes(1);
           expect(updateOne).toHaveBeenCalledWith(
             {
@@ -1051,7 +1063,7 @@ describe("MongoPageController", () => {
             },
             {
               $set: {
-                ...editPage,
+                ...editBlogPost,
                 dateUpdated: expect.any(Number),
               },
             }
@@ -1060,7 +1072,7 @@ describe("MongoPageController", () => {
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
-            ...editPage,
+            ...editBlogPost,
             id,
             dateUpdated: expect.any(Number),
           });
@@ -1068,25 +1080,26 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If the user isn't allowed to modify the page, editPage will return an error and send a 401 error", (done) => {
-      const editPage = {
+    test("If the user isn't allowed to modify the blog, editBlogPost will return an error and send a 401 error", (done) => {
+      const editBlogPost = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
       };
 
       req.body = {
-        page: {
+        blogPost: {
           id: 123,
-          ...editPage,
+          ...editBlogPost,
         },
       };
       req._authData = {
         userType: 'viewer',
       };
 
-      mpc.editPage(req, res)
+      mbc.editBlogPost(req, res)
         .then((err) => {
           expect(err).toBe("Access Denied");
 
@@ -1107,14 +1120,14 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If no page data is included, editPage will return an error and send a 400 error", (done) => {
+    test("If no blog post data is included, editBlogPost will return an error and send a 400 error", (done) => {
       req._authData = {
         userType: 'editor',
       };
 
-      const error = "Invalid Page Data Sent";
+      const error = "Invalid Blog Post Data Sent";
 
-      mpc.editPage(req, res)
+      mbc.editBlogPost(req, res)
         .then((err) => {
           expect(err).toBe(error);
 
@@ -1135,24 +1148,25 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If no id is included in the page data, editPage will return an error and send a 400 error", (done) => {
-      const editPage = {
+    test("If no id is included in the blog post data, editBlogPost will return an error and send a 400 error", (done) => {
+      const editBlogPost = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
       };
 
       req.body = {
-        page: editPage,
+        blogPost: editBlogPost,
       };
       req._authData = {
         userType: 'admin',
       };
 
-      const error = "Invalid Page Data. No Id Provided.";
+      const error = "Invalid Blog Post Data. No Id Provided.";
 
-      mpc.editPage(req, res)
+      mbc.editBlogPost(req, res)
         .then((err) => {
           expect(err).toBe(error);
 
@@ -1174,21 +1188,23 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If the page data included in the request dones't include required data or the data is invalid, editPage will throw an error and send a 400 error", (done) => {
-      const pages = [
-        { page: { name: "" }, error: "Invalid Name Length" },
-        { page: { name: longString }, error: "Invalid Name Length" },
-        { page: { name: null }, error: "Invalid Name Type" },
-        { page: { enabled: "true" }, error: "Invalid Enabled Data Type" },
-        { page: { enabled: null }, error: "Invalid Enabled Data Type" },
-        { page: { slug: "" }, error: "Invalid Slug Length" },
-        { page: { slug: "!" }, error: "Invalid Characters in Slug" },
-        { page: { slug: longString }, error: "Invalid Slug Length" },
-        { page: { slug: null }, error: "Invalid Slug Type" },
-        { page: { content: {} }, error: "Invalid Content Data Type" },
-        { page: { content: null }, error: "Invalid Content Data Type" },
-        { page: { meta: null }, error: "Invalid Meta Data Type" },
-        { page: { meta: [] }, error: "Invalid Meta Data Type" },
+    test("If the blog post data included in the request dones't include required data or the data is invalid, editBlogPost will throw an error and send a 400 error", (done) => {
+      const blogs = [
+        { blogPost: { name: "" }, error: "Invalid Name Length" },
+        { blogPost: { name: longString }, error: "Invalid Name Length" },
+        { blogPost: { name: null }, error: "Invalid Name Type" },
+        { blogPost: { draft: "true" }, error: "Invalid Draft Data Type" },
+        { blogPost: { draft: null }, error: "Invalid Draft Data Type" },
+        { blogPost: { public: "true" }, error: "Invalid Public Data Type" },
+        { blogPost: { public: null }, error: "Invalid Public Data Type" },
+        { blogPost: { slug: "" }, error: "Invalid Slug Length" },
+        { blogPost: { slug: "!" }, error: "Invalid Characters in Slug" },
+        { blogPost: { slug: longString }, error: "Invalid Slug Length" },
+        { blogPost: { slug: null }, error: "Invalid Slug Type" },
+        { blogPost: { content: {} }, error: "Invalid Content Data Type" },
+        { blogPost: { content: null }, error: "Invalid Content Data Type" },
+        { blogPost: { meta: null }, error: "Invalid Meta Data Type" },
+        { blogPost: { meta: [] }, error: "Invalid Meta Data Type" },
       ];
 
       req._authData = {
@@ -1197,11 +1213,11 @@ describe("MongoPageController", () => {
 
       const requests = [];
       const promises = [];
-      for (let x = 0, len = pages.length; x < len; ++x) {
-        const { page, error } = pages[x];
+      for (let x = 0, len = blogs.length; x < len; ++x) {
+        const { blogPost, error } = blogs[x];
 
-        requests[x] = { ...req, body: { page: { id: 123, ...page } } };
-        promises[x] = mpc.editPage(requests[x], res).then((err) => {
+        requests[x] = { ...req, body: { blogPost: { id: 123, ...blogPost } } };
+        promises[x] = mbc.editBlogPost(requests[x], res).then((err) => {
           expect(err).toBe(error);
         });
       }
@@ -1212,15 +1228,15 @@ describe("MongoPageController", () => {
           expect(collection).toHaveBeenCalledTimes(0);
           expect(insertOne).toHaveBeenCalledTimes(0);
 
-          const totalPages = pages.length;
+          const totalBlogs = blogs.length;
 
-          expect(checkUserSpy).toHaveBeenCalledTimes(totalPages);
-          expect(extractSpy).toHaveBeenCalledTimes(totalPages);
-          expect(status).toHaveBeenCalledTimes(totalPages);
-          expect(json).toHaveBeenCalledTimes(totalPages);
-          for (let x = 0, len = totalPages; x < len; ++x) {
+          expect(checkUserSpy).toHaveBeenCalledTimes(totalBlogs);
+          expect(extractSpy).toHaveBeenCalledTimes(totalBlogs);
+          expect(status).toHaveBeenCalledTimes(totalBlogs);
+          expect(json).toHaveBeenCalledTimes(totalBlogs);
+          for (let x = 0, len = totalBlogs; x < len; ++x) {
             const request = requests[x];
-            const { error } = pages[x];
+            const { error } = blogs[x];
 
             expect(checkUserSpy).toHaveBeenNthCalledWith(x + 1, req._authData);
             expect(extractSpy).toHaveBeenNthCalledWith(x + 1, request);
@@ -1232,30 +1248,31 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If updateOne throws an error, editPage will return an error and send an HTTP 500 error", (done) => {
+    test("If updateOne throws an error, editBlogPost will return an error and send an HTTP 500 error", (done) => {
       const error = "test error";
       updateOne.mockImplementationOnce(() => {
         return Promise.reject(error);
       });
 
-      const editPage = {
+      const editBlogPost = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
       };
 
       req.body = {
-        page: {
+        blogPost: {
           id: 123,
-          ...editPage,
+          ...editBlogPost,
         },
       };
       req._authData = {
         userType: 'admin',
       };
 
-      mpc.editPage(req, res)
+      mbc.editBlogPost(req, res)
         .then((err) => {
           expect(err).toBe(error);
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
@@ -1265,15 +1282,15 @@ describe("MongoPageController", () => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(updateOne).toHaveBeenCalledTimes(1);
           expect(updateOne).toHaveBeenCalledWith(
             {
-              _id: req.body.page.id,
+              _id: req.body.blogPost.id,
             },
             {
               $set: {
-                ...editPage,
+                ...editBlogPost,
                 dateUpdated: expect.any(Number),
               },
             }
@@ -1282,13 +1299,13 @@ describe("MongoPageController", () => {
           expect(status).toHaveBeenCalledWith(500);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
-            error: "Error Editing Page",
+            error: "Error Editing Blog Post",
           });
           done();
         });
     });
 
-    test("If updateOne throws an error indicating the slug already exists, editPage will return an error and send an HTTP 401 error", (done) => {
+    test("If updateOne throws an error indicating the slug already exists, editBlogPost will return an error and send an HTTP 401 error", (done) => {
       const error = {
         errmsg: "E11000 Error",
       };
@@ -1296,24 +1313,25 @@ describe("MongoPageController", () => {
         return Promise.reject(error);
       });
 
-      const editPage = {
+      const editBlogPost = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
       };
 
       req.body = {
-        page: {
+        blogPost: {
           id: 123,
-          ...editPage,
+          ...editBlogPost,
         },
       };
       req._authData = {
         userType: 'admin',
       };
 
-      mpc.editPage(req, res)
+      mbc.editBlogPost(req, res)
         .then((err) => {
           expect(err).toBe(error);
           expect(checkUserSpy).toHaveBeenCalledTimes(1);
@@ -1324,15 +1342,15 @@ describe("MongoPageController", () => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(updateOne).toHaveBeenCalledTimes(1);
           expect(updateOne).toHaveBeenCalledWith(
             {
-              _id: req.body.page.id,
+              _id: req.body.blogPost.id,
             },
             {
               $set: {
-                ...editPage,
+                ...editBlogPost,
                 dateUpdated: expect.any(Number),
               },
             }
@@ -1342,7 +1360,7 @@ describe("MongoPageController", () => {
           expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
-            error: "Page Slug Already Exists",
+            error: "Blog Post Slug Already Exists",
           });
 
           done();
@@ -1350,9 +1368,10 @@ describe("MongoPageController", () => {
     });
 
     test("If modifiedCount is 0, updateOne will send a 400 response and return an error. The function will run updateOne", (done) => {
-      const editPage = {
+      const editBlogPost = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
         meta: {},
@@ -1372,17 +1391,17 @@ describe("MongoPageController", () => {
       const id = 123;
 
       req.body = {
-        page: {
+        blogPost: {
           id,
-          ...editPage,
+          ...editBlogPost,
         },
       };
       req._authData = {
         userType: 'admin',
       };
 
-      const error = "Page Was Not Updated";
-      mpc.editPage(req, res)
+      const error = "Blog Post Was Not Updated";
+      mbc.editBlogPost(req, res)
         .then((result) => {
           expect(result).toBe(error);
 
@@ -1394,7 +1413,7 @@ describe("MongoPageController", () => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(updateOne).toHaveBeenCalledTimes(1);
           expect(updateOne).toHaveBeenCalledWith(
             {
@@ -1402,7 +1421,7 @@ describe("MongoPageController", () => {
             },
             {
               $set: {
-                ...editPage,
+                ...editBlogPost,
                 dateUpdated: expect.any(Number),
               },
             }
@@ -1418,9 +1437,10 @@ describe("MongoPageController", () => {
     });
 
     test("If modifiedCount is not a number, updateOne will send a 400 response and return an error. The function will run updateOne", (done) => {
-      const editPage = {
+      const editBlogPost = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
         meta: {},
@@ -1440,9 +1460,9 @@ describe("MongoPageController", () => {
       const id = 123;
 
       req.body = {
-        page: {
+        blogPost: {
           id,
-          ...editPage,
+          ...editBlogPost,
         },
       };
       req._authData = {
@@ -1450,7 +1470,7 @@ describe("MongoPageController", () => {
       };
 
       const error = "Database Error: Improper Results Returned";
-      mpc.editPage(req, res)
+      mbc.editBlogPost(req, res)
         .then((result) => {
           expect(result).toBe(error);
 
@@ -1462,7 +1482,7 @@ describe("MongoPageController", () => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(updateOne).toHaveBeenCalledTimes(1);
           expect(updateOne).toHaveBeenCalledWith(
             {
@@ -1470,7 +1490,7 @@ describe("MongoPageController", () => {
             },
             {
               $set: {
-                ...editPage,
+                ...editBlogPost,
                 dateUpdated: expect.any(Number),
               },
             }
@@ -1486,9 +1506,10 @@ describe("MongoPageController", () => {
     });
 
     test("If modifiedCount is not in the result, updateOne will send a 500 response and return an error. The function will run updateOne", (done) => {
-      const editPage = {
+      const editBlogPost = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
         meta: {},
@@ -1506,9 +1527,9 @@ describe("MongoPageController", () => {
       const id = 123;
 
       req.body = {
-        page: {
+        blogPost: {
           id,
-          ...editPage,
+          ...editBlogPost,
         },
       };
       req._authData = {
@@ -1516,7 +1537,7 @@ describe("MongoPageController", () => {
       };
 
       const error = "Database Error: Improper Results Returned";
-      mpc.editPage(req, res)
+      mbc.editBlogPost(req, res)
         .then((result) => {
           expect(result).toBe(error);
 
@@ -1528,7 +1549,7 @@ describe("MongoPageController", () => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(updateOne).toHaveBeenCalledTimes(1);
           expect(updateOne).toHaveBeenCalledWith(
             {
@@ -1536,7 +1557,7 @@ describe("MongoPageController", () => {
             },
             {
               $set: {
-                ...editPage,
+                ...editBlogPost,
                 dateUpdated: expect.any(Number),
               },
             }
@@ -1552,9 +1573,10 @@ describe("MongoPageController", () => {
     });
 
     test("If updateOne doesn't return an object, updateOne will send a 500 response and return an error. The function will run updateOne", (done) => {
-      const editPage = {
+      const editBlogPost = {
         name: "name",
-        enabled: true,
+        public: true,
+        draft: false,
         slug: "name",
         content: [],
         meta: {},
@@ -1570,9 +1592,9 @@ describe("MongoPageController", () => {
       const id = 123;
 
       req.body = {
-        page: {
+        blogPost: {
           id,
-          ...editPage,
+          ...editBlogPost,
         },
       };
       req._authData = {
@@ -1580,7 +1602,7 @@ describe("MongoPageController", () => {
       };
 
       const error = "Database Error: Improper Results Returned";
-      mpc.editPage(req, res)
+      mbc.editBlogPost(req, res)
         .then((result) => {
           expect(result).toBe(error);
 
@@ -1592,7 +1614,7 @@ describe("MongoPageController", () => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(updateOne).toHaveBeenCalledTimes(1);
           expect(updateOne).toHaveBeenCalledWith(
             {
@@ -1600,7 +1622,7 @@ describe("MongoPageController", () => {
             },
             {
               $set: {
-                ...editPage,
+                ...editBlogPost,
                 dateUpdated: expect.any(Number),
               },
             }
@@ -1617,17 +1639,17 @@ describe("MongoPageController", () => {
 
   });
 
-  describe("deletePage", () => {
+  describe("deleteBlogPost", () => {
     let checkUserSpy;
     let extractSpy;
 
     beforeEach(() => {
-      checkUserSpy = jest.spyOn(mpc, "checkAllowedUsersForSiteMod");
-      extractSpy = jest.spyOn(mpc, "extractPageData");
+      checkUserSpy = jest.spyOn(mbc, "checkAllowedUsersForBlogMod");
+      extractSpy = jest.spyOn(mbc, "extractBlogPostData");
     });
 
-    test("deletePage will send a 200 response and send the contents of the new page to the user. The function will run insertOne", (done) => {
-      const deletePage = {
+    test("deleteBlogPost will send a 200 response and send the contents of the new blog post to the user. The function will run insertOne", (done) => {
+      const deleteBlogPost = {
         id: 123,
       };
 
@@ -1637,13 +1659,13 @@ describe("MongoPageController", () => {
       });
 
       req.body = {
-        page: deletePage,
+        blogPost: deleteBlogPost,
       };
       req._authData = {
         userType: 'admin',
       };
 
-      mpc.deletePage(req, res)
+      mbc.deleteBlogPost(req, res)
         .then((result) => {
           expect(result).toBe(200);
 
@@ -1655,7 +1677,7 @@ describe("MongoPageController", () => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(deleteOne).toHaveBeenCalledTimes(1);
           expect(deleteOne).toHaveBeenCalledWith({
             _id: testObjectId,
@@ -1665,15 +1687,15 @@ describe("MongoPageController", () => {
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
-            message: "Page Deleted Successfully",
+            message: "Blog Post Deleted Successfully",
           });
 
           done();
         });
     });
 
-    test("If the user isn't allowed to modify the page, deletePage will throw an error and send a 400 error", (done) => {
-      const deletePage = {
+    test("If the user isn't allowed to modify the blog post, deleteBlogPost will throw an error and send a 400 error", (done) => {
+      const deleteBlogPost = {
         id: 123,
       };
 
@@ -1683,14 +1705,14 @@ describe("MongoPageController", () => {
       });
 
       req.body = {
-        page: deletePage,
+        blogPost: deleteBlogPost,
       };
       req._authData = {
         userType: 'viewer',
       };
 
       const error = "Access Denied";
-      mpc.deletePage(req, res)
+      mbc.deleteBlogPost(req, res)
         .then((err) => {
           expect(err).toBe(error);
 
@@ -1710,7 +1732,7 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If no page data is included, deletePage will throw an error and send a 400 error", (done) => {
+    test("If no blog post data is included, deleteBlogPost will throw an error and send a 400 error", (done) => {
       const testObjectId = 69696969;
       ObjectId.mockImplementationOnce(() => {
         return testObjectId;
@@ -1720,9 +1742,9 @@ describe("MongoPageController", () => {
         userType: 'admin',
       };
 
-      const error = "Invalid Page Data Sent";
+      const error = "Invalid Blog Post Data Sent";
 
-      mpc.deletePage(req, res)
+      mbc.deleteBlogPost(req, res)
         .then((err) => {
           expect(err).toBe(error);
 
@@ -1744,8 +1766,8 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If no id is included in the page data, deletePage will throw an error and send a 400 error", (done) => {
-      const deletePage = {};
+    test("If no id is included in the blog post data, deleteBlogPost will throw an error and send a 400 error", (done) => {
+      const deleteBlogPost = {};
 
       const testObjectId = 69696969;
       ObjectId.mockImplementationOnce(() => {
@@ -1753,15 +1775,15 @@ describe("MongoPageController", () => {
       });
 
       req.body = {
-        page: deletePage,
+        blogPost: deleteBlogPost,
       };
       req._authData = {
         userType: 'admin',
       };
 
-      const error = "Invalid Page Data. No Id Provided.";
+      const error = "Invalid Blog Post Data. No Id Provided.";
 
-      mpc.deletePage(req, res)
+      mbc.deleteBlogPost(req, res)
         .then((err) => {
           expect(err).toBe(error);
 
@@ -1783,13 +1805,13 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If deleteOne throws an error, editPage will throw an error and send an HTTP 500 error", (done) => {
+    test("If deleteOne throws an error, editBlogPost will throw an error and send an HTTP 500 error", (done) => {
       const error = "test error";
       deleteOne.mockImplementationOnce(() => {
         return Promise.reject(error);
       });
 
-      const deletePage = {
+      const deleteBlogPost = {
         id: 123,
       };
 
@@ -1799,13 +1821,13 @@ describe("MongoPageController", () => {
       });
 
       req.body = {
-        page: deletePage,
+        blogPost: deleteBlogPost,
       };
       req._authData = {
         userType: 'admin',
       };
 
-      mpc.deletePage(req, res)
+      mbc.deleteBlogPost(req, res)
         .then((err) => {
           expect(err).toBe(error);
 
@@ -1817,7 +1839,7 @@ describe("MongoPageController", () => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(deleteOne).toHaveBeenCalledTimes(1);
           expect(deleteOne).toHaveBeenCalledWith({
             _id: testObjectId,
@@ -1827,15 +1849,15 @@ describe("MongoPageController", () => {
           expect(status).toHaveBeenCalledWith(500);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
-            error: "Error Deleting Page",
+            error: "Error Deleting Blog Post",
           });
 
           done();
         });
     });
 
-    test("If deletedCount is 0, deletePage will send a 400 response return an error. The function will run deleteOne", (done) => {
-      const deletePage = {
+    test("If deletedCount is 0, deleteBlogPost will send a 400 response return an error. The function will run deleteOne", (done) => {
+      const deleteBlogPost = {
         id: 123,
       };
 
@@ -1849,14 +1871,14 @@ describe("MongoPageController", () => {
       });
 
       req.body = {
-        page: deletePage,
+        blogPost: deleteBlogPost,
       };
       req._authData = {
         userType: 'admin',
       };
 
-      const error = "Page Was Not Deleted";
-      mpc.deletePage(req, res)
+      const error = "Blog Post Was Not Deleted";
+      mbc.deleteBlogPost(req, res)
         .then((result) => {
           expect(result).toBe(error);
 
@@ -1868,7 +1890,7 @@ describe("MongoPageController", () => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(deleteOne).toHaveBeenCalledTimes(1);
           expect(deleteOne).toHaveBeenCalledWith({
             _id: testObjectId,
@@ -1883,8 +1905,8 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If deletedCount is not a number, deletePage will send a 500 response return an error. The function will run deleteOne", (done) => {
-      const deletePage = {
+    test("If deletedCount is not a number, deleteBlogPost will send a 500 response return an error. The function will run deleteOne", (done) => {
+      const deleteBlogPost = {
         id: 123,
       };
 
@@ -1900,14 +1922,14 @@ describe("MongoPageController", () => {
       });
 
       req.body = {
-        page: deletePage,
+        blogPost: deleteBlogPost,
       };
       req._authData = {
         userType: 'admin',
       };
 
       const error = "Database Error: Improper Results Returned";
-      mpc.deletePage(req, res)
+      mbc.deleteBlogPost(req, res)
         .then((result) => {
           expect(result).toBe(error);
 
@@ -1919,7 +1941,7 @@ describe("MongoPageController", () => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(deleteOne).toHaveBeenCalledTimes(1);
           expect(deleteOne).toHaveBeenCalledWith({
             _id: testObjectId,
@@ -1934,8 +1956,8 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If deletedCount is not in the result, deletePage will send a 500 response return an error. The function will run deleteOne", (done) => {
-      const deletePage = {
+    test("If deletedCount is not in the result, deleteBlogPost will send a 500 response return an error. The function will run deleteOne", (done) => {
+      const deleteBlogPost = {
         id: 123,
       };
 
@@ -1949,14 +1971,14 @@ describe("MongoPageController", () => {
       });
 
       req.body = {
-        page: deletePage,
+        blogPost: deleteBlogPost,
       };
       req._authData = {
         userType: 'admin',
       };
 
       const error = "Database Error: Improper Results Returned";
-      mpc.deletePage(req, res)
+      mbc.deleteBlogPost(req, res)
         .then((result) => {
           expect(result).toBe(error);
 
@@ -1968,7 +1990,7 @@ describe("MongoPageController", () => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(deleteOne).toHaveBeenCalledTimes(1);
           expect(deleteOne).toHaveBeenCalledWith({
             _id: testObjectId,
@@ -1983,8 +2005,8 @@ describe("MongoPageController", () => {
         });
     });
 
-    test("If deletedPage doesn't return an object, deletePage will send a 500 response return an error. The function will run deleteOne", (done) => {
-      const deletePage = {
+    test("If deletedBlog doesn't return an object, deleteBlogPost will send a 500 response return an error. The function will run deleteOne", (done) => {
+      const deleteBlogPost = {
         id: 123,
       };
 
@@ -1996,14 +2018,14 @@ describe("MongoPageController", () => {
       });
 
       req.body = {
-        page: deletePage,
+        blogPost: deleteBlogPost,
       };
       req._authData = {
         userType: 'admin',
       };
 
       const error = "Database Error: Improper Results Returned";
-      mpc.deletePage(req, res)
+      mbc.deleteBlogPost(req, res)
         .then((result) => {
           expect(result).toBe(error);
 
@@ -2015,7 +2037,7 @@ describe("MongoPageController", () => {
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
           expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("pages");
+          expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(deleteOne).toHaveBeenCalledTimes(1);
           expect(deleteOne).toHaveBeenCalledWith({
             _id: testObjectId,

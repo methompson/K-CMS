@@ -102,6 +102,10 @@ class BlogController {
       return "Invalid Blog Post Data (public)";
     }
 
+    if (!Array.isArray(blogData.content)) {
+      return "Invalid Blog Post Data";
+    }
+
     return null;
   }
 

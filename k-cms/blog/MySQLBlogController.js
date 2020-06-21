@@ -76,7 +76,7 @@ class MySQLBlogController extends BlogController {
         return 404;
       })
       .catch((err) => {
-        send500Error(res, `Database Error, ${err}`);
+        send500Error(res, `Database Error`);
 
         return err;
       });
@@ -133,7 +133,7 @@ class MySQLBlogController extends BlogController {
    * @returns {Promise}
    */
   addBlogPost(req, res) {
-    if (!this.checkAllowedUsersForSiteMod(req._authData)) {
+    if (!this.checkAllowedUsersForBlogMod(req._authData)) {
       send401Error(res, "");
       return Promise.resolve("Access Denied");
     }
@@ -162,14 +162,14 @@ class MySQLBlogController extends BlogController {
         name,
         slug,
         draft,
-        public
+        public,
         content,
         meta,
         dateAdded,
         dateUpdated
       )
       VALUES (
-        ?,?,?,?,?,?,?
+        ?,?,?,?,?,?,?,?
       )
     `;
 
@@ -239,7 +239,7 @@ class MySQLBlogController extends BlogController {
    * @returns {Promise}
    */
   editBlogPost(req, res) {
-    if (!this.checkAllowedUsersForSiteMod(req._authData)) {
+    if (!this.checkAllowedUsersForBlogMod(req._authData)) {
       const err = "Access Denied";
       send401Error(res, err);
       return Promise.resolve(err);
@@ -382,7 +382,7 @@ class MySQLBlogController extends BlogController {
    * @returns {Promise}
    */
   deleteBlogPost(req, res) {
-    if (!this.checkAllowedUsersForSiteMod(req._authData)) {
+    if (!this.checkAllowedUsersForBlogMod(req._authData)) {
       const err = "Access Denied";
       send401Error(res, err);
       return Promise.resolve(err);

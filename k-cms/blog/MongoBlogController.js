@@ -47,7 +47,7 @@ class MongoBlogController extends BlogController {
     if ( !('params' in req)
       || !('slug' in req.params)
     ) {
-      const err = "Invalid Blog Data Sent";
+      const err = "Invalid Blog Post Data Sent";
       send400Error(res, err);
       return Promise.resolve(err);
     }
@@ -134,7 +134,7 @@ class MongoBlogController extends BlogController {
    * @returns {Promise}
    */
   addBlogPost(req, res) {
-    if (!this.checkAllowedUsersForSiteMod(req._authData)) {
+    if (!this.checkAllowedUsersForBlogMod(req._authData)) {
       send401Error(res, "Access Denied");
       return Promise.resolve("Access Denied");
     }
@@ -209,7 +209,7 @@ class MongoBlogController extends BlogController {
    * @returns {Promise}
    */
   editBlogPost(req, res) {
-    if (!this.checkAllowedUsersForSiteMod(req._authData)) {
+    if (!this.checkAllowedUsersForBlogMod(req._authData)) {
       const err = "Access Denied";
       send401Error(res, err);
       return Promise.resolve(err);
@@ -341,7 +341,6 @@ class MongoBlogController extends BlogController {
       });
   }
 
-  // ! Not Implemented Correctly Yet
   /**
    * Deletes a blog post in the database.
    *
@@ -350,7 +349,7 @@ class MongoBlogController extends BlogController {
    * @returns {Promise}
    */
   deleteBlogPost(req, res) {
-    if (!this.checkAllowedUsersForSiteMod(req._authData)) {
+    if (!this.checkAllowedUsersForBlogMod(req._authData)) {
       const err = "Access Denied";
       send401Error(res, err);
       return Promise.resolve(err);
@@ -396,7 +395,7 @@ class MongoBlogController extends BlogController {
         return error;
       })
       .catch((err) => {
-        send500Error(res, "Error Deleting Blod Posted");
+        send500Error(res, "Error Deleting Blog Post");
         return err;
       });
   }
