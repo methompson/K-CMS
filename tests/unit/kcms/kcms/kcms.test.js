@@ -423,6 +423,7 @@ describe("KCMS Class", () => {
 
       expect(cms.blogController).toBe(blogController);
 
+      expect(e.use).toHaveBeenCalledTimes(4);
       expect(e.use).toHaveBeenNthCalledWith(1, '/api', jsonFunc, corsFunc, expect.any(Function));
       expect(e.use).toHaveBeenNthCalledWith(2, '/api/user', userRoutes);
       expect(e.use).toHaveBeenNthCalledWith(3, '/api/pages', pageRoutes);
@@ -461,6 +462,46 @@ describe("KCMS Class", () => {
 
       let undef;
       expect(cms.blogController).toBe(undef);
+    });
+
+    test("If makeBlogController doesn't return an object, the blog controller will not be set in KCMS", () => {
+      const jsonFunc = bodyParser.json();
+      const corsFunc = cors();
+      const db = {};
+
+      makeDatabaseClient.mockImplementationOnce(() => {
+        return db;
+      });
+
+      const userRoutes = {};
+      const userController = {
+        routes: userRoutes,
+        getUserRequestToken,
+      };
+      makeUserController.mockImplementationOnce(() => {
+        return userController;
+      });
+
+      const pageRoutes = {};
+      const pageController = { routes: pageRoutes };
+      makePageController.mockImplementationOnce(() => {
+        return pageController;
+      });
+
+      makeBlogController.mockImplementationOnce(() => {
+        return null;
+      });
+
+      const opt = {
+        db: {},
+        blogEnabled: true,
+        blogPath: "theBlogTest",
+      };
+      cms = new KCMS(opt);
+
+      let undef;
+      expect(cms.blogController).toBe(undef);
+      expect(e.use).toHaveBeenCalledTimes(3);
     });
 
   });

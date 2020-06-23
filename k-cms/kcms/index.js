@@ -68,8 +68,10 @@ class KCMS {
       const blogPath = "blogPath" in options ? options.blogPath : 'blog';
       const blogController = makeBlogController(this.db, this.pluginHandler);
 
-      this.blogController = blogController;
-      app.use(`/${apiBase}/${blogPath}`, this.blogController.routes);
+      if (blogController) {
+        this.blogController = blogController;
+        app.use(`/${apiBase}/${blogPath}`, this.blogController.routes);
+      }
     }
 
     this.app = app;
