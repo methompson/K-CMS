@@ -64,14 +64,12 @@ class KCMS {
     app.use(`/${apiBase}/${userPath}`, this.userController.routes);
     app.use(`/${apiBase}/${pagePath}`, this.pageController.routes);
 
-    if ('blogEnabled' in options) {
+    if ('blogEnabled' in options && options.blogEnabled === true) {
       const blogPath = "blogPath" in options ? options.blogPath : 'blog';
       const blogController = makeBlogController(this.db, this.pluginHandler);
 
-      if (blogController) {
-        this.blogController = blogController;
-        app.use(`/${apiBase}/${blogPath}`, this.blogController.routes);
-      }
+      this.blogController = blogController;
+      app.use(`/${apiBase}/${blogPath}`, this.blogController.routes);
     }
 
     this.app = app;

@@ -5,6 +5,7 @@ const {
   isString,
   isBoolean,
   isFunction,
+  isUndefined,
 } = require("../../../../k-cms/utilities/isData");
 
 class MyClass {
@@ -88,6 +89,20 @@ describe("isData", () => {
       expect(isFunction(true)).toBe(false);
       expect(isFunction( () => {} )).toBe(true);
       expect(isFunction(cl)).toBe(false);
+    });
+  });
+
+  describe("isUndefined", () => {
+    test("isUndefined will return true for undefined variables and false for variables with a value", () => {
+      let undef;
+
+      expect(isUndefined(undef)).toBe(true);
+      expect(isUndefined("string")).toBe(false);
+      expect(isUndefined(1)).toBe(false);
+      expect(isUndefined(true)).toBe(false);
+      expect(isUndefined([])).toBe(false);
+      expect(isUndefined({})).toBe(false);
+      expect(isUndefined(null)).toBe(false);
     });
   });
 });

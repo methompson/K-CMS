@@ -24,8 +24,8 @@ module.exports = {
     return typeof x === typeof func;
   },
 
-  isUndefined(qUndef) {
+  isUndefined(x) {
     let undef;
-    return qUndef === undef;
+    return x === undef;
   },
 };

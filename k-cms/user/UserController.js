@@ -75,13 +75,21 @@ class UserController {
 
   // Controllers - Actions taken when routed to a certain page
 
+  /**
+   * Sends the list of user types to the user as an array. This is only available for users
+   * who are allowed to modify users.
+   *
+   * @param {Object} req Express Request Object
+   * @param {Object} res Express Response Object
+   * @returns {String|Number} Returns a string error or 200 to indicate success
+   */
   getUserTypes(req, res) {
     const user = req._authData;
 
     if (!this.checkAllowedUsersForSiteMod(user)) {
       const accessDenied = "Access Denied";
       send401Error(res, accessDenied);
-      return Promise.resolve(accessDenied);
+      return accessDenied;
     }
 
     const names = Object.keys(this.userTypes);

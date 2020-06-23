@@ -13,6 +13,7 @@ const PluginHandler = require("../../../../k-cms/plugin-handler");
 const userModule = require("../../../../k-cms/user");
 const pageModule = require("../../../../k-cms/page");
 const databaseModule = require("../../../../k-cms/database");
+const blogModule = require("../../../../k-cms/blog");
 
 const endOnErrorModule = require("../../../../k-cms/utilities/endOnError");
 
@@ -74,6 +75,13 @@ jest.mock("../../../../k-cms/user", () => {
   };
 });
 
+jest.mock("../../../../k-cms/blog", () => {
+  const makeBlogController = jest.fn(() => {});
+  return {
+    makeBlogController,
+  };
+});
+
 jest.mock("../../../../k-cms/page", () => {
   const makePageController = jest.fn(() => {});
   return {
@@ -91,6 +99,7 @@ jest.mock("../../../../k-cms/database", () => {
 const { makeDatabaseClient } = databaseModule;
 const { makeUserController, getUserRequestToken } = userModule;
 const { makePageController } = pageModule;
+const { makeBlogController } = blogModule;
 const { endOnError } = endOnErrorModule;
 
 describe("KCMS Class", () => {
@@ -334,6 +343,124 @@ describe("KCMS Class", () => {
       expect(cms.pluginHandler.db).toBe(db);
       expect(Array.isArray(cms.pluginHandler.plugins)).toBe(true);
       expect(addPluginsSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test("KCMS Constructor will assign a value to blogController if blogEnabled is passed to the KCMS constructor and is true.", () => {
+      const jsonFunc = bodyParser.json();
+      const corsFunc = cors();
+      const db = {};
+
+      makeDatabaseClient.mockImplementationOnce(() => {
+        return db;
+      });
+
+      const userRoutes = {};
+      const userController = {
+        routes: userRoutes,
+        getUserRequestToken,
+      };
+      makeUserController.mockImplementationOnce(() => {
+        return userController;
+      });
+
+      const pageRoutes = {};
+      const pageController = { routes: pageRoutes };
+      makePageController.mockImplementationOnce(() => {
+        return pageController;
+      });
+
+      const blogRoutes = {};
+      const blogController = { routes: blogRoutes };
+      makeBlogController.mockImplementationOnce(() => {
+        return blogController;
+      });
+
+      const opt = {
+        db: {},
+        blogEnabled: true,
+      };
+      cms = new KCMS(opt);
+
+      expect(cms.blogController).toBe(blogController);
+    });
+
+    test("KCMS Constructor will assign a value to blogController if blogEnabled is passed to the KCMS constructor and is true. If blogPath is provided, it will be used as the route", () => {
+      const jsonFunc = bodyParser.json();
+      const corsFunc = cors();
+      const db = {};
+
+      makeDatabaseClient.mockImplementationOnce(() => {
+        return db;
+      });
+
+      const userRoutes = {};
+      const userController = {
+        routes: userRoutes,
+        getUserRequestToken,
+      };
+      makeUserController.mockImplementationOnce(() => {
+        return userController;
+      });
+
+      const pageRoutes = {};
+      const pageController = { routes: pageRoutes };
+      makePageController.mockImplementationOnce(() => {
+        return pageController;
+      });
+
+      const blogRoutes = {};
+      const blogController = { routes: blogRoutes };
+      makeBlogController.mockImplementationOnce(() => {
+        return blogController;
+      });
+
+      const opt = {
+        db: {},
+        blogEnabled: true,
+        blogPath: "theBlogTest",
+      };
+      cms = new KCMS(opt);
+
+      expect(cms.blogController).toBe(blogController);
+
+      expect(e.use).toHaveBeenNthCalledWith(1, '/api', jsonFunc, corsFunc, expect.any(Function));
+      expect(e.use).toHaveBeenNthCalledWith(2, '/api/user', userRoutes);
+      expect(e.use).toHaveBeenNthCalledWith(3, '/api/pages', pageRoutes);
+      expect(e.use).toHaveBeenNthCalledWith(4, '/api/theBlogTest', blogRoutes);
+    });
+
+    test("KCMS constructor will not assign a value to blogController if blogEnabled is false", () => {
+      const jsonFunc = bodyParser.json();
+      const corsFunc = cors();
+      const db = {};
+
+      makeDatabaseClient.mockImplementationOnce(() => {
+        return db;
+      });
+
+      const userRoutes = {};
+      const userController = {
+        routes: userRoutes,
+        getUserRequestToken,
+      };
+      makeUserController.mockImplementationOnce(() => {
+        return userController;
+      });
+
+      const pageRoutes = {};
+      const pageController = { routes: pageRoutes };
+      makePageController.mockImplementationOnce(() => {
+        return pageController;
+      });
+
+      const opt = {
+        db: {},
+        blogEnabled: false,
+      };
+      cms = new KCMS(opt);
+
+      let undef;
+      expect(cms.blogController).toBe(undef);
     });
 
   });

@@ -1,5 +1,6 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
+const http = require("http");
 
 const UserController = require("../../../../k-cms/user/UserController");
 const PluginHandler = require("../../../../k-cms/plugin-handler");
@@ -8,6 +9,24 @@ const utilities = require("../../../../k-cms/utilities");
 
 const jwtSecret = "69";
 global.jwtSecret = jwtSecret;
+
+jest.mock("http", () => {
+  const json = jest.fn(() => {});
+  const status = jest.fn(() => {
+    return { json };
+  });
+
+  function ServerResponse() {}
+  ServerResponse.prototype.status = status;
+
+  return {
+    ServerResponse,
+    json,
+    status,
+  };
+});
+
+const { json, status } = http;
 
 describe("UserController", () => {
   let uc;
@@ -24,8 +43,12 @@ describe("UserController", () => {
     router.get.mockClear();
     router.post.mockClear();
     router.all.mockClear();
+
+    json.mockClear();
+    status.mockClear();
+
     req = {};
-    res = {};
+    res = new http.ServerResponse();
   });
 
   describe("Instantiation", () => {
@@ -115,7 +138,7 @@ describe("UserController", () => {
       expect(authSpy).toHaveBeenCalledTimes(1);
     });
 
-    test("the /add-user route has two functions. The second function runs addPage", () => {
+    test("the /add-user route has two functions. The second function runs addUser", () => {
       const addUserSpy = jest.spyOn(uc, 'addUser');
 
       const route = routes.post['/add-user'];
@@ -127,7 +150,7 @@ describe("UserController", () => {
       expect(addUserSpy).toHaveBeenCalledTimes(1);
     });
 
-    test("the /edit-user route has two functions. The second function runs addPage", () => {
+    test("the /edit-user route has two functions. The second function runs editUser", () => {
       const editUserSpy = jest.spyOn(uc, 'editUser');
 
       const route = routes.post['/edit-user'];
@@ -139,7 +162,7 @@ describe("UserController", () => {
       expect(editUserSpy).toHaveBeenCalledTimes(1);
     });
 
-    test("the /delete-user route has two functions. The second function runs addPage", () => {
+    test("the /delete-user route has two functions. The second function runs deleteUser", () => {
       const delUserSpy = jest.spyOn(uc, 'deleteUser');
 
       const route = routes.post['/delete-user'];
@@ -151,7 +174,7 @@ describe("UserController", () => {
       expect(delUserSpy).toHaveBeenCalledTimes(1);
     });
 
-    test("the /get-user/:id route has two functions. The second function runs addPage", () => {
+    test("the /get-user/:id route has two functions. The second function runs getUser", () => {
       const getUserSpy = jest.spyOn(uc, 'getUser');
 
       const route = routes.get['/get-user/:id'];
@@ -163,7 +186,7 @@ describe("UserController", () => {
       expect(getUserSpy).toHaveBeenCalledTimes(1);
     });
 
-    test("the /all-users/:page*? route has two functions. The second function runs addPage", () => {
+    test("the /all-users/:page*? route has two functions. The second function runs getAllUsers", () => {
       const getUserSpy = jest.spyOn(uc, 'getAllUsers');
 
       const route = routes.get['/all-users/:page*?'];
@@ -172,6 +195,18 @@ describe("UserController", () => {
       expect(route[0] === utilities.errorIfTokenDoesNotExist).toBe(true);
 
       route[1]();
+      expect(getUserSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test("the /all-user-types route has two functions. The second function runs getUserTypes", () => {
+      const getUserSpy = jest.spyOn(uc, 'getUserTypes');
+
+      const route = routes.get['/get-user-types'];
+      req._authData = {};
+
+      expect(route[0] === utilities.errorIfTokenDoesNotExist).toBe(true);
+
+      route[1](req, res);
       expect(getUserSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -199,6 +234,37 @@ describe("UserController", () => {
         user2: expect.any(Object),
         user69: expect.any(Object),
       }));
+    });
+  });
+
+  describe("getUserTypes", () => {
+
+    test("If the user is of a userType that allows them to modify the site, getUserTypes will send the user types as an array", () => {
+      req._authData = {
+        userType: "admin",
+      };
+
+      const { userTypes } = uc;
+      const userTypeNames = Object.keys(userTypes);
+      const result = uc.getUserTypes(req, res);
+
+      expect(result).toBe(200);
+      expect(status).toHaveBeenCalledTimes(1);
+      expect(status).toHaveBeenCalledWith(200);
+      expect(json).toHaveBeenCalledTimes(1);
+      expect(json).toHaveBeenCalledWith(userTypeNames);
+    });
+
+    test("If the user is not able to modify the site, getUsers will send a 401 error", () => {
+      const result = uc.getUserTypes(req, res);
+
+      expect(result).toBe("Access Denied");
+      expect(status).toHaveBeenCalledTimes(1);
+      expect(status).toHaveBeenCalledWith(401);
+      expect(json).toHaveBeenCalledTimes(1);
+      expect(json).toHaveBeenCalledWith({
+        error: "Access Denied",
+      });
     });
   });
 
