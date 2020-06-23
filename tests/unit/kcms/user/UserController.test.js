@@ -49,7 +49,7 @@ describe("UserController", () => {
       expect(uc.jwtAlg).toBe("HS256");
 
       expect(router.post).toHaveBeenCalledTimes(4);
-      expect(router.get).toHaveBeenCalledTimes(2);
+      expect(router.get).toHaveBeenCalledTimes(3);
 
       expect(router.post).toHaveBeenNthCalledWith(1, '/login', expect.any(Function));
       expect(router.post).toHaveBeenNthCalledWith(2, '/add-user', utilities.errorIfTokenDoesNotExist, expect.any(Function));
@@ -58,6 +58,7 @@ describe("UserController", () => {
 
       expect(router.get).toHaveBeenNthCalledWith(1, '/get-user/:id', utilities.errorIfTokenDoesNotExist, expect.any(Function));
       expect(router.get).toHaveBeenNthCalledWith(2, '/all-users/:page*?', utilities.errorIfTokenDoesNotExist, expect.any(Function));
+      expect(router.get).toHaveBeenNthCalledWith(3, '/get-user-types', utilities.errorIfTokenDoesNotExist, expect.any(Function));
     });
 
     test("When a userController is created without a PluginHandler or an invalid PluginHandler, a PluginHandler will be created", () => {
@@ -93,7 +94,7 @@ describe("UserController", () => {
 
     test("The Router mock will save all of the data that was added in the constructor ", () => {
       expect(Object.keys(routes.post).length).toBe(4);
-      expect(Object.keys(routes.get).length).toBe(2);
+      expect(Object.keys(routes.get).length).toBe(3);
 
       expect('/login' in routes.post).toBe(true);
       expect('/add-user' in routes.post).toBe(true);
@@ -102,6 +103,7 @@ describe("UserController", () => {
 
       expect('/get-user/:id' in routes.get).toBe(true);
       expect('/all-users/:page*?' in routes.get).toBe(true);
+      expect('/get-user-types' in routes.get).toBe(true);
     });
 
     test("the /login route has one function.", () => {

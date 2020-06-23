@@ -107,9 +107,19 @@ class MongoPageController extends PageController {
       .find(findParams)
       .toArray()
       .then((results) => {
-
         if (results) {
-          res.status(200).json(results);
+          const returnResults = [];
+
+          results.forEach((result) => {
+            const page = {
+              ...result,
+            };
+            page.id = page._id.toString();
+            delete page._id;
+            returnResults.push(page);
+          });
+
+          res.status(200).json(returnResults);
         } else {
           res.status(200).json([]);
         }

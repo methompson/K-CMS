@@ -215,12 +215,11 @@ class MongoUserController extends UserController {
             ...el,
           };
           delete user.password;
+          user.id = user._id.toString();
           returnResults.push(user);
         });
 
-        res.status(200).json({
-          users: returnResults,
-        });
+        res.status(200).json(returnResults);
         return 200;
       })
       .catch((err) => {

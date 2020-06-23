@@ -114,7 +114,7 @@ describe("MongoUserController", () => {
       expect(muc.jwtAlg).toBe("HS256");
 
       expect(router.post).toHaveBeenCalledTimes(4);
-      expect(router.get).toHaveBeenCalledTimes(2);
+      expect(router.get).toHaveBeenCalledTimes(3);
 
       expect(router.post).toHaveBeenNthCalledWith(1, '/login', expect.any(Function));
       expect(router.post).toHaveBeenNthCalledWith(2, '/add-user', utilities.errorIfTokenDoesNotExist, expect.any(Function));
@@ -123,6 +123,7 @@ describe("MongoUserController", () => {
 
       expect(router.get).toHaveBeenNthCalledWith(1, '/get-user/:id', utilities.errorIfTokenDoesNotExist, expect.any(Function));
       expect(router.get).toHaveBeenNthCalledWith(2, '/all-users/:page*?', utilities.errorIfTokenDoesNotExist, expect.any(Function));
+      expect(router.get).toHaveBeenNthCalledWith(3, '/get-user-types', utilities.errorIfTokenDoesNotExist, expect.any(Function));
 
       expect(muc.db).toBe(db);
     });
@@ -700,6 +701,12 @@ describe("MongoUserController", () => {
   });
 
   describe("getAllUsers", () => {
+    const _id = {
+      toString() {
+        return "123";
+      },
+    };
+
     test("getAllUsers will send a 200 status and return an array of user data if the user can receive all the data", (done) => {
       const page = 5;
       req._authData = {
@@ -711,12 +718,23 @@ describe("MongoUserController", () => {
       };
 
       const findResult = [
-        { user: "user1", type: 'viewer', password: "69" },
-        { user: "user2", type: 'admin', password: "96" },
+        {
+          user: "user1",
+          type: 'viewer',
+          password: "69",
+          _id,
+        },
+        {
+          user: "user2",
+          type: 'admin',
+          password: "96",
+          _id,
+        },
       ];
       const returnResults = [];
       findResult.forEach((el) => {
         const user = { ...el };
+        user.id = el._id.toString();
         delete user.password;
         returnResults.push(user);
       });
@@ -732,9 +750,7 @@ describe("MongoUserController", () => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            users: returnResults,
-          });
+          expect(json).toHaveBeenCalledWith(returnResults);
 
           expect(find).toHaveBeenCalledTimes(1);
           expect(find).toHaveBeenCalledWith(
@@ -761,8 +777,8 @@ describe("MongoUserController", () => {
       };
 
       const findResult = [
-        { user: "user1", type: 'viewer' },
-        { user: "user2", type: 'admin' },
+        { user: "user1", type: 'viewer', _id },
+        { user: "user2", type: 'admin', _id },
       ];
       findToArray.mockImplementationOnce(() => {
         return Promise.resolve(findResult);

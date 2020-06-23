@@ -98,7 +98,7 @@ describe("MySQLUserController", () => {
       expect(muc.jwtAlg).toBe("HS256");
 
       expect(router.post).toHaveBeenCalledTimes(4);
-      expect(router.get).toHaveBeenCalledTimes(2);
+      expect(router.get).toHaveBeenCalledTimes(3);
 
       expect(router.post).toHaveBeenNthCalledWith(1, '/login', expect.any(Function));
       expect(router.post).toHaveBeenNthCalledWith(2, '/add-user', utilities.errorIfTokenDoesNotExist, expect.any(Function));
@@ -107,6 +107,7 @@ describe("MySQLUserController", () => {
 
       expect(router.get).toHaveBeenNthCalledWith(1, '/get-user/:id', utilities.errorIfTokenDoesNotExist, expect.any(Function));
       expect(router.get).toHaveBeenNthCalledWith(2, '/all-users/:page*?', utilities.errorIfTokenDoesNotExist, expect.any(Function));
+      expect(router.get).toHaveBeenNthCalledWith(3, '/get-user-types', utilities.errorIfTokenDoesNotExist, expect.any(Function));
 
       expect(muc.db).toBe(db);
     });
@@ -424,6 +425,7 @@ describe("MySQLUserController", () => {
         lastName,
         username,
         email,
+        enabled,
         userType,
         userMeta,
         dateAdded,
@@ -671,9 +673,7 @@ describe("MySQLUserController", () => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            users: returnResults,
-          });
+          expect(json).toHaveBeenCalledWith(returnResults);
 
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledTimes(1);

@@ -3,8 +3,8 @@ const router = require('express').Router();
 const jwt = require('jsonwebtoken');
 
 const {
-  endOnError,
   errorIfTokenDoesNotExist,
+  send401Error,
   isObject,
 } = require("../utilities");
 
@@ -45,8 +45,10 @@ class UserController {
     this.router.post('/add-user', errorIfTokenDoesNotExist, (req, res, next) => { this.addUser(req, res, next); });
     this.router.post('/edit-user', errorIfTokenDoesNotExist, (req, res, next) => { this.editUser(req, res, next); });
     this.router.post('/delete-user', errorIfTokenDoesNotExist, (req, res, next) => { this.deleteUser(req, res, next); });
+
     this.router.get('/get-user/:id', errorIfTokenDoesNotExist, (req, res, next) => { this.getUser(req, res, next); });
     this.router.get('/all-users/:page*?', errorIfTokenDoesNotExist, (req, res, next) => { this.getAllUsers(req, res, next); });
+    this.router.get('/get-user-types', errorIfTokenDoesNotExist, (req, res, next) => { this.getUserTypes(req, res, next); });
   }
 
   get routes() {
@@ -72,6 +74,21 @@ class UserController {
   }
 
   // Controllers - Actions taken when routed to a certain page
+
+  getUserTypes(req, res) {
+    const user = req._authData;
+
+    if (!this.checkAllowedUsersForSiteMod(user)) {
+      const accessDenied = "Access Denied";
+      send401Error(res, accessDenied);
+      return Promise.resolve(accessDenied);
+    }
+
+    const names = Object.keys(this.userTypes);
+
+    res.status(200).json(names);
+    return 200;
+  }
 
   /**
    * This function will extract a user's token from the request header. The function

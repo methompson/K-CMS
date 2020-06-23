@@ -321,24 +321,43 @@ describe("MongoPageController", () => {
   });
 
   describe("getAllPages", () => {
-    beforeEach(() => {
-      findToArray.mockClear();
-    });
+    const _id = {
+      toString() {
+        return "123";
+      },
+    };
+    let docs;
 
-    test("getAllPages will send a 200 response and send the results of a search from the db collection", (done) => {
-      const docs = [
+    beforeEach(() => {
+      docs = [
         {
+          _id,
           test: 'test1',
           content: 'content',
         },
         {
+          _id,
           test: 'test2',
           content: 'content',
         },
       ];
+      findToArray.mockClear();
+    });
 
+    test("getAllPages will send a 200 response and send the results of a search from the db collection", (done) => {
       findToArray.mockImplementationOnce(() => {
         return Promise.resolve(docs);
+      });
+
+      const returnResults = [];
+
+      docs.forEach((result) => {
+        const page = {
+          ...result,
+        };
+        page.id = page._id.toString();
+        delete page._id;
+        returnResults.push(page);
       });
 
       req._authData = {
@@ -360,26 +379,26 @@ describe("MongoPageController", () => {
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
           expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith(docs);
+          expect(json).toHaveBeenCalledWith(returnResults);
 
           done();
         });
     });
 
     test("getAllPages will send a 200 response and results of a search from the db collection. The actual search will vary if the user is not in the editors list or no auth data exists", (done) => {
-      const docs = [
-        {
-          test: 'test1',
-          content: 'content',
-        },
-        {
-          test: 'test2',
-          content: 'content',
-        },
-      ];
-
       findToArray.mockImplementation(() => {
         return Promise.resolve(docs);
+      });
+
+      const returnResults = [];
+
+      docs.forEach((result) => {
+        const page = {
+          ...result,
+        };
+        page.id = page._id.toString();
+        delete page._id;
+        returnResults.push(page);
       });
 
       mpc.getAllPages(req, res)
@@ -408,9 +427,9 @@ describe("MongoPageController", () => {
           expect(status).toHaveBeenNthCalledWith(3, 200);
 
           expect(json).toHaveBeenCalledTimes(3);
-          expect(json).toHaveBeenNthCalledWith(1, docs);
-          expect(json).toHaveBeenNthCalledWith(2, docs);
-          expect(json).toHaveBeenNthCalledWith(3, docs);
+          expect(json).toHaveBeenNthCalledWith(1, returnResults);
+          expect(json).toHaveBeenNthCalledWith(2, returnResults);
+          expect(json).toHaveBeenNthCalledWith(3, returnResults);
 
           done();
         });

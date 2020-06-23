@@ -23,4 +23,9 @@ module.exports = {
     const func = () => {};
     return typeof x === typeof func;
   },
+
+  isUndefined(qUndef) {
+    let undef;
+    return qUndef === undef;
+  },
 };

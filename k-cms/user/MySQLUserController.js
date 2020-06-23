@@ -161,6 +161,7 @@ class MySQLUserController extends UserController {
         lastName,
         username,
         email,
+        enabled,
         userType,
         userMeta,
         dateAdded,
@@ -253,9 +254,7 @@ class MySQLUserController extends UserController {
           });
         }
 
-        res.status(200).json({
-          users: returnResults,
-        });
+        res.status(200).json(returnResults);
         return 200;
       })
       .catch((err) => {

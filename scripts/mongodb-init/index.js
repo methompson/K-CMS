@@ -14,8 +14,9 @@ const db = makeDatabaseClient(mongoCredentials);
 
 const adminUser = 'admin';
 const adminPassword = 'password';
+const adminEmail = 'adminEmail@ad.min';
 
-addAdminUser(db, adminUser, adminPassword)
+addAdminUser(db, adminUser, adminPassword, adminEmail)
   .then(() => {
     return setPages(db);
   })
