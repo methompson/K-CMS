@@ -26,7 +26,7 @@ class PluginHandler {
   addPlugins(plugins) {
 
     if (!Array.isArray(plugins)) {
-      return Promise.reject("Not an Array");
+      return Promise.resolve();
     }
 
     const promises = [];
@@ -59,29 +59,26 @@ class PluginHandler {
    * This method will cycle through all plugins, and run the lifecycle hook functions for each plugin.
    *
    * @param {String} hook the name of the lifecycle hook to be run
-   * @param {Object} args arguments that are passed from the running function to that lifecycle hook.
+   * @param {Object} passedArgs arguments that are passed from the running function to that lifecycle hook.
    */
-  runLifecycleHook(hook, args) {
-    let passedArgs;
-    if (!isObject(args)) {
-      passedArgs = {};
+  runLifecycleHook(hook, passedArgs) {
+    console.log("Running Hook", hook);
+    let hookArgs;
+    if (!isObject(passedArgs)) {
+      hookArgs = {};
     } else {
-      passedArgs = args;
+      hookArgs = passedArgs;
     }
+
+    hookArgs.database = this.db;
 
     this.plugins.forEach((plugin) => {
 
       // Run the hook for this plugin.
       if (plugin.isEnabled()) {
-        const hookArgs = {
-          ...passedArgs,
-          database: this.db,
-        };
-
         plugin.runHook(hook, hookArgs);
       }
     });
-
   }
 }
 

@@ -158,7 +158,7 @@ class KCMSPlugin {
    *
    * @param {String} lifecycle the name of the lifecycle hook to run
    */
-  runHook(lifecycleHook) {
+  runHook(lifecycleHook, hookArgs) {
     // Did we get a string?
     if (typeof lifecycleHook !== typeof "string") {
       return;
@@ -172,7 +172,7 @@ class KCMSPlugin {
     // Go through all actions associated with that hook.
     for (let x = 0, len = this.hooks[lifecycleHook].length; x < len; ++x) {
       // Run the individual actions in that hook.
-      this.hooks[lifecycleHook][x]();
+      this.hooks[lifecycleHook][x](hookArgs);
     }
   }
 }

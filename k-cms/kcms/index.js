@@ -23,58 +23,65 @@ class KCMS {
       return;
     }
 
+    const app = express();
+    this.app = app;
+
     this.db = makeDatabaseClient(options.db);
 
+    this.initHandlersAndControllers(options)
+      .catch((err) => {
+        console.log("initHandler error", err);
+      });
+  }
+
+  initHandlersAndControllers(options) {
     this.pluginHandler = new PluginHandler(this.db);
-    this.pluginHandler.addPlugins(options.plugins);
+    return this.pluginHandler.addPlugins(options.plugins)
+      .then(() => {
+        this.userController = makeUserController(this.db, this.pluginHandler);
+        this.pageController = makePageController(this.db, this.pluginHandler);
 
-    const app = express();
+        if (!this.userController) {
+          endOnError("Error Creating user controller");
+          return;
+        }
+        if (!this.pageController) {
+          endOnError("Error Creating page controller");
+          return;
+        }
 
-    this.userController = makeUserController(this.db, this.pluginHandler);
-    this.pageController = makePageController(this.db, this.pluginHandler);
+        const apiBase = "apiBase" in options ? options.apiBase : 'api';
+        const userPath = "userPath" in options ? options.userPath : 'user';
+        const pagePath = "pagePath" in options ? options.pagePath : 'pages';
 
-    if (!this.userController) {
-      endOnError("Error Creating user controller");
-      return;
-    }
-    if (!this.pageController) {
-      endOnError("Error Creating page controller");
-      return;
-    }
+        // For all API requests, we will parse the body and make things easier for us
+        // We will enable CORS for all requests
+        // We will then retrieve the authentication token from the head, if it exists
+        // The final function in this route has be used in a short closure because a portion
+        // of the data that getUserRequestToken uses is part of the userController object
+        // and we need to scope that comes with the implementation below
+        this.app.use(
+          `/${apiBase}`,
+          bodyParser.json(),
+          cors(),
+          (req, res, next) => {
+            this.userController.getUserRequestToken(req, res, next);
+          }
+        );
 
-    const apiBase = "apiBase" in options ? options.apiBase : 'api';
-    const userPath = "userPath" in options ? options.userPath : 'user';
-    const pagePath = "pagePath" in options ? options.pagePath : 'pages';
+        this.app.use(`/${apiBase}/${userPath}`, this.userController.routes);
+        this.app.use(`/${apiBase}/${pagePath}`, this.pageController.routes);
 
-    // For all API requests, we will parse the body and make things easier for us
-    // We will enable CORS for all requests
-    // We will then retrieve the authentication token from the head, if it exists
-    // The final function in this route has be used in a short closure because a portion
-    // of the data that getUserRequestToken uses is part of the userController object
-    // and we need to scope that comes with the implementation below
-    app.use(
-      `/${apiBase}`,
-      bodyParser.json(),
-      cors(),
-      (req, res, next) => {
-        this.userController.getUserRequestToken(req, res, next);
-      }
-    );
+        if ('blogEnabled' in options && options.blogEnabled === true) {
+          const blogPath = "blogPath" in options ? options.blogPath : 'blog';
+          const blogController = makeBlogController(this.db, this.pluginHandler);
 
-    app.use(`/${apiBase}/${userPath}`, this.userController.routes);
-    app.use(`/${apiBase}/${pagePath}`, this.pageController.routes);
-
-    if ('blogEnabled' in options && options.blogEnabled === true) {
-      const blogPath = "blogPath" in options ? options.blogPath : 'blog';
-      const blogController = makeBlogController(this.db, this.pluginHandler);
-
-      if (blogController) {
-        this.blogController = blogController;
-        app.use(`/${apiBase}/${blogPath}`, this.blogController.routes);
-      }
-    }
-
-    this.app = app;
+          if (blogController) {
+            this.blogController = blogController;
+            this.app.use(`/${apiBase}/${blogPath}`, this.blogController.routes);
+          }
+        }
+      });
   }
 }
 

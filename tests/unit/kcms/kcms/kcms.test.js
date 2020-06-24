@@ -1,8 +1,24 @@
+// We run this mock before anything else so that all modules get the mocked version of EventEmitter
+jest.mock("events", () => {
+  function EventEmitter() {
+    this.useRoutes = {};
+  }
+  EventEmitter.prototype.use = jest.fn(function use(route, ...args) {
+    this.useRoutes[route] = args;
+  });
+
+  return {
+    EventEmitter,
+  };
+});
+
 /* eslint-disable no-unused-vars */
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const uuidv4 = require("uuid/v4");
+
+const { EventEmitter } = require("events");
 
 const KCMS = require("../../../../k-cms/kcms");
 const makeKCMS = require("../../../../k-cms");
@@ -116,98 +132,63 @@ describe("KCMS Class", () => {
       endOnError.mockClear();
     });
 
-    test("KCMS Constructor with options containing a database object will create a series of objects and add several routes", () => {
-      const jsonFunc = bodyParser.json();
-      const corsFunc = cors();
+    test("KCMS Constructor with options containing a database object will create a database client, an express object and run initHandlersAndControllers", () => {
       const db = {};
 
       makeDatabaseClient.mockImplementationOnce(() => {
         return db;
       });
 
-      const userRoutes = {};
-      const userController = {
-        routes: userRoutes,
-        getUserRequestToken,
-      };
-      makeUserController.mockImplementationOnce(() => {
-        return userController;
-      });
+      // const userRoutes = {};
+      // const userController = {
+      //   routes: userRoutes,
+      //   getUserRequestToken,
+      // };
+      // makeUserController.mockImplementationOnce(() => {
+      //   return userController;
+      // });
 
-      const pageRoutes = {};
-      const pageController = { routes: pageRoutes };
-      makePageController.mockImplementationOnce(() => {
-        return pageController;
-      });
+      // const pageRoutes = {};
+      // const pageController = { routes: pageRoutes };
+      // makePageController.mockImplementationOnce(() => {
+      //   return pageController;
+      // });
 
       const opt = {
         db: {},
       };
       cms = new KCMS(opt);
 
-      expect(makeDatabaseClient).toHaveBeenCalledTimes(1);
-      expect(makeDatabaseClient).toHaveBeenCalledWith(opt.db);
+      // expect(makeDatabaseClient).toHaveBeenCalledTimes(1);
+      // expect(makeDatabaseClient).toHaveBeenCalledWith(opt.db);
 
-      expect(makeUserController).toHaveBeenCalledTimes(1);
-      expect(makeUserController).toHaveBeenCalledWith(db, expect.any(Object));
+      // expect(makeUserController).toHaveBeenCalledTimes(1);
+      // expect(makeUserController).toHaveBeenCalledWith(db, expect.any(Object));
 
-      expect(makePageController).toHaveBeenCalledTimes(1);
-      expect(makePageController).toHaveBeenCalledWith(db, expect.any(Object));
+      // expect(makePageController).toHaveBeenCalledTimes(1);
+      // expect(makePageController).toHaveBeenCalledWith(db, expect.any(Object));
 
+      expect(cms.app instanceof EventEmitter).toBe(true);
       expect(cms.db).toBe(db);
       expect(cms.pluginHandler instanceof PluginHandler).toBe(true);
 
-      expect(e.use).toHaveBeenCalledTimes(3);
+      // expect(e.use).toHaveBeenCalledTimes(3);
 
-      expect(e.use).toHaveBeenNthCalledWith(1, '/api', jsonFunc, corsFunc, expect.any(Function));
-      expect(e.use).toHaveBeenNthCalledWith(2, '/api/user', userRoutes);
-      expect(e.use).toHaveBeenNthCalledWith(3, '/api/pages', pageRoutes);
+      // expect(e.use).toHaveBeenNthCalledWith(1, '/api', jsonFunc, corsFunc, expect.any(Function));
+      // expect(e.use).toHaveBeenNthCalledWith(2, '/api/user', userRoutes);
+      // expect(e.use).toHaveBeenNthCalledWith(3, '/api/pages', pageRoutes);
 
-      expect(cms.userController).toBe(userController);
-      expect(cms.pageController).toBe(pageController);
+      // expect(cms.userController).toBe(userController);
+      // expect(cms.pageController).toBe(pageController);
 
-      expect('/api' in e.useRoutes).toBe(true);
-      expect(e.useRoutes['/api'].length).toBe(3);
-      expect(e.useRoutes['/api'][0]).toBe(jsonFunc);
-      expect(e.useRoutes['/api'][1]).toBe(corsFunc);
+      // expect('/api' in e.useRoutes).toBe(true);
+      // expect(e.useRoutes['/api'].length).toBe(3);
+      // expect(e.useRoutes['/api'][0]).toBe(jsonFunc);
+      // expect(e.useRoutes['/api'][1]).toBe(corsFunc);
 
-      e.useRoutes['/api'][2]();
-      expect(getUserRequestToken).toHaveBeenCalledTimes(1);
+      // e.useRoutes['/api'][2]();
+      // expect(getUserRequestToken).toHaveBeenCalledTimes(1);
 
-    });
-
-    test("KCMS Constructor will use apiBase, user and pages variables if they're passed in the options", () => {
-      const jsonFunc = bodyParser.json();
-      const corsFunc = cors();
-      const db = {};
-
-      makeDatabaseClient.mockImplementationOnce(() => {
-        return db;
-      });
-
-      const userRoutes = {};
-      const userController = { routes: userRoutes };
-      makeUserController.mockImplementationOnce(() => {
-        return userController;
-      });
-
-      const pageRoutes = {};
-      const pageController = { routes: pageRoutes };
-      makePageController.mockImplementationOnce(() => {
-        return pageController;
-      });
-
-      const opt = {
-        apiBase: "testBase",
-        userPath: "userTest",
-        pagePath: "pageTest",
-        db: {},
-      };
-      cms = new KCMS(opt);
-
-      expect(e.use).toHaveBeenNthCalledWith(1, '/testBase', jsonFunc, corsFunc, expect.any(Function));
-      expect(e.use).toHaveBeenNthCalledWith(2, '/testBase/userTest', userRoutes);
-      expect(e.use).toHaveBeenNthCalledWith(3, '/testBase/pageTest', pageRoutes);
     });
 
     test("KCMS Constructor will run endOnError if no options object is sent", () => {
@@ -246,6 +227,43 @@ describe("KCMS Class", () => {
       cms = new KCMS({});
       expect(endOnError).toHaveBeenCalledTimes(1);
       expect(endOnError).toHaveBeenCalledWith("Database options not provided");
+    });
+
+  });
+
+  describe("initHandlersAndControllers", () => {
+    test("KCMS Constructor will use apiBase, user and pages variables if they're passed in the options", () => {
+      const jsonFunc = bodyParser.json();
+      const corsFunc = cors();
+      const db = {};
+
+      makeDatabaseClient.mockImplementationOnce(() => {
+        return db;
+      });
+
+      const userRoutes = {};
+      const userController = { routes: userRoutes };
+      makeUserController.mockImplementationOnce(() => {
+        return userController;
+      });
+
+      const pageRoutes = {};
+      const pageController = { routes: pageRoutes };
+      makePageController.mockImplementationOnce(() => {
+        return pageController;
+      });
+
+      const opt = {
+        apiBase: "testBase",
+        userPath: "userTest",
+        pagePath: "pageTest",
+        db: {},
+      };
+      cms = new KCMS(opt);
+
+      expect(e.use).toHaveBeenNthCalledWith(1, '/testBase', jsonFunc, corsFunc, expect.any(Function));
+      expect(e.use).toHaveBeenNthCalledWith(2, '/testBase/userTest', userRoutes);
+      expect(e.use).toHaveBeenNthCalledWith(3, '/testBase/pageTest', pageRoutes);
     });
 
     test("KCMS Constructor will run endOnError if the returned user controller is null", () => {
@@ -503,7 +521,6 @@ describe("KCMS Class", () => {
       expect(cms.blogController).toBe(undef);
       expect(e.use).toHaveBeenCalledTimes(3);
     });
-
   });
 
 });

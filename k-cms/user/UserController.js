@@ -34,7 +34,15 @@ class UserController {
       this.pluginHandler = new PluginHandler();
     }
 
-    this.additionalUserRoles = {};
+    const additionalUserRoles = {};
+
+    this.pluginHandler.runLifecycleHook("additionalUserRoles", {
+      additionalUserRoles,
+    });
+
+    console.log(additionalUserRoles);
+
+    this.additionalUserRoles = additionalUserRoles;
 
     this.router = router;
 
@@ -56,7 +64,7 @@ class UserController {
   }
 
   get userTypes() {
-    return {
+    const users = {
       superAdmin: {
         permissions: ['view', 'edit'],
       },
@@ -71,6 +79,8 @@ class UserController {
       },
       ...this.additionalUserRoles,
     };
+
+    return users;
   }
 
   // Controllers - Actions taken when routed to a certain page

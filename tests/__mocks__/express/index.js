@@ -1,13 +1,8 @@
+const { EventEmitter } = require("events");
+
 const Router = require("./Router");
 
-function App() {
-  this.useRoutes = {};
-}
-App.prototype.use = jest.fn(function use(route, ...args) {
-  this.useRoutes[route] = args;
-});
-
-const a = new App();
+const a = new EventEmitter();
 
 function Express() {
   return a;
