@@ -62,7 +62,6 @@ class PluginHandler {
    * @param {Object} passedArgs arguments that are passed from the running function to that lifecycle hook.
    */
   runLifecycleHook(hook, passedArgs) {
-    console.log("Running Hook", hook);
     let hookArgs;
     if (!isObject(passedArgs)) {
       hookArgs = {};

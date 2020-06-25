@@ -40,8 +40,6 @@ class UserController {
       additionalUserRoles,
     });
 
-    console.log(additionalUserRoles);
-
     this.additionalUserRoles = additionalUserRoles;
 
     this.router = router;

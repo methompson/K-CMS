@@ -18,6 +18,7 @@ function makeKCMS(options) {
   }
 
   const cms = new KCMS(options);
+  cms.initHandlersAndControllers(options);
 
   return cms;
 }

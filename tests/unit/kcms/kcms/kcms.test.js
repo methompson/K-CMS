@@ -122,73 +122,29 @@ describe("KCMS Class", () => {
   const e = express();
   let cms;
 
-  describe("Constructor", () => {
+  beforeEach(() => {
+    e.use.mockClear();
+    bodyParser.json().mockClear();
+    cors().mockClear();
+    getUserRequestToken.mockClear();
+    endOnError.mockClear();
+  });
 
-    beforeEach(() => {
-      e.use.mockClear();
-      bodyParser.json().mockClear();
-      cors().mockClear();
-      getUserRequestToken.mockClear();
-      endOnError.mockClear();
-    });
+  describe("Constructor", () => {
 
     test("KCMS Constructor with options containing a database object will create a database client, an express object and run initHandlersAndControllers", () => {
       const db = {};
-
       makeDatabaseClient.mockImplementationOnce(() => {
         return db;
       });
-
-      // const userRoutes = {};
-      // const userController = {
-      //   routes: userRoutes,
-      //   getUserRequestToken,
-      // };
-      // makeUserController.mockImplementationOnce(() => {
-      //   return userController;
-      // });
-
-      // const pageRoutes = {};
-      // const pageController = { routes: pageRoutes };
-      // makePageController.mockImplementationOnce(() => {
-      //   return pageController;
-      // });
 
       const opt = {
         db: {},
       };
       cms = new KCMS(opt);
 
-      // expect(makeDatabaseClient).toHaveBeenCalledTimes(1);
-      // expect(makeDatabaseClient).toHaveBeenCalledWith(opt.db);
-
-      // expect(makeUserController).toHaveBeenCalledTimes(1);
-      // expect(makeUserController).toHaveBeenCalledWith(db, expect.any(Object));
-
-      // expect(makePageController).toHaveBeenCalledTimes(1);
-      // expect(makePageController).toHaveBeenCalledWith(db, expect.any(Object));
-
       expect(cms.app instanceof EventEmitter).toBe(true);
       expect(cms.db).toBe(db);
-      expect(cms.pluginHandler instanceof PluginHandler).toBe(true);
-
-      // expect(e.use).toHaveBeenCalledTimes(3);
-
-      // expect(e.use).toHaveBeenNthCalledWith(1, '/api', jsonFunc, corsFunc, expect.any(Function));
-      // expect(e.use).toHaveBeenNthCalledWith(2, '/api/user', userRoutes);
-      // expect(e.use).toHaveBeenNthCalledWith(3, '/api/pages', pageRoutes);
-
-      // expect(cms.userController).toBe(userController);
-      // expect(cms.pageController).toBe(pageController);
-
-      // expect('/api' in e.useRoutes).toBe(true);
-      // expect(e.useRoutes['/api'].length).toBe(3);
-      // expect(e.useRoutes['/api'][0]).toBe(jsonFunc);
-      // expect(e.useRoutes['/api'][1]).toBe(corsFunc);
-
-      // e.useRoutes['/api'][2]();
-      // expect(getUserRequestToken).toHaveBeenCalledTimes(1);
-
     });
 
     test("KCMS Constructor will run endOnError if no options object is sent", () => {
@@ -232,7 +188,77 @@ describe("KCMS Class", () => {
   });
 
   describe("initHandlersAndControllers", () => {
-    test("KCMS Constructor will use apiBase, user and pages variables if they're passed in the options", () => {
+
+    beforeEach(() => {
+      makeUserController.mockClear();
+      makePageController.mockClear();
+      makeDatabaseClient.mockClear();
+    });
+
+    test("initHandlersAndControllers will create a pluginHandler, userController, pageController and set several routes.", (done) => {
+      const jsonFunc = bodyParser.json();
+      const corsFunc = cors();
+
+      const userRoutes = {};
+      const userController = {
+        routes: userRoutes,
+        getUserRequestToken,
+      };
+      makeUserController.mockImplementationOnce(() => {
+        return userController;
+      });
+
+      const pageRoutes = {};
+      const pageController = { routes: pageRoutes };
+      makePageController.mockImplementationOnce(() => {
+        return pageController;
+      });
+
+      const db = {};
+      makeDatabaseClient.mockImplementationOnce(() => {
+        return db;
+      });
+
+      const opt = {
+        db: {},
+      };
+      cms = new KCMS(opt);
+
+      cms.initHandlersAndControllers(opt)
+        .then(() => {
+          expect(makeDatabaseClient).toHaveBeenCalledTimes(1);
+          expect(makeDatabaseClient).toHaveBeenCalledWith(opt.db);
+
+          expect(makeUserController).toHaveBeenCalledTimes(1);
+          expect(makeUserController).toHaveBeenCalledWith(db, expect.any(Object));
+
+          expect(makePageController).toHaveBeenCalledTimes(1);
+          expect(makePageController).toHaveBeenCalledWith(db, expect.any(Object));
+
+          expect(cms.pluginHandler instanceof PluginHandler).toBe(true);
+
+          expect(e.use).toHaveBeenCalledTimes(3);
+
+          expect(e.use).toHaveBeenNthCalledWith(1, '/api', jsonFunc, corsFunc, expect.any(Function));
+          expect(e.use).toHaveBeenNthCalledWith(2, '/api/user', userRoutes);
+          expect(e.use).toHaveBeenNthCalledWith(3, '/api/pages', pageRoutes);
+
+          expect(cms.userController).toBe(userController);
+          expect(cms.pageController).toBe(pageController);
+
+          expect('/api' in e.useRoutes).toBe(true);
+          expect(e.useRoutes['/api'].length).toBe(3);
+          expect(e.useRoutes['/api'][0]).toBe(jsonFunc);
+          expect(e.useRoutes['/api'][1]).toBe(corsFunc);
+
+          e.useRoutes['/api'][2]();
+          expect(getUserRequestToken).toHaveBeenCalledTimes(1);
+
+          done();
+        });
+    });
+
+    test("initHandlersAndControllers will use apiBase, user and pages variables if they're passed in the options", (done) => {
       const jsonFunc = bodyParser.json();
       const corsFunc = cors();
       const db = {};
@@ -261,12 +287,16 @@ describe("KCMS Class", () => {
       };
       cms = new KCMS(opt);
 
-      expect(e.use).toHaveBeenNthCalledWith(1, '/testBase', jsonFunc, corsFunc, expect.any(Function));
-      expect(e.use).toHaveBeenNthCalledWith(2, '/testBase/userTest', userRoutes);
-      expect(e.use).toHaveBeenNthCalledWith(3, '/testBase/pageTest', pageRoutes);
+      cms.initHandlersAndControllers(opt)
+        .then(() => {
+          expect(e.use).toHaveBeenNthCalledWith(1, '/testBase', jsonFunc, corsFunc, expect.any(Function));
+          expect(e.use).toHaveBeenNthCalledWith(2, '/testBase/userTest', userRoutes);
+          expect(e.use).toHaveBeenNthCalledWith(3, '/testBase/pageTest', pageRoutes);
+          done();
+        });
     });
 
-    test("KCMS Constructor will run endOnError if the returned user controller is null", () => {
+    test("initHandlersAndControllers will run endOnError if the returned user controller is null", () => {
       const db = {};
 
       makeDatabaseClient.mockImplementationOnce(() => {
@@ -287,11 +317,15 @@ describe("KCMS Class", () => {
         db: {},
       };
       cms = new KCMS(opt);
-      expect(endOnError).toHaveBeenCalledTimes(1);
-      expect(endOnError).toHaveBeenCalledWith("Error Creating user controller");
+
+      cms.initHandlersAndControllers(opt)
+        .then(() => {
+          expect(endOnError).toHaveBeenCalledTimes(1);
+          expect(endOnError).toHaveBeenCalledWith("Error Creating user controller");
+        });
     });
 
-    test("KCMS Constructor will run endOnError if the returned user controller is null", () => {
+    test("initHandlersAndControllers will run endOnError if the returned user controller is null", () => {
       const db = {};
 
       makeDatabaseClient.mockImplementationOnce(() => {
@@ -312,8 +346,11 @@ describe("KCMS Class", () => {
         db: {},
       };
       cms = new KCMS(opt);
-      expect(endOnError).toHaveBeenCalledTimes(1);
-      expect(endOnError).toHaveBeenCalledWith("Error Creating page controller");
+      cms.initHandlersAndControllers(opt)
+        .then(() => {
+          expect(endOnError).toHaveBeenCalledTimes(1);
+          expect(endOnError).toHaveBeenCalledWith("Error Creating page controller");
+        });
     });
 
     test("KCMS will take all valid plugins in the array and add them to the plugin handler which is then added to the cms object", () => {
@@ -356,14 +393,16 @@ describe("KCMS Class", () => {
 
       opt.plugins = [plugin0, plugin1];
       cms = new KCMS(opt);
-
-      expect(cms.pluginHandler instanceof PluginHandler).toBe(true);
-      expect(cms.pluginHandler.db).toBe(db);
-      expect(Array.isArray(cms.pluginHandler.plugins)).toBe(true);
-      expect(addPluginsSpy).toHaveBeenCalledTimes(1);
+      cms.initHandlersAndControllers(opt)
+        .then(() => {
+          expect(cms.pluginHandler instanceof PluginHandler).toBe(true);
+          expect(cms.pluginHandler.db).toBe(db);
+          expect(Array.isArray(cms.pluginHandler.plugins)).toBe(true);
+          expect(addPluginsSpy).toHaveBeenCalledTimes(1);
+        });
     });
 
-    test("KCMS Constructor will assign a value to blogController if blogEnabled is passed to the KCMS constructor and is true.", () => {
+    test("initHandlersAndControllers will assign a value to blogController if blogEnabled is passed to initHandlersAndControllers and is true.", () => {
       const jsonFunc = bodyParser.json();
       const corsFunc = cors();
       const db = {};
@@ -398,11 +437,13 @@ describe("KCMS Class", () => {
         blogEnabled: true,
       };
       cms = new KCMS(opt);
-
-      expect(cms.blogController).toBe(blogController);
+      cms.initHandlersAndControllers(opt)
+        .then(() => {
+          expect(cms.blogController).toBe(blogController);
+        });
     });
 
-    test("KCMS Constructor will assign a value to blogController if blogEnabled is passed to the KCMS constructor and is true. If blogPath is provided, it will be used as the route", () => {
+    test("initHandlersAndControllers will assign a value to blogController if blogEnabled is passed to the initHandlersAndControllers and is true. If blogPath is provided, it will be used as the route", () => {
       const jsonFunc = bodyParser.json();
       const corsFunc = cors();
       const db = {};
@@ -438,17 +479,19 @@ describe("KCMS Class", () => {
         blogPath: "theBlogTest",
       };
       cms = new KCMS(opt);
+      cms.initHandlersAndControllers(opt)
+        .then(() => {
+          expect(cms.blogController).toBe(blogController);
 
-      expect(cms.blogController).toBe(blogController);
-
-      expect(e.use).toHaveBeenCalledTimes(4);
-      expect(e.use).toHaveBeenNthCalledWith(1, '/api', jsonFunc, corsFunc, expect.any(Function));
-      expect(e.use).toHaveBeenNthCalledWith(2, '/api/user', userRoutes);
-      expect(e.use).toHaveBeenNthCalledWith(3, '/api/pages', pageRoutes);
-      expect(e.use).toHaveBeenNthCalledWith(4, '/api/theBlogTest', blogRoutes);
+          expect(e.use).toHaveBeenCalledTimes(4);
+          expect(e.use).toHaveBeenNthCalledWith(1, '/api', jsonFunc, corsFunc, expect.any(Function));
+          expect(e.use).toHaveBeenNthCalledWith(2, '/api/user', userRoutes);
+          expect(e.use).toHaveBeenNthCalledWith(3, '/api/pages', pageRoutes);
+          expect(e.use).toHaveBeenNthCalledWith(4, '/api/theBlogTest', blogRoutes);
+        });
     });
 
-    test("KCMS constructor will not assign a value to blogController if blogEnabled is false", () => {
+    test("initHandlersAndControllers will not assign a value to blogController if blogEnabled is false", () => {
       const jsonFunc = bodyParser.json();
       const corsFunc = cors();
       const db = {};
@@ -477,9 +520,11 @@ describe("KCMS Class", () => {
         blogEnabled: false,
       };
       cms = new KCMS(opt);
-
-      let undef;
-      expect(cms.blogController).toBe(undef);
+      cms.initHandlersAndControllers(opt)
+        .then(() => {
+          let undef;
+          expect(cms.blogController).toBe(undef);
+        });
     });
 
     test("If makeBlogController doesn't return an object, the blog controller will not be set in KCMS", () => {
@@ -516,10 +561,12 @@ describe("KCMS Class", () => {
         blogPath: "theBlogTest",
       };
       cms = new KCMS(opt);
-
-      let undef;
-      expect(cms.blogController).toBe(undef);
-      expect(e.use).toHaveBeenCalledTimes(3);
+      cms.initHandlersAndControllers(opt)
+        .then(() => {
+          let undef;
+          expect(cms.blogController).toBe(undef);
+          expect(e.use).toHaveBeenCalledTimes(3);
+        });
     });
   });
 

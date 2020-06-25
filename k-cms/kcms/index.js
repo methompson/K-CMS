@@ -27,11 +27,6 @@ class KCMS {
     this.app = app;
 
     this.db = makeDatabaseClient(options.db);
-
-    this.initHandlersAndControllers(options)
-      .catch((err) => {
-        console.log("initHandler error", err);
-      });
   }
 
   initHandlersAndControllers(options) {

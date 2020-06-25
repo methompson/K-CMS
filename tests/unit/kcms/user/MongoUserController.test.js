@@ -1650,16 +1650,20 @@ describe("MongoUserController", () => {
   describe("editUser", () => {
 
     test("editUser will send a 200 code and run updateOne if correct data is passed to it", (done) => {
+      const userId = "69";
       req._authData = {
+        id: userId,
         userType: "admin",
       };
 
-      const userId = "69";
+      const oldPassword = "test";
+
       const updatedUser = {
         id: userId,
         data: {
           username: "test user",
           password: "test password",
+          oldPassword,
           userType: "viewer",
           enabled: true,
         },
@@ -1670,8 +1674,22 @@ describe("MongoUserController", () => {
       };
 
       const objId = "96";
-      ObjectId.mockImplementationOnce(() => {
-        return objId;
+      ObjectId
+        .mockImplementationOnce(() => {
+          return objId;
+        })
+        .mockImplementationOnce(() => {
+          return objId;
+        });
+
+      findOne.mockImplementationOnce(() => {
+        return Promise.resolve({
+          password: oldPassword,
+        });
+      });
+
+      bcrypt.compare.mockImplementationOnce(() => {
+        return Promise.resolve(true);
       });
 
       updateOne.mockImplementationOnce(() => {
@@ -1689,16 +1707,21 @@ describe("MongoUserController", () => {
         .then((result) => {
           expect(result).toBe(200);
 
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
-          expect(collection).toHaveBeenCalledTimes(1);
-          expect(collection).toHaveBeenCalledWith("users");
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(2);
+          expect(MongoClient.prototype.db).toHaveBeenNthCalledWith(1, "kcms");
+          expect(MongoClient.prototype.db).toHaveBeenNthCalledWith(2, "kcms");
+          expect(collection).toHaveBeenCalledTimes(2);
+          expect(collection).toHaveBeenNthCalledWith(1, "users");
+          expect(collection).toHaveBeenNthCalledWith(2, "users");
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(1);
           expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+          expect(bcrypt.compare).toHaveBeenCalledTimes(1);
+          expect(bcrypt.compare).toHaveBeenCalledWith(oldPassword, oldPassword);
 
-          expect(ObjectId).toHaveBeenCalledTimes(1);
-          expect(ObjectId).toHaveBeenCalledWith(userId);
+          expect(ObjectId).toHaveBeenCalledTimes(2);
+          expect(ObjectId).toHaveBeenNthCalledWith(1, userId);
+          expect(ObjectId).toHaveBeenNthCalledWith(2, userId);
 
           expect(updateOne).toHaveBeenCalledTimes(1);
           expect(updateOne).toHaveBeenCalledWith(
@@ -2081,7 +2104,6 @@ describe("MongoUserController", () => {
         id: userId,
         data: {
           username: "test user",
-          password: "test password",
           userType: "viewer",
           enabled: true,
         },
@@ -2101,11 +2123,6 @@ describe("MongoUserController", () => {
         return Promise.reject(error);
       });
 
-      const hashPass = "hashed pass";
-      bcrypt.hash.mockImplementationOnce(() => {
-        return Promise.resolve(hashPass);
-      });
-
       muc.editUser(req, res)
         .then((result) => {
           expect(result).toBe(error);
@@ -2115,8 +2132,7 @@ describe("MongoUserController", () => {
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
-          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
-          expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
           expect(ObjectId).toHaveBeenCalledTimes(1);
           expect(ObjectId).toHaveBeenCalledWith(userId);
@@ -2127,7 +2143,6 @@ describe("MongoUserController", () => {
             {
               $set: {
                 ...updatedUser.data,
-                password: hashPass,
               },
             },
             { upsert: true }
@@ -2154,7 +2169,6 @@ describe("MongoUserController", () => {
         id: userId,
         data: {
           username: "test user",
-          password: "test password",
           userType: "viewer",
           enabled: true,
         },
@@ -2176,11 +2190,6 @@ describe("MongoUserController", () => {
         return Promise.reject(error);
       });
 
-      const hashPass = "hashed pass";
-      bcrypt.hash.mockImplementationOnce(() => {
-        return Promise.resolve(hashPass);
-      });
-
       muc.editUser(req, res)
         .then((result) => {
           expect(result).toBe(error);
@@ -2190,8 +2199,7 @@ describe("MongoUserController", () => {
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
-          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
-          expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
           expect(ObjectId).toHaveBeenCalledTimes(1);
           expect(ObjectId).toHaveBeenCalledWith(userId);
@@ -2202,7 +2210,6 @@ describe("MongoUserController", () => {
             {
               $set: {
                 ...updatedUser.data,
-                password: hashPass,
               },
             },
             { upsert: true }
@@ -2229,7 +2236,6 @@ describe("MongoUserController", () => {
         id: userId,
         data: {
           username: "test user",
-          password: "test password",
           userType: "viewer",
           enabled: true,
         },
@@ -2251,11 +2257,6 @@ describe("MongoUserController", () => {
         return Promise.reject(error);
       });
 
-      const hashPass = "hashed pass";
-      bcrypt.hash.mockImplementationOnce(() => {
-        return Promise.resolve(hashPass);
-      });
-
       muc.editUser(req, res)
         .then((result) => {
           expect(result).toBe(error);
@@ -2265,8 +2266,7 @@ describe("MongoUserController", () => {
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
-          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
-          expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
           expect(ObjectId).toHaveBeenCalledTimes(1);
           expect(ObjectId).toHaveBeenCalledWith(userId);
@@ -2277,7 +2277,6 @@ describe("MongoUserController", () => {
             {
               $set: {
                 ...updatedUser.data,
-                password: hashPass,
               },
             },
             { upsert: true }
@@ -2304,7 +2303,6 @@ describe("MongoUserController", () => {
         id: userId,
         data: {
           username: "test user",
-          password: "test password",
           userType: "viewer",
           enabled: true,
         },
@@ -2326,11 +2324,6 @@ describe("MongoUserController", () => {
         return Promise.reject(error);
       });
 
-      const hashPass = "hashed pass";
-      bcrypt.hash.mockImplementationOnce(() => {
-        return Promise.resolve(hashPass);
-      });
-
       muc.editUser(req, res)
         .then((result) => {
           expect(result).toBe(error);
@@ -2340,8 +2333,7 @@ describe("MongoUserController", () => {
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
-          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
-          expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
           expect(ObjectId).toHaveBeenCalledTimes(1);
           expect(ObjectId).toHaveBeenCalledWith(userId);
@@ -2352,7 +2344,6 @@ describe("MongoUserController", () => {
             {
               $set: {
                 ...updatedUser.data,
-                password: hashPass,
               },
             },
             { upsert: true }
@@ -2379,7 +2370,6 @@ describe("MongoUserController", () => {
         id: userId,
         data: {
           username: "test user",
-          password: "test password",
           userType: "viewer",
           enabled: true,
         },
@@ -2398,11 +2388,6 @@ describe("MongoUserController", () => {
         return Promise.resolve(true);
       });
 
-      const hashPass = "hashed pass";
-      bcrypt.hash.mockImplementationOnce(() => {
-        return Promise.resolve(hashPass);
-      });
-
       muc.editUser(req, res)
         .then((result) => {
           expect(result).toBe(dbError);
@@ -2412,8 +2397,7 @@ describe("MongoUserController", () => {
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
-          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
-          expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
           expect(ObjectId).toHaveBeenCalledTimes(1);
           expect(ObjectId).toHaveBeenCalledWith(userId);
@@ -2424,7 +2408,6 @@ describe("MongoUserController", () => {
             {
               $set: {
                 ...updatedUser.data,
-                password: hashPass,
               },
             },
             { upsert: true }
@@ -2451,7 +2434,6 @@ describe("MongoUserController", () => {
         id: userId,
         data: {
           username: "test user",
-          password: "test password",
           userType: "viewer",
           enabled: true,
         },
@@ -2470,11 +2452,6 @@ describe("MongoUserController", () => {
         return Promise.resolve({});
       });
 
-      const hashPass = "hashed pass";
-      bcrypt.hash.mockImplementationOnce(() => {
-        return Promise.resolve(hashPass);
-      });
-
       muc.editUser(req, res)
         .then((result) => {
           expect(result).toBe(dbError);
@@ -2484,8 +2461,7 @@ describe("MongoUserController", () => {
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
-          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
-          expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
           expect(ObjectId).toHaveBeenCalledTimes(1);
           expect(ObjectId).toHaveBeenCalledWith(userId);
@@ -2496,7 +2472,6 @@ describe("MongoUserController", () => {
             {
               $set: {
                 ...updatedUser.data,
-                password: hashPass,
               },
             },
             { upsert: true }
@@ -2523,7 +2498,6 @@ describe("MongoUserController", () => {
         id: userId,
         data: {
           username: "test user",
-          password: "test password",
           userType: "viewer",
           enabled: true,
         },
@@ -2544,11 +2518,6 @@ describe("MongoUserController", () => {
         });
       });
 
-      const hashPass = "hashed pass";
-      bcrypt.hash.mockImplementationOnce(() => {
-        return Promise.resolve(hashPass);
-      });
-
       muc.editUser(req, res)
         .then((result) => {
           expect(result).toBe(dbError);
@@ -2558,8 +2527,7 @@ describe("MongoUserController", () => {
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
-          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
-          expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
           expect(ObjectId).toHaveBeenCalledTimes(1);
           expect(ObjectId).toHaveBeenCalledWith(userId);
@@ -2570,7 +2538,6 @@ describe("MongoUserController", () => {
             {
               $set: {
                 ...updatedUser.data,
-                password: hashPass,
               },
             },
             { upsert: true }
@@ -2597,7 +2564,6 @@ describe("MongoUserController", () => {
         id: userId,
         data: {
           username: "test user",
-          password: "test password",
           userType: "viewer",
           enabled: true,
         },
@@ -2618,11 +2584,6 @@ describe("MongoUserController", () => {
         });
       });
 
-      const hashPass = "hashed pass";
-      bcrypt.hash.mockImplementationOnce(() => {
-        return Promise.resolve(hashPass);
-      });
-
       const error = "User Was Not Updated";
 
       muc.editUser(req, res)
@@ -2634,8 +2595,7 @@ describe("MongoUserController", () => {
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
-          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
-          expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
           expect(ObjectId).toHaveBeenCalledTimes(1);
           expect(ObjectId).toHaveBeenCalledWith(userId);
@@ -2646,7 +2606,6 @@ describe("MongoUserController", () => {
             {
               $set: {
                 ...updatedUser.data,
-                password: hashPass,
               },
             },
             { upsert: true }

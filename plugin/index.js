@@ -147,7 +147,6 @@ class KCMSPlugin {
     }
 
     this.hooks[lifecycle].push(action);
-    // console.log("Here we are!");
 
     return true;
   }

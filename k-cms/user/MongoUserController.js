@@ -119,6 +119,13 @@ class MongoUserController extends UserController {
       });
   }
 
+  getUserById(id) {
+    const collection = this.db.instance.db("kcms").collection("users");
+    return collection.findOne({
+      _id: id,
+    });
+  }
+
   /**
    * Gets user data about a single user
    *
@@ -147,10 +154,7 @@ class MongoUserController extends UserController {
       return Promise.resolve(invalidUserId);
     }
 
-    const collection = this.db.instance.db("kcms").collection("users");
-    return collection.findOne({
-      _id: id,
-    })
+    return this.getUserById(id)
       .then((result) => {
         if (!result) {
           send404Error(res);
@@ -352,30 +356,62 @@ class MongoUserController extends UserController {
    */
   editUser(req, res) {
     const currentUser = req._authData;
+    const currentUserId = currentUser.id;
 
-    if (!this.checkAllowedUsersForSiteMod(currentUser)) {
+    const adminPrivilege = this.checkAllowedUsersForSiteMod(currentUser);
+
+    let updatedUserId;
+    let bodyErr;
+
+    // We get a body error, but save it as a string for later use. We want tohe initial error to be
+    // access denied before we provide an invalid body error. If the body has everything, we can get
+    // the updated user's ID and compare it in the next step.
+    if ( !isObject(req.body)
+      || !('updatedUser' in req.body)
+      || !isObject(req.body.updatedUser)
+      || !('id' in req.body.updatedUser)
+      || !('data' in req.body.updatedUser)
+    ) {
+      bodyErr = "User Data Not Provided";
+    } else {
+      updatedUserId = req.body.updatedUser.id;
+    }
+
+    // This determines if the user is even allowed to update the data. Admins are allowed
+    // to update any user. Any other user type can only update their own user data.
+    if (!adminPrivilege && currentUserId !== updatedUserId) {
       send401Error(res, accessDenied);
       return Promise.resolve(accessDenied);
     }
 
-    if ( !isObject(req.body)
-      || !('updatedUser' in req.body)
-      || !('id' in req.body.updatedUser)
-      || !('data' in req.body.updatedUser)
-    ) {
-      const err = "User Data Not Provided";
-      send400Error(res, err);
-      return Promise.resolve(err);
+    if (bodyErr) {
+      send400Error(res, bodyErr);
+      return Promise.resolve(bodyErr);
     }
 
-    const updatedUser = {
-      ...req.body.updatedUser.data,
-    };
+    // If the user is not an admin, we only allow them to save some of their user data.
+    // They can only change their email address, their password and their userMeta information.
+    let updatedUserData;
+    if (!adminPrivilege) {
+      updatedUserData = {};
+      if ("password" in req.body.updatedUser.data) {
+        updatedUserData.password = req.body.updatedUser.data.password;
+      }
+      if ("email" in req.body.updatedUser.data) {
+        updatedUserData.email = req.body.updatedUser.data.email;
+      }
+      if ("userMeta" in req.body.updatedUser.data) {
+        updatedUserData.userMeta = req.body.updatedUser.data.userMeta;
+      }
+    } else {
+      updatedUserData = {
+        ...req.body.updatedUser.data,
+      };
+    }
 
-    let mongoId;
-    const idString = req.body.updatedUser.id;
+    let updatedUserMongoId;
     try {
-      mongoId = ObjectId(idString);
+      updatedUserMongoId = ObjectId(updatedUserId);
     } catch (err) {
       send400Error(res, invalidUserId);
       return Promise.resolve(invalidUserId);
@@ -383,17 +419,46 @@ class MongoUserController extends UserController {
 
     // We either use bcrypt to make a promise or manually make a promise.
     let p;
-    if ('password' in updatedUser) {
+    if ('password' in updatedUserData) {
 
-      if (updatedUser.password.length < this.passwordLengthMin) {
+      if (updatedUserData.password.length < this.passwordLengthMin) {
         const err = "Password length is too short";
         send400Error(res, err);
         return Promise.resolve(err);
       }
 
-      p = bcrypt.hash(updatedUser.password, 12)
+      // If the user wants to update their password, their old password MUST be included
+      // in the request body so that we can authenticate the user.
+      if (!("oldPassword" in req.body.updatedUser.data)) {
+        const err = "Current User's Password Not Provided";
+        send400Error(res, err);
+        return Promise.resolve(err);
+      }
+
+      let currentUserMongoId;
+      try {
+        currentUserMongoId = ObjectId(currentUserId);
+      } catch (err) {
+        send400Error(res, invalidUserId);
+        return Promise.resolve(invalidUserId);
+      }
+
+      p = this.getUserById(currentUserMongoId)
         .then((result) => {
-          updatedUser.password = result;
+          if (!result) {
+            throw invalidCredentials;
+          }
+          return bcrypt.compare(req.body.updatedUser.data.oldPassword, result.password);
+        })
+        .then((result) => {
+          if (!result) {
+            throw invalidCredentials;
+          }
+
+          return bcrypt.hash(updatedUserData.password, 12);
+        })
+        .then((result) => {
+          updatedUserData.password = result;
         });
     } else {
       p = Promise.resolve();
@@ -402,8 +467,8 @@ class MongoUserController extends UserController {
     const collection = this.db.instance.db("kcms").collection("users");
     return p.then(() => {
       return collection.updateOne(
-        { _id: mongoId },
-        { $set: { ...updatedUser } },
+        { _id: updatedUserMongoId },
+        { $set: { ...updatedUserData } },
         { upsert: true }
       );
     })
@@ -430,6 +495,7 @@ class MongoUserController extends UserController {
         return error;
       })
       .catch((err) => {
+        console.log(err);
         if ( isObject(err)
           && 'errmsg' in err
           && isString(err.errmsg)
@@ -440,9 +506,13 @@ class MongoUserController extends UserController {
             msg = "Username Already Exists";
           } else if (err.errmsg.indexOf("email") >= 0) {
             msg = "Email Already Exists";
+          } else if (err.errmsg === "Document failed validation") {
+            msg = "Document failed validation";
           }
 
           send400Error(res, msg);
+        } else if (err === invalidCredentials) {
+          send400Error(res, invalidCredentials);
         } else {
           send500Error(res, "Error Updating User");
         }
