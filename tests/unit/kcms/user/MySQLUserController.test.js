@@ -4,10 +4,15 @@ const http = require("http");
 const jwt = require('jsonwebtoken');
 const mysql = require("mysql2");
 
+const utilities = require("../../../../k-cms/utilities");
+
+const send400Spy = jest.spyOn(utilities, "send400Error");
+const send401Spy = jest.spyOn(utilities, "send401Error");
+const send404Spy = jest.spyOn(utilities, "send404Error");
+const send500Spy = jest.spyOn(utilities, "send500Error");
+
 const MySQLUserController = require("../../../../k-cms/user/MySQLUserController");
 const PluginHandler = require("../../../../k-cms/plugin-handler");
-
-const utilities = require("../../../../k-cms/utilities");
 
 const jwtSecret = "69";
 global.jwtSecret = jwtSecret;
@@ -59,6 +64,11 @@ describe("MySQLUserController", () => {
     mysql.execute.mockClear();
     mysql.createPool.mockClear();
     mysql.Pool.prototype.promise.mockClear();
+
+    send400Spy.mockClear();
+    send401Spy.mockClear();
+    send404Spy.mockClear();
+    send500Spy.mockClear();
 
     req = {
       _authData: null,
@@ -217,10 +227,8 @@ describe("MySQLUserController", () => {
           expect(bcrypt.compare).toHaveBeenCalledTimes(0);
           expect(jwt.sign).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(401);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: userDataNotProvided });
+          expect(send401Spy).toHaveBeenCalledTimes(1);
+          expect(send401Spy).toHaveBeenCalledWith(res, userDataNotProvided);
 
           done();
         });
@@ -263,10 +271,8 @@ describe("MySQLUserController", () => {
           expect(bcrypt.compare).toHaveBeenCalledTimes(0);
           expect(jwt.sign).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(401);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: userDataNotProvided });
+          expect(send401Spy).toHaveBeenCalledTimes(1);
+          expect(send401Spy).toHaveBeenCalledWith(res, userDataNotProvided);
 
           done();
         });
@@ -294,12 +300,8 @@ describe("MySQLUserController", () => {
           expect(bcrypt.compare).toHaveBeenCalledTimes(0);
           expect(jwt.sign).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(401);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: invalidCredentials,
-          });
+          expect(send401Spy).toHaveBeenCalledTimes(1);
+          expect(send401Spy).toHaveBeenCalledWith(res, invalidCredentials);
 
           done();
         });
@@ -328,12 +330,8 @@ describe("MySQLUserController", () => {
           expect(bcrypt.compare).toHaveBeenCalledTimes(0);
           expect(jwt.sign).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(500);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error,
-          });
+          expect(send500Spy).toHaveBeenCalledTimes(1);
+          expect(send500Spy).toHaveBeenCalledWith(res, error);
 
           done();
         });
@@ -364,13 +362,8 @@ describe("MySQLUserController", () => {
           expect(bcrypt.compare).toHaveBeenCalledTimes(1);
           expect(bcrypt.compare).toHaveBeenCalledWith(req.body.password, userData.password);
 
-          expect(jwt.sign).toHaveBeenCalledTimes(0);
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(401);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: invalidCredentials,
-          });
+          expect(send401Spy).toHaveBeenCalledTimes(1);
+          expect(send401Spy).toHaveBeenCalledWith(res, invalidCredentials);
 
           done();
         });
@@ -404,12 +397,8 @@ describe("MySQLUserController", () => {
           expect(bcrypt.compare).toHaveBeenCalledWith(req.body.password, userData.password);
           expect(jwt.sign).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(500);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error,
-          });
+          expect(send500Spy).toHaveBeenCalledTimes(1);
+          expect(send500Spy).toHaveBeenCalledWith(res, error);
 
           done();
         });
@@ -424,6 +413,7 @@ describe("MySQLUserController", () => {
         firstName,
         lastName,
         username,
+        password,
         email,
         enabled,
         userType,
@@ -523,10 +513,8 @@ describe("MySQLUserController", () => {
         .then((result) => {
           expect(result).toBe(accessDenied);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(401);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: accessDenied });
+          expect(send401Spy).toHaveBeenCalledTimes(1);
+          expect(send401Spy).toHaveBeenCalledWith(res, accessDenied);
 
           expect(mysql.execute).toHaveBeenCalledTimes(0);
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
@@ -546,10 +534,8 @@ describe("MySQLUserController", () => {
         .then((result) => {
           expect(result).toBe(error);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, error);
 
           expect(mysql.execute).toHaveBeenCalledTimes(0);
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
@@ -575,10 +561,8 @@ describe("MySQLUserController", () => {
         .then((result) => {
           expect(result).toBe(error);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(500);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: "Database Error" });
+          expect(send500Spy).toHaveBeenCalledTimes(1);
+          expect(send500Spy).toHaveBeenCalledWith(res, "Database Error");
 
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, [req.params.id]);
@@ -605,10 +589,7 @@ describe("MySQLUserController", () => {
         .then((result) => {
           expect(result).toBe(404);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(404);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: "Page Not Found" });
+          expect(send404Spy).toHaveBeenCalledTimes(1);
 
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledTimes(1);
@@ -731,10 +712,8 @@ describe("MySQLUserController", () => {
         .then((result) => {
           expect(result).toBe(accessDenied);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(401);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: accessDenied });
+          expect(send401Spy).toHaveBeenCalledTimes(1);
+          expect(send401Spy).toHaveBeenCalledWith(res, accessDenied);
 
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
@@ -759,12 +738,8 @@ describe("MySQLUserController", () => {
         .then((result) => {
           expect(result).toBe(error);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(500);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: "Database Error",
-          });
+          expect(send500Spy).toHaveBeenCalledTimes(1);
+          expect(send500Spy).toHaveBeenCalledWith(res, "Database Error");
 
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledTimes(1);
@@ -1031,12 +1006,8 @@ describe("MySQLUserController", () => {
         .then((result) => {
           expect(result).toBe(accessDenied);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(401);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: accessDenied,
-          });
+          expect(send401Spy).toHaveBeenCalledTimes(1);
+          expect(send401Spy).toHaveBeenCalledWith(res, accessDenied);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
@@ -1055,12 +1026,8 @@ describe("MySQLUserController", () => {
         .then((result) => {
           expect(result).toBe(userDataNotProvided);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: userDataNotProvided,
-          });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, userDataNotProvided);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
@@ -1080,12 +1047,8 @@ describe("MySQLUserController", () => {
         .then((result) => {
           expect(result).toBe(userDataNotProvided);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: userDataNotProvided,
-          });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, userDataNotProvided);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
@@ -1105,12 +1068,8 @@ describe("MySQLUserController", () => {
         .then((result) => {
           expect(result).toBe(userDataNotProvided);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: userDataNotProvided,
-          });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, userDataNotProvided);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
@@ -1139,12 +1098,8 @@ describe("MySQLUserController", () => {
         .then((result) => {
           expect(result).toBe(userDataNotProvided);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: userDataNotProvided,
-          });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, userDataNotProvided);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
@@ -1173,12 +1128,8 @@ describe("MySQLUserController", () => {
         .then((result) => {
           expect(result).toBe(userDataNotProvided);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: userDataNotProvided,
-          });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, userDataNotProvided);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
@@ -1207,12 +1158,8 @@ describe("MySQLUserController", () => {
         .then((result) => {
           expect(result).toBe(userDataNotProvided);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: userDataNotProvided,
-          });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, userDataNotProvided);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
@@ -1250,10 +1197,8 @@ describe("MySQLUserController", () => {
         .then((result) => {
           expect(result).toBe(error);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, error);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
@@ -1294,12 +1239,8 @@ describe("MySQLUserController", () => {
           expect(bcrypt.hash).toHaveBeenCalledTimes(1);
           expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(500);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: "Error Adding User",
-          });
+          expect(send500Spy).toHaveBeenCalledTimes(1);
+          expect(send500Spy).toHaveBeenCalledWith(res, "Error Adding User");
 
           done();
         });
@@ -1371,12 +1312,8 @@ describe("MySQLUserController", () => {
             expect(bcrypt.hash).toHaveBeenCalledTimes(1);
             expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(500);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error: "Error Adding User",
-            });
+            expect(send500Spy).toHaveBeenCalledTimes(1);
+            expect(send500Spy).toHaveBeenCalledWith(res, "Error Adding User");
 
             done();
           });
@@ -1406,12 +1343,8 @@ describe("MySQLUserController", () => {
             expect(bcrypt.hash).toHaveBeenCalledTimes(1);
             expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(400);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error: "Email Already Exists",
-            });
+            expect(send400Spy).toHaveBeenCalledTimes(1);
+            expect(send400Spy).toHaveBeenCalledWith(res, "Email Already Exists");
 
             done();
           });
@@ -1441,12 +1374,8 @@ describe("MySQLUserController", () => {
             expect(bcrypt.hash).toHaveBeenCalledTimes(1);
             expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(400);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error: "Username Already Exists",
-            });
+            expect(send400Spy).toHaveBeenCalledTimes(1);
+            expect(send400Spy).toHaveBeenCalledWith(res, "Username Already Exists");
 
             done();
           });
@@ -1472,12 +1401,8 @@ describe("MySQLUserController", () => {
             expect(bcrypt.hash).toHaveBeenCalledTimes(1);
             expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(500);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error: "Error Adding User",
-            });
+            expect(send500Spy).toHaveBeenCalledTimes(1);
+            expect(send500Spy).toHaveBeenCalledWith(res, "Error Adding User");
 
             done();
           });
@@ -1503,12 +1428,8 @@ describe("MySQLUserController", () => {
             expect(bcrypt.hash).toHaveBeenCalledTimes(1);
             expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(500);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error: dbError,
-            });
+            expect(send500Spy).toHaveBeenCalledTimes(1);
+            expect(send500Spy).toHaveBeenCalledWith(res, dbError);
 
             done();
           });
@@ -1534,12 +1455,8 @@ describe("MySQLUserController", () => {
             expect(bcrypt.hash).toHaveBeenCalledTimes(1);
             expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(500);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error: dbError,
-            });
+            expect(send500Spy).toHaveBeenCalledTimes(1);
+            expect(send500Spy).toHaveBeenCalledWith(res, dbError);
 
             done();
           });
@@ -1565,12 +1482,8 @@ describe("MySQLUserController", () => {
             expect(bcrypt.hash).toHaveBeenCalledTimes(1);
             expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(500);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error: dbError,
-            });
+            expect(send500Spy).toHaveBeenCalledTimes(1);
+            expect(send500Spy).toHaveBeenCalledWith(res, dbError);
 
             done();
           });
@@ -1598,12 +1511,8 @@ describe("MySQLUserController", () => {
             expect(bcrypt.hash).toHaveBeenCalledTimes(1);
             expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(500);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error: dbError,
-            });
+            expect(send500Spy).toHaveBeenCalledTimes(1);
+            expect(send500Spy).toHaveBeenCalledWith(res, dbError);
 
             done();
           });
@@ -1631,12 +1540,8 @@ describe("MySQLUserController", () => {
             expect(bcrypt.hash).toHaveBeenCalledTimes(1);
             expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(500);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error: dbError,
-            });
+            expect(send500Spy).toHaveBeenCalledTimes(1);
+            expect(send500Spy).toHaveBeenCalledWith(res, dbError);
 
             done();
           });
@@ -1666,12 +1571,8 @@ describe("MySQLUserController", () => {
             expect(bcrypt.hash).toHaveBeenCalledTimes(1);
             expect(bcrypt.hash).toHaveBeenCalledWith(req.body.newUser.password, 12);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(400);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error,
-            });
+            expect(send400Spy).toHaveBeenCalledTimes(1);
+            expect(send400Spy).toHaveBeenCalledWith(res, error);
 
             done();
           });
@@ -1683,7 +1584,7 @@ describe("MySQLUserController", () => {
 
   describe("editUser", () => {
 
-    test("editUser will send a 200 code and run updateOne if correct data is passed to it", (done) => {
+    test("editUser will send a 200 code and run execute if correct data is passed to it, including a password", (done) => {
       req._authData = {
         userType: "admin",
       };
@@ -1691,9 +1592,10 @@ describe("MySQLUserController", () => {
       const userId = "69";
       const updatedUser = {
         id: userId,
+        currentUserPassword: "password",
         data: {
           username: "test user",
-          password: "test password",
+          password: "first test password",
           firstName: "Test",
           lastName: "User",
           email: "Test@test.test",
@@ -1742,8 +1644,18 @@ describe("MySQLUserController", () => {
         return Promise.resolve([queryResult]);
       });
 
-      bcrypt.hash.mockImplementationOnce(() => {
-        return Promise.resolve(hashPass);
+      jest.spyOn(muc, "getUserById").mockImplementationOnce(async () => {
+        return {
+          password: "password",
+        };
+      });
+
+      bcrypt.compare.mockImplementationOnce(async () => {
+        return true;
+      });
+
+      bcrypt.hash.mockImplementationOnce(async () => {
+        return hashPass;
       });
 
       muc.editUser(req, res)
@@ -1754,8 +1666,8 @@ describe("MySQLUserController", () => {
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
+          expect(bcrypt.compare).toHaveBeenCalledTimes(1);
           expect(bcrypt.hash).toHaveBeenCalledTimes(1);
-          expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
 
           expect(status).toHaveBeenCalledTimes(1);
           expect(status).toHaveBeenCalledWith(200);
@@ -1768,7 +1680,7 @@ describe("MySQLUserController", () => {
         });
     });
 
-    test("editUser will send a 200 code and run updateOne even if no data is passed", (done) => {
+    test("editUser will send a 200 code and run execute even if no data is passed", (done) => {
       req._authData = {
         userType: "admin",
       };
@@ -1825,7 +1737,7 @@ describe("MySQLUserController", () => {
         });
     });
 
-    test("editUser will send a 200 code and run updateOne if correct data is passed to it. bcrypt.hash will not be run if a password is not included", (done) => {
+    test("editUser will send a 200 code and run execute if correct data is passed to it. bcrypt.hash & bcrypt.compare will not be run if a password is not included", (done) => {
       req._authData = {
         userType: "admin",
       };
@@ -1835,24 +1747,19 @@ describe("MySQLUserController", () => {
         id: userId,
         data: {
           username: "test user",
-          // password: "test password",
           userType: "viewer",
           enabled: true,
         },
       };
 
-      const hashPass = "hashed pass";
-
       const sqlQuery = "UPDATE users SET "
         + "username = ?, "
-        // + "password = ?, "
         + "userType = ?, "
         + "enabled = ?, "
         + "dateUpdated = ? WHERE id = ?";
 
       const queryParams = [
         updatedUser.data.username,
-        // hashPass,
         updatedUser.data.userType,
         updatedUser.data.enabled,
         expect.any(Date),
@@ -1870,6 +1777,84 @@ describe("MySQLUserController", () => {
         return Promise.resolve([queryResult]);
       });
 
+      muc.editUser(req, res)
+        .then((result) => {
+          expect(result).toBe(200);
+
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+          expect(bcrypt.compare).toHaveBeenCalledTimes(0);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(200);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            message: "User Updated Successfully",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 200 code and run execute if correct data is passed to it and the user is not an admin and the current user's id is the same as the edited user's id.", (done) => {
+      const userId = "69";
+      req._authData = {
+        userType: "subscriber",
+        id: userId,
+      };
+
+      const updatedUser = {
+        id: userId,
+        currentUserPassword: "password",
+        data: {
+          password: "test password",
+          email: "Test@test.test",
+          userMeta: {
+            sex: "male",
+          },
+        },
+      };
+
+      const hashPass = "hashed pass";
+
+      const sqlQuery = "UPDATE users SET "
+        + "password = ?, "
+        + "email = ?, "
+        + "userMeta = ?, "
+        + "dateUpdated = ? WHERE id = ?";
+
+      const queryParams = [
+        hashPass,
+        updatedUser.data.email,
+        JSON.stringify(updatedUser.data.userMeta),
+        expect.any(Date),
+        updatedUser.id,
+      ];
+
+      req.body = {
+        updatedUser,
+      };
+
+      const queryResult = {
+        affectedRows: 1,
+      };
+      mysql.execute.mockImplementation(() => {
+        return Promise.resolve([queryResult]);
+      });
+
+      jest.spyOn(muc, "getUserById").mockImplementationOnce(async () => {
+        return {
+          password: "password",
+        };
+      });
+
+      bcrypt.compare.mockImplementationOnce(async () => {
+        return true;
+      });
+
       bcrypt.hash.mockImplementationOnce(() => {
         return Promise.resolve(hashPass);
       });
@@ -1882,6 +1867,241 @@ describe("MySQLUserController", () => {
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
+          expect(bcrypt.compare).toHaveBeenCalledTimes(1);
+          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(200);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            message: "User Updated Successfully",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 200 code and run execute if correct data is passed to it and the user is not an admin and the current user's id is the same as the edited user's id. editUser will only update select fields even if more data is passed", (done) => {
+      const userId = "69";
+      req._authData = {
+        userType: "subscriber",
+        id: userId,
+      };
+
+      const updatedUser = {
+        id: userId,
+        currentUserPassword: "password",
+        data: {
+          username: "test user",
+          password: "test password",
+          firstName: "Test",
+          lastName: "User",
+          email: "Test@test.test",
+          userMeta: {
+            sex: "male",
+          },
+          userType: "viewer",
+          enabled: true,
+        },
+      };
+
+      const hashPass = "hashed pass";
+
+      const sqlQuery = "UPDATE users SET "
+        + "password = ?, "
+        + "email = ?, "
+        + "userMeta = ?, "
+        + "dateUpdated = ? WHERE id = ?";
+
+      const queryParams = [
+        hashPass,
+        updatedUser.data.email,
+        JSON.stringify(updatedUser.data.userMeta),
+        expect.any(Date),
+        updatedUser.id,
+      ];
+
+      req.body = {
+        updatedUser,
+      };
+
+      const queryResult = {
+        affectedRows: 1,
+      };
+      mysql.execute.mockImplementation(() => {
+        return Promise.resolve([queryResult]);
+      });
+
+      jest.spyOn(muc, "getUserById").mockImplementationOnce(async () => {
+        return {
+          password: "password",
+        };
+      });
+
+      bcrypt.compare.mockImplementationOnce(async () => {
+        return true;
+      });
+
+      bcrypt.hash.mockImplementationOnce(() => {
+        return Promise.resolve(hashPass);
+      });
+
+      muc.editUser(req, res)
+        .then((result) => {
+          expect(result).toBe(200);
+
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+          expect(bcrypt.compare).toHaveBeenCalledTimes(1);
+          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(200);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            message: "User Updated Successfully",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 200 code and run execute if correct data is passed to it and the user is not an admin and the current user's id is the same as the edited user's id. editUser will only update select fields that are passed to it", (done) => {
+      const userId = "69";
+      req._authData = {
+        userType: "subscriber",
+        id: userId,
+      };
+
+      const updatedUser = {
+        id: userId,
+        currentUserPassword: "password",
+        data: {
+          password: "test password",
+        },
+      };
+
+      const hashPass = "hashed pass";
+
+      const sqlQuery = "UPDATE users SET "
+        + "password = ?, "
+        + "dateUpdated = ? WHERE id = ?";
+
+      const queryParams = [
+        hashPass,
+        expect.any(Date),
+        updatedUser.id,
+      ];
+
+      req.body = {
+        updatedUser,
+      };
+
+      const queryResult = {
+        affectedRows: 1,
+      };
+      mysql.execute.mockImplementation(() => {
+        return Promise.resolve([queryResult]);
+      });
+
+      jest.spyOn(muc, "getUserById").mockImplementationOnce(async () => {
+        return {
+          password: "password",
+        };
+      });
+
+      bcrypt.compare.mockImplementationOnce(async () => {
+        return true;
+      });
+
+      bcrypt.hash.mockImplementationOnce(() => {
+        return Promise.resolve(hashPass);
+      });
+
+      muc.editUser(req, res)
+        .then((result) => {
+          expect(result).toBe(200);
+
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+          expect(bcrypt.compare).toHaveBeenCalledTimes(1);
+          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(200);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            message: "User Updated Successfully",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 200 code and run execute if correct data is passed to it and the user is not an admin and the current user's id is the same as the edited user's id. editUser will only update select fields that are passed to it (sans password)", (done) => {
+      const userId = "69";
+      req._authData = {
+        userType: "subscriber",
+        id: userId,
+      };
+
+      const updatedUser = {
+        id: userId,
+        currentUserPassword: "password",
+        data: {
+          email: "Test@test.test",
+          userMeta: {
+            sex: "male",
+          },
+        },
+      };
+
+      const sqlQuery = "UPDATE users SET "
+        + "email = ?, "
+        + "userMeta = ?, "
+        + "dateUpdated = ? WHERE id = ?";
+
+      const queryParams = [
+        updatedUser.data.email,
+        JSON.stringify(updatedUser.data.userMeta),
+        expect.any(Date),
+        updatedUser.id,
+      ];
+
+      req.body = {
+        updatedUser,
+      };
+
+      const queryResult = {
+        affectedRows: 1,
+      };
+      mysql.execute.mockImplementation(() => {
+        return Promise.resolve([queryResult]);
+      });
+
+      jest.spyOn(muc, "getUserById").mockImplementationOnce(async () => {
+        return {
+          password: "password",
+        };
+      });
+
+      bcrypt.compare.mockImplementationOnce(async () => {
+        return true;
+      });
+
+      muc.editUser(req, res)
+        .then((result) => {
+          expect(result).toBe(200);
+
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledTimes(1);
+          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+
+          expect(bcrypt.compare).toHaveBeenCalledTimes(1);
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
           expect(status).toHaveBeenCalledTimes(1);
@@ -1890,6 +2110,139 @@ describe("MySQLUserController", () => {
           expect(json).toHaveBeenCalledWith({
             message: "User Updated Successfully",
           });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 400 code if the user tries to change a password without sending their current password", (done) => {
+      const userId = "69";
+      req._authData = {
+        userType: "subscriber",
+        id: userId,
+      };
+
+      const updatedUser = {
+        id: userId,
+        data: {
+          email: "Test@test.test",
+          userMeta: {
+            sex: "male",
+          },
+        },
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      const err = "Current User's Password Not Provided";
+      muc.editUser(req, res)
+        .then((result) => {
+          expect(result).toBe(err);
+
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
+
+          expect(bcrypt.compare).toHaveBeenCalledTimes(0);
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, err);
+
+          done();
+        });
+    });
+
+    test("editUser will send a 400 code if the user tries to change user data from an invalid user id", (done) => {
+      const userId = "69";
+      req._authData = {
+        userType: "subscriber",
+        id: userId,
+      };
+
+      const updatedUser = {
+        id: userId,
+        currentUserPassword: "password",
+        data: {
+          email: "Test@test.test",
+          userMeta: {
+            sex: "male",
+          },
+        },
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      jest.spyOn(muc, "getUserById")
+        .mockImplementationOnce(async () => {
+          return null;
+        });
+
+      muc.editUser(req, res)
+        .then((result) => {
+          expect(result).toBe(invalidCredentials);
+
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
+
+          expect(bcrypt.compare).toHaveBeenCalledTimes(0);
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, invalidCredentials);
+
+          done();
+        });
+    });
+
+    test("editUser will send a 400 code if the user tries to change a password and the password they sent is incorrect", (done) => {
+      const userId = "69";
+      req._authData = {
+        userType: "subscriber",
+        id: userId,
+      };
+
+      const updatedUser = {
+        id: userId,
+        currentUserPassword: "password",
+        data: {
+          email: "Test@test.test",
+          userMeta: {
+            sex: "male",
+          },
+        },
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      jest.spyOn(muc, "getUserById")
+        .mockImplementationOnce(async () => {
+          return {
+            password: "abc",
+          };
+        });
+
+      bcrypt.compare.mockImplementationOnce(async () => {
+        return false;
+      });
+
+      muc.editUser(req, res)
+        .then((result) => {
+          expect(result).toBe(invalidCredentials);
+
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
+
+          expect(bcrypt.compare).toHaveBeenCalledTimes(1);
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, invalidCredentials);
 
           done();
         });
@@ -1924,12 +2277,8 @@ describe("MySQLUserController", () => {
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(401);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({
-            error: "Access Denied",
-          });
+          expect(send401Spy).toHaveBeenCalledTimes(1);
+          expect(send401Spy).toHaveBeenCalledWith(res, "Access Denied");
 
           done();
         });
@@ -1958,10 +2307,8 @@ describe("MySQLUserController", () => {
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: userDataNotProvided });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, userDataNotProvided);
 
           done();
         });
@@ -1994,10 +2341,8 @@ describe("MySQLUserController", () => {
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: userDataNotProvided });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, userDataNotProvided);
 
           done();
         });
@@ -2019,10 +2364,8 @@ describe("MySQLUserController", () => {
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: userDataNotProvided });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, userDataNotProvided);
 
           done();
         });
@@ -2042,10 +2385,8 @@ describe("MySQLUserController", () => {
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: userDataNotProvided });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, userDataNotProvided);
 
           done();
         });
@@ -2090,10 +2431,8 @@ describe("MySQLUserController", () => {
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, error);
 
           done();
         });
@@ -2151,12 +2490,8 @@ describe("MySQLUserController", () => {
 
             expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(500);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error: "Error Updating User",
-            });
+            expect(send500Spy).toHaveBeenCalledTimes(1);
+            expect(send500Spy).toHaveBeenCalledWith(res, "Error Updating User");
 
             done();
           });
@@ -2181,12 +2516,8 @@ describe("MySQLUserController", () => {
 
             expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(400);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error: "Email Already Exists",
-            });
+            expect(send400Spy).toHaveBeenCalledTimes(1);
+            expect(send400Spy).toHaveBeenCalledWith(res, "Email Already Exists");
 
             done();
           });
@@ -2211,12 +2542,8 @@ describe("MySQLUserController", () => {
 
             expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(400);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error: "Username Already Exists",
-            });
+            expect(send400Spy).toHaveBeenCalledTimes(1);
+            expect(send400Spy).toHaveBeenCalledWith(res, "Username Already Exists");
 
             done();
           });
@@ -2237,12 +2564,8 @@ describe("MySQLUserController", () => {
 
             expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(500);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error: "Error Updating User",
-            });
+            expect(send500Spy).toHaveBeenCalledTimes(1);
+            expect(send500Spy).toHaveBeenCalledWith(res, "Error Updating User");
 
             done();
           });
@@ -2263,12 +2586,8 @@ describe("MySQLUserController", () => {
 
             expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(500);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error: dbError,
-            });
+            expect(send500Spy).toHaveBeenCalledTimes(1);
+            expect(send500Spy).toHaveBeenCalledWith(res, dbError);
 
             done();
           });
@@ -2289,12 +2608,8 @@ describe("MySQLUserController", () => {
 
             expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(500);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error: dbError,
-            });
+            expect(send500Spy).toHaveBeenCalledTimes(1);
+            expect(send500Spy).toHaveBeenCalledWith(res, dbError);
 
             done();
           });
@@ -2315,12 +2630,8 @@ describe("MySQLUserController", () => {
 
             expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(500);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error: dbError,
-            });
+            expect(send500Spy).toHaveBeenCalledTimes(1);
+            expect(send500Spy).toHaveBeenCalledWith(res, dbError);
 
             done();
           });
@@ -2343,12 +2654,8 @@ describe("MySQLUserController", () => {
 
             expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(500);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error: dbError,
-            });
+            expect(send500Spy).toHaveBeenCalledTimes(1);
+            expect(send500Spy).toHaveBeenCalledWith(res, dbError);
 
             done();
           });
@@ -2373,12 +2680,8 @@ describe("MySQLUserController", () => {
 
             expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
-            expect(status).toHaveBeenCalledTimes(1);
-            expect(status).toHaveBeenCalledWith(400);
-            expect(json).toHaveBeenCalledTimes(1);
-            expect(json).toHaveBeenCalledWith({
-              error,
-            });
+            expect(send400Spy).toHaveBeenCalledTimes(1);
+            expect(send400Spy).toHaveBeenCalledWith(res, error);
 
             done();
           });
@@ -2461,10 +2764,8 @@ describe("MySQLUserController", () => {
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, error);
 
           done();
         });
@@ -2490,10 +2791,8 @@ describe("MySQLUserController", () => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(401);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: accessDenied });
+          expect(send401Spy).toHaveBeenCalledTimes(1);
+          expect(send401Spy).toHaveBeenCalledWith(res, accessDenied);
 
           done();
         });
@@ -2513,10 +2812,8 @@ describe("MySQLUserController", () => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: userDataNotProvided });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, userDataNotProvided);
 
           done();
         });
@@ -2538,10 +2835,8 @@ describe("MySQLUserController", () => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: userDataNotProvided });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, userDataNotProvided);
 
           done();
         });
@@ -2564,10 +2859,8 @@ describe("MySQLUserController", () => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: userDataNotProvided });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, userDataNotProvided);
 
           done();
         });
@@ -2596,10 +2889,8 @@ describe("MySQLUserController", () => {
           expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
           expect(mysql.execute).toHaveBeenCalledTimes(0);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(400);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error });
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, error);
 
           done();
         });
@@ -2636,10 +2927,8 @@ describe("MySQLUserController", () => {
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(500);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: "Error Deleting User" });
+          expect(send500Spy).toHaveBeenCalledTimes(1);
+          expect(send500Spy).toHaveBeenCalledWith(res, "Error Deleting User");
 
           done();
         });
@@ -2671,10 +2960,8 @@ describe("MySQLUserController", () => {
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(500);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: "Error Deleting User" });
+          expect(send500Spy).toHaveBeenCalledTimes(1);
+          expect(send500Spy).toHaveBeenCalledWith(res, "Error Deleting User");
 
           done();
         });
@@ -2708,10 +2995,8 @@ describe("MySQLUserController", () => {
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(500);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: dbError });
+          expect(send500Spy).toHaveBeenCalledTimes(1);
+          expect(send500Spy).toHaveBeenCalledWith(res, dbError);
 
           done();
         });
@@ -2745,10 +3030,8 @@ describe("MySQLUserController", () => {
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(500);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: dbError });
+          expect(send500Spy).toHaveBeenCalledTimes(1);
+          expect(send500Spy).toHaveBeenCalledWith(res, dbError);
 
           done();
         });
@@ -2782,10 +3065,8 @@ describe("MySQLUserController", () => {
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(500);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: dbError });
+          expect(send500Spy).toHaveBeenCalledTimes(1);
+          expect(send500Spy).toHaveBeenCalledWith(res, dbError );
 
           done();
         });
@@ -2821,10 +3102,8 @@ describe("MySQLUserController", () => {
           expect(mysql.execute).toHaveBeenCalledTimes(1);
           expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
 
-          expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(500);
-          expect(json).toHaveBeenCalledTimes(1);
-          expect(json).toHaveBeenCalledWith({ error: dbError });
+          expect(send500Spy).toHaveBeenCalledTimes(1);
+          expect(send500Spy).toHaveBeenCalledWith(res, dbError);
 
           done();
         });

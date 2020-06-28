@@ -154,32 +154,16 @@ class MySQLUserController extends UserController {
       return Promise.resolve(err);
     }
 
-    const query = `
-      SELECT
-        id,
-        firstName,
-        lastName,
-        username,
-        email,
-        enabled,
-        userType,
-        userMeta,
-        dateAdded,
-        dateUpdated
-      FROM users
-      WHERE id = ?
-    `;
-    const queryParams = [req.params.id];
-
-    const promisePool = this.db.instance.promise();
-    return promisePool.execute(query, queryParams)
-      .then(([results]) => {
-        if (results.length <= 0) {
+    return this.getUserById(req.params.id)
+      .then((result) => {
+        if (!result) {
           send404Error(res);
           return 404;
         }
+
+        // This is just to satisfy the linter
         const userData = {
-          ...results[0],
+          ...result,
         };
 
         // Let's remove the password field from the output so that we don't allow an attack against their hash
@@ -194,6 +178,45 @@ class MySQLUserController extends UserController {
       .catch((err) => {
         send500Error(res, "Database Error");
         return err;
+      });
+  }
+
+  /**
+   * Performs a seaerch for a user based on their id.
+   *
+   * @param {String} id String representation of the user's id
+   * @returns {Promise} resolves to an object of user data
+   */
+  getUserById(id) {
+    const query = `
+      SELECT
+        id,
+        firstName,
+        lastName,
+        username,
+        password,
+        email,
+        enabled,
+        userType,
+        userMeta,
+        dateAdded,
+        dateUpdated
+      FROM users
+      WHERE id = ?
+    `;
+    const queryParams = [id];
+
+    const promisePool = this.db.instance.promise();
+    return promisePool.execute(query, queryParams)
+      .then(([results]) => {
+        let userData = null;
+        if (results.length > 0) {
+          userData = {
+            ...results[0],
+          };
+        }
+
+        return userData;
       });
   }
 
@@ -410,41 +433,112 @@ class MySQLUserController extends UserController {
    */
   editUser(req, res) {
     const currentUser = req._authData;
+    const currentUserId = currentUser.id;
 
-    if (!this.checkAllowedUsersForSiteMod(currentUser)) {
+    const adminPrivilege = this.checkAllowedUsersForSiteMod(currentUser);
+
+    let updatedUserId;
+    let bodyErr;
+
+    // We get a body error, but save it as a string for later use. We want the initial error to be
+    // access denied before we provide an invalid body error. If the body has everything, we can get
+    // the updated user's ID and compare it in the next step.
+    if ( !isObject(req.body)
+      || !('updatedUser' in req.body)
+      || !isObject(req.body.updatedUser)
+      || !('id' in req.body.updatedUser)
+      || !('data' in req.body.updatedUser)
+    ) {
+      bodyErr = "User Data Not Provided";
+    } else {
+      updatedUserId = req.body.updatedUser.id;
+    }
+
+    // This determines if the user is even allowed to update the data. Admins are allowed
+    // to update any user. Any other user type can only update their own user data.
+    if (!adminPrivilege && currentUserId !== updatedUserId) {
       send401Error(res, accessDenied);
       return Promise.resolve(accessDenied);
     }
 
-    if ( !isObject(req.body)
-      || !('updatedUser' in req.body)
-      || !('id' in req.body.updatedUser)
-      || !('data' in req.body.updatedUser)
-    ) {
-      send400Error(res, userDataNotProvided);
-      return Promise.resolve(userDataNotProvided);
+    if (bodyErr) {
+      send400Error(res, bodyErr);
+      return Promise.resolve(bodyErr);
     }
 
-    const updatedUser = {
-      ...req.body.updatedUser.data,
-    };
+    // If the user is not an admin, we only allow them to save some of their user data.
+    // They can only change their email address, their password and their userMeta information.
+    let updatedUserData;
+    if (!adminPrivilege) {
+      updatedUserData = {};
+      if ("password" in req.body.updatedUser.data) {
+        updatedUserData.password = req.body.updatedUser.data.password;
+      }
+      if ("email" in req.body.updatedUser.data) {
+        updatedUserData.email = req.body.updatedUser.data.email;
+      }
+      if ("userMeta" in req.body.updatedUser.data) {
+        updatedUserData.userMeta = req.body.updatedUser.data.userMeta;
+      }
+    } else {
+      updatedUserData = {
+        ...req.body.updatedUser.data,
+      };
+    }
 
-    const { id } = req.body.updatedUser;
-
-    // We either use bcrypt to make a promise or manually make a promise.
+    // We start the promise chain here. We will add chains to the chain depending on who or what
+    // is being sent to the edit function
     let p;
-    if ('password' in updatedUser) {
 
-      if (updatedUser.password.length < this.passwordLengthMin) {
+    // If the password is in the udpatedUserData or the user doesn't have administrative
+    // privileges, we need to check the current user's password's validity.
+    if ('password' in updatedUserData || !adminPrivilege) {
+
+      if ('password' in updatedUserData
+        && isString(updatedUserData.password)
+        && updatedUserData.password.length < this.passwordLengthMin
+      ) {
         const err = "Password length is too short";
         send400Error(res, err);
         return Promise.resolve(err);
       }
 
-      p = bcrypt.hash(updatedUser.password, 12)
+      // If the user wants to update their password, their old password MUST be included
+      // in the request body so that we can authenticate the user. We also check their old
+      // password to make sure it's correct. We only let a user update their password if they
+      // type in their current password too.
+      if (!("currentUserPassword" in req.body.updatedUser)) {
+        const err = "Current User's Password Not Provided";
+        send400Error(res, err);
+        return Promise.resolve(err);
+      }
+
+      p = this.getUserById(currentUserId)
         .then((result) => {
-          updatedUser.password = result;
+          // This will be null if the user id doesn't exist
+          if (!result) {
+            throw invalidCredentials;
+          }
+
+          return bcrypt.compare(req.body.updatedUser.currentUserPassword, result.password);
+        })
+        .then((result) => {
+          // This will be false if the passwords don't match
+          if (!result) {
+            throw invalidCredentials;
+          }
+
+          // Here, we process the new password if it's included in the edited user's info
+          if ('password' in updatedUserData) {
+            return bcrypt.hash(updatedUserData.password, 12)
+              .then((passResult) => {
+                updatedUserData.password = passResult;
+              });
+          }
+
+          return Promise.resolve();
         });
+
     } else {
       p = Promise.resolve();
     }
@@ -453,50 +547,50 @@ class MySQLUserController extends UserController {
       let query = "UPDATE users SET ";
       const queryParams = [];
 
-      if ('username' in updatedUser) {
+      if ('username' in updatedUserData) {
         query += "username = ?, ";
-        queryParams.push(updatedUser.username);
+        queryParams.push(updatedUserData.username);
       }
 
-      if ('password' in updatedUser) {
+      if ('password' in updatedUserData) {
         query += "password = ?, ";
-        queryParams.push(updatedUser.password);
+        queryParams.push(updatedUserData.password);
       }
 
-      if ('firstName' in updatedUser) {
+      if ('firstName' in updatedUserData) {
         query += "firstName = ?, ";
-        queryParams.push(updatedUser.firstName);
+        queryParams.push(updatedUserData.firstName);
       }
 
-      if ('lastName' in updatedUser) {
+      if ('lastName' in updatedUserData) {
         query += "lastName = ?, ";
-        queryParams.push(updatedUser.lastName);
+        queryParams.push(updatedUserData.lastName);
       }
 
-      if ('email' in updatedUser) {
+      if ('email' in updatedUserData) {
         query += "email = ?, ";
-        queryParams.push(updatedUser.email);
+        queryParams.push(updatedUserData.email);
       }
 
-      if ('userType' in updatedUser) {
+      if ('userType' in updatedUserData) {
         query += "userType = ?, ";
-        queryParams.push(updatedUser.userType);
+        queryParams.push(updatedUserData.userType);
       }
 
-      if ('enabled' in updatedUser) {
+      if ('enabled' in updatedUserData) {
         query += "enabled = ?, ";
-        queryParams.push(updatedUser.enabled);
+        queryParams.push(updatedUserData.enabled);
       }
 
-      if ('userMeta' in updatedUser) {
+      if ('userMeta' in updatedUserData) {
         query += "userMeta = ?, ";
-        queryParams.push(JSON.stringify(updatedUser.userMeta));
+        queryParams.push(JSON.stringify(updatedUserData.userMeta));
       }
 
       const now = new Date();
       query += "dateUpdated = ? WHERE id = ?";
       queryParams.push(now);
-      queryParams.push(id);
+      queryParams.push(updatedUserId);
 
       const promisePool = this.db.instance.promise();
       return promisePool.execute(query, queryParams);
@@ -536,7 +630,10 @@ class MySQLUserController extends UserController {
           }
 
           send400Error(res, msg);
+        } else if (err === invalidCredentials) {
+          send400Error(res, invalidCredentials);
         } else {
+          console.log(err);
           send500Error(res, "Error Updating User");
         }
 

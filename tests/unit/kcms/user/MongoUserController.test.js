@@ -14,10 +14,15 @@ const {
   ObjectId,
 } = require("mongodb");
 
+const utilities = require("../../../../k-cms/utilities");
+
+const send400Spy = jest.spyOn(utilities, "send400Error");
+const send401Spy = jest.spyOn(utilities, "send401Error");
+const send404Spy = jest.spyOn(utilities, "send404Error");
+const send500Spy = jest.spyOn(utilities, "send500Error");
+
 const MongoUserController = require("../../../../k-cms/user/MongoUserController");
 const PluginHandler = require("../../../../k-cms/plugin-handler");
-
-const utilities = require("../../../../k-cms/utilities");
 
 const jwtSecret = "69";
 global.jwtSecret = jwtSecret;
@@ -91,6 +96,11 @@ describe("MongoUserController", () => {
     router.post.mockClear();
     router.all.mockClear();
     mockExit.mockClear();
+
+    send400Spy.mockClear();
+    send401Spy.mockClear();
+    send404Spy.mockClear();
+    send500Spy.mockClear();
   });
 
   describe("Instantiation", () => {
@@ -1650,20 +1660,21 @@ describe("MongoUserController", () => {
   describe("editUser", () => {
 
     test("editUser will send a 200 code and run updateOne if correct data is passed to it", (done) => {
-      const userId = "69";
+      const currentUserId = "69";
       req._authData = {
-        id: userId,
+        id: currentUserId,
         userType: "admin",
       };
 
       const oldPassword = "test";
 
+      const updatedUserId = "79";
       const updatedUser = {
-        id: userId,
+        id: updatedUserId,
+        currentUserPassword: oldPassword,
         data: {
           username: "test user",
           password: "test password",
-          oldPassword,
           userType: "viewer",
           enabled: true,
         },
@@ -1682,12 +1693,6 @@ describe("MongoUserController", () => {
           return objId;
         });
 
-      findOne.mockImplementationOnce(() => {
-        return Promise.resolve({
-          password: oldPassword,
-        });
-      });
-
       bcrypt.compare.mockImplementationOnce(() => {
         return Promise.resolve(true);
       });
@@ -1703,16 +1708,21 @@ describe("MongoUserController", () => {
         return Promise.resolve(hashPass);
       });
 
+      jest.spyOn(muc, "getUserById")
+        .mockImplementationOnce(async () => {
+          return {
+            password: oldPassword,
+          };
+        });
+
       muc.editUser(req, res)
         .then((result) => {
           expect(result).toBe(200);
 
-          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(2);
-          expect(MongoClient.prototype.db).toHaveBeenNthCalledWith(1, "kcms");
-          expect(MongoClient.prototype.db).toHaveBeenNthCalledWith(2, "kcms");
-          expect(collection).toHaveBeenCalledTimes(2);
-          expect(collection).toHaveBeenNthCalledWith(1, "users");
-          expect(collection).toHaveBeenNthCalledWith(2, "users");
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("users");
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(1);
           expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
@@ -1720,8 +1730,8 @@ describe("MongoUserController", () => {
           expect(bcrypt.compare).toHaveBeenCalledWith(oldPassword, oldPassword);
 
           expect(ObjectId).toHaveBeenCalledTimes(2);
-          expect(ObjectId).toHaveBeenNthCalledWith(1, userId);
-          expect(ObjectId).toHaveBeenNthCalledWith(2, userId);
+          expect(ObjectId).toHaveBeenNthCalledWith(1, updatedUserId);
+          expect(ObjectId).toHaveBeenNthCalledWith(2, currentUserId);
 
           expect(updateOne).toHaveBeenCalledTimes(1);
           expect(updateOne).toHaveBeenCalledWith(
@@ -1747,11 +1757,12 @@ describe("MongoUserController", () => {
     });
 
     test("editUser will send a 200 code and run updateOne if correct data is passed to it. bcrypt.hash will not be run if a password is not included", (done) => {
+      const userId = "69";
       req._authData = {
         userType: "admin",
+        id: "70",
       };
 
-      const userId = "69";
       const updatedUser = {
         id: userId,
         data: {
@@ -1806,6 +1817,570 @@ describe("MongoUserController", () => {
           expect(json).toHaveBeenCalledWith({
             message: "User Updated Successfully",
           });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 200 code and run updateOne if correct data is passed to it and the user is not an admin and the current user's id is the same as the edited user's id.", (done) => {
+      const userId = "69";
+      req._authData = {
+        userType: "editor",
+        id: userId,
+      };
+
+      const currentUserPassword = "this is a password";
+      const newPassword = "New Password";
+
+      const updatedUser = {
+        id: userId,
+        currentUserPassword,
+        data: {
+          email: "test@email.com",
+          password: newPassword,
+          userMeta: {
+            sex: "male",
+          },
+        },
+      };
+
+      const hashPass = "hashed pass";
+
+      const updatedUserData = {
+        ...updatedUser.data,
+        password: hashPass,
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      const receivedPassword = "abc123987654";
+      jest.spyOn(muc, "getUserById").mockImplementationOnce(async () => {
+        return {
+          password: receivedPassword,
+        };
+      });
+
+      bcrypt.compare.mockImplementationOnce(async () => {
+        return true;
+      });
+
+      bcrypt.hash.mockImplementationOnce(async () => {
+        return hashPass;
+      });
+
+      updateOne.mockImplementationOnce(() => {
+        return Promise.resolve({
+          modifiedCount: 1,
+        });
+      });
+
+      const objId = "96";
+      ObjectId.mockImplementationOnce(() => {
+        return objId;
+      });
+
+      muc.editUser(req, res)
+        .then((result) => {
+          expect(result).toBe(200);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("users");
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(updatedUser.id);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+          expect(bcrypt.hash).toHaveBeenCalledWith(newPassword, 12);
+          expect(bcrypt.compare).toHaveBeenCalledTimes(1);
+          expect(bcrypt.compare).toHaveBeenCalledWith(currentUserPassword, receivedPassword);
+
+          expect(updateOne).toHaveBeenCalledTimes(1);
+          expect(updateOne).toHaveBeenCalledWith(
+            { _id: objId },
+            {
+              $set: {
+                ...updatedUserData,
+              },
+            },
+            { upsert: true }
+          );
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(200);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            message: "User Updated Successfully",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 200 code and run updateOne if correct data is passed to it and the user is not an admin and the current user's id is the same as the edited user's id. editUser will only update select fields even if more data is passed", (done) => {
+      const userId = "69";
+      req._authData = {
+        userType: "editor",
+        id: userId,
+      };
+
+      const currentUserPassword = "this is a password";
+      const newPassword = "New Password";
+
+      const updatedUser = {
+        id: userId,
+        currentUserPassword,
+        data: {
+          email: "test@email.com",
+          password: newPassword,
+          userType: "viewer",
+          enabled: true,
+          userMeta: {
+            sex: "male",
+          },
+        },
+      };
+
+      const hashPass = "hashed pass";
+
+      const updatedUserData = {
+        email: updatedUser.data.email,
+        password: hashPass,
+        userMeta: updatedUser.data.userMeta,
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      const receivedPassword = "abc123987654";
+      jest.spyOn(muc, "getUserById").mockImplementationOnce(async () => {
+        return {
+          password: receivedPassword,
+        };
+      });
+
+      bcrypt.compare.mockImplementationOnce(async () => {
+        return true;
+      });
+
+      bcrypt.hash.mockImplementationOnce(async () => {
+        return hashPass;
+      });
+
+      updateOne.mockImplementationOnce(() => {
+        return Promise.resolve({
+          modifiedCount: 1,
+        });
+      });
+
+      const objId = "96";
+      ObjectId.mockImplementationOnce(() => {
+        return objId;
+      });
+
+      muc.editUser(req, res)
+        .then((result) => {
+          expect(result).toBe(200);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("users");
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(updatedUser.id);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+          expect(bcrypt.hash).toHaveBeenCalledWith(newPassword, 12);
+          expect(bcrypt.compare).toHaveBeenCalledTimes(1);
+          expect(bcrypt.compare).toHaveBeenCalledWith(currentUserPassword, receivedPassword);
+
+          expect(updateOne).toHaveBeenCalledTimes(1);
+          expect(updateOne).toHaveBeenCalledWith(
+            { _id: objId },
+            {
+              $set: {
+                ...updatedUserData,
+              },
+            },
+            { upsert: true }
+          );
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(200);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            message: "User Updated Successfully",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 200 code and run updateOne if correct data is passed to it and the user is not an admin and the current user's id is the same as the edited user's id. editUser will only update select fields that are passed to it", (done) => {
+      const userId = "69";
+      req._authData = {
+        userType: "editor",
+        id: userId,
+      };
+
+      const currentUserPassword = "this is a password";
+      const newPassword = "New Password";
+
+      const updatedUser = {
+        id: userId,
+        currentUserPassword,
+        data: {
+          password: newPassword,
+        },
+      };
+
+      const hashPass = "hashed pass";
+
+      const updatedUserData = {
+        password: hashPass,
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      const receivedPassword = "abc123987654";
+      jest.spyOn(muc, "getUserById").mockImplementationOnce(async () => {
+        return {
+          password: receivedPassword,
+        };
+      });
+
+      bcrypt.compare.mockImplementationOnce(async () => {
+        return true;
+      });
+
+      bcrypt.hash.mockImplementationOnce(async () => {
+        return hashPass;
+      });
+
+      updateOne.mockImplementationOnce(() => {
+        return Promise.resolve({
+          modifiedCount: 1,
+        });
+      });
+
+      const objId = "96";
+      ObjectId.mockImplementationOnce(() => {
+        return objId;
+      });
+
+      muc.editUser(req, res)
+        .then((result) => {
+          expect(result).toBe(200);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("users");
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(updatedUser.id);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+          expect(bcrypt.hash).toHaveBeenCalledWith(newPassword, 12);
+          expect(bcrypt.compare).toHaveBeenCalledTimes(1);
+          expect(bcrypt.compare).toHaveBeenCalledWith(currentUserPassword, receivedPassword);
+
+          expect(updateOne).toHaveBeenCalledTimes(1);
+          expect(updateOne).toHaveBeenCalledWith(
+            { _id: objId },
+            {
+              $set: {
+                ...updatedUserData,
+              },
+            },
+            { upsert: true }
+          );
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(200);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            message: "User Updated Successfully",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 200 code and run updateOne if correct data is passed to it and the user is not an admin and the current user's id is the same as the edited user's id. editUser will only update select fields that are passed to it (sans password)", (done) => {
+      const userId = "69";
+      req._authData = {
+        userType: "editor",
+        id: userId,
+      };
+
+      const currentUserPassword = "this is a password";
+
+      const updatedUser = {
+        id: userId,
+        currentUserPassword,
+        data: {
+          email: "test@email.com",
+          userMeta: {
+            sex: "male",
+          },
+        },
+      };
+
+      const updatedUserData = {
+        email: updatedUser.data.email,
+        userMeta: updatedUser.data.userMeta,
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      const receivedPassword = "abc123987654";
+      jest.spyOn(muc, "getUserById").mockImplementationOnce(async () => {
+        return {
+          password: receivedPassword,
+        };
+      });
+
+      bcrypt.compare.mockImplementationOnce(async () => {
+        return true;
+      });
+
+      updateOne.mockImplementationOnce(() => {
+        return Promise.resolve({
+          modifiedCount: 1,
+        });
+      });
+
+      const objId = "96";
+      ObjectId.mockImplementationOnce(() => {
+        return objId;
+      });
+
+      muc.editUser(req, res)
+        .then((result) => {
+          expect(result).toBe(200);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("users");
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(updatedUser.id);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+          expect(bcrypt.compare).toHaveBeenCalledTimes(1);
+          expect(bcrypt.compare).toHaveBeenCalledWith(currentUserPassword, receivedPassword);
+
+          expect(updateOne).toHaveBeenCalledTimes(1);
+          expect(updateOne).toHaveBeenCalledWith(
+            { _id: objId },
+            {
+              $set: {
+                ...updatedUserData,
+              },
+            },
+            { upsert: true }
+          );
+
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(200);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            message: "User Updated Successfully",
+          });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 400 code if the user tries to change a password without sending their current password", (done) => {
+      const userId = "69";
+      req._authData = {
+        userType: "editor",
+        id: userId,
+      };
+
+      const newPassword = "New Password";
+
+      const updatedUser = {
+        id: userId,
+        data: {
+          email: "test@email.com",
+          password: newPassword,
+          userType: "viewer",
+          enabled: true,
+          userMeta: {
+            sex: "male",
+          },
+        },
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      const getUserSpy = jest.spyOn(muc, "getUserById");
+
+      const objId = "96";
+      ObjectId.mockImplementationOnce(() => {
+        return objId;
+      });
+
+      const err = "Current User's Password Not Provided";
+      muc.editUser(req, res)
+        .then((result) => {
+          expect(result).toBe(err);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(updatedUser.id);
+
+          expect(getUserSpy).toHaveBeenCalledTimes(0);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+          expect(bcrypt.compare).toHaveBeenCalledTimes(0);
+
+          expect(updateOne).toHaveBeenCalledTimes(0);
+
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, err);
+
+          done();
+        });
+    });
+
+    test("editUser will send a 400 code if the user tries to change user data from an invalid user id", (done) => {
+      const userId = "69";
+      req._authData = {
+        userType: "editor",
+        id: userId,
+      };
+
+      const newPassword = "New Password";
+
+      const updatedUser = {
+        id: userId,
+        currentUserPassword: "password",
+        data: {
+          email: "test@email.com",
+          password: newPassword,
+          userType: "viewer",
+          enabled: true,
+          userMeta: {
+            sex: "male",
+          },
+        },
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      const objId = "96";
+      ObjectId.mockImplementationOnce(() => {
+        return objId;
+      });
+
+      const getUserSpy = jest.spyOn(muc, "getUserById")
+        .mockImplementationOnce(async () => {
+          return null;
+        });
+
+      muc.editUser(req, res)
+        .then((result) => {
+          expect(result).toBe(invalidCredentials);
+
+          expect(getUserSpy).toHaveBeenCalledTimes(1);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(updatedUser.id);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+          expect(bcrypt.compare).toHaveBeenCalledTimes(0);
+
+          expect(updateOne).toHaveBeenCalledTimes(0);
+
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, invalidCredentials);
+
+          done();
+        });
+    });
+
+    test("editUser will send a 400 code if the user tries to change a password and the password they sent is incorrect", (done) => {
+      const userId = "69";
+      req._authData = {
+        userType: "subscriber",
+        id: userId,
+      };
+
+      const currentUserPassword = "this is a password";
+
+      const updatedUser = {
+        id: userId,
+        currentUserPassword,
+        data: {
+          email: "test@email.com",
+          userMeta: {
+            sex: "male",
+          },
+        },
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      const receivedPassword = "abc123987654";
+      jest.spyOn(muc, "getUserById")
+        .mockImplementationOnce(async () => {
+          return {
+            password: receivedPassword,
+          };
+        });
+
+      bcrypt.compare.mockImplementationOnce(async () => {
+        return false;
+      });
+
+      const objId = "96";
+      ObjectId.mockImplementationOnce(() => {
+        return objId;
+      });
+
+      muc.editUser(req, res)
+        .then((result) => {
+          expect(result).toBe(invalidCredentials);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(updatedUser.id);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+          expect(bcrypt.compare).toHaveBeenCalledTimes(1);
+          expect(bcrypt.compare).toHaveBeenCalledWith(currentUserPassword, receivedPassword);
+
+          expect(updateOne).toHaveBeenCalledTimes(0);
+
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, invalidCredentials);
 
           done();
         });
@@ -2042,7 +2617,7 @@ describe("MongoUserController", () => {
         });
     });
 
-    test("editUser will send a 400 code if ObjectId throws an error", (done) => {
+    test("editUser will send a 400 code if the first ObjectId call throws an error", (done) => {
       req._authData = {
         userType: "admin",
       };
@@ -2089,6 +2664,68 @@ describe("MongoUserController", () => {
           expect(json).toHaveBeenCalledWith({
             error: invalidUserId,
           });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 400 code if the second ObjectId call throws an error", (done) => {
+      const userId = "69";
+      req._authData = {
+        userType: "admin",
+        id: userId,
+      };
+
+      const newPassword = "New Password";
+
+      const updatedUser = {
+        id: "79",
+        currentUserPassword: "abc",
+        data: {
+          email: "test@email.com",
+          password: newPassword,
+          userType: "viewer",
+          enabled: true,
+          userMeta: {
+            sex: "male",
+          },
+        },
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      const getUserSpy = jest.spyOn(muc, "getUserById");
+
+      const objId = "96";
+      ObjectId
+        .mockImplementationOnce(() => {
+          return objId;
+        })
+        .mockImplementationOnce(() => {
+          throw "Error";
+        });
+
+      muc.editUser(req, res)
+        .then((result) => {
+          expect(result).toBe(invalidUserId);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(0);
+          expect(collection).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(2);
+          expect(ObjectId).toHaveBeenNthCalledWith(1, updatedUser.id);
+
+          expect(getUserSpy).toHaveBeenCalledTimes(0);
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+          expect(bcrypt.compare).toHaveBeenCalledTimes(0);
+
+          expect(updateOne).toHaveBeenCalledTimes(0);
+
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, invalidUserId);
 
           done();
         });
@@ -2288,6 +2925,69 @@ describe("MongoUserController", () => {
           expect(json).toHaveBeenCalledWith({
             error: "Email Already Exists",
           });
+
+          done();
+        });
+    });
+
+    test("editUser will send a 400 code if updateOne throws a specific error re: Document Failing Validation", (done) => {
+      req._authData = {
+        userType: "admin",
+      };
+
+      const userId = "69";
+      const updatedUser = {
+        id: userId,
+        data: {
+          username: "test user",
+          userType: "viewer",
+          enabled: true,
+        },
+      };
+
+      req.body = {
+        updatedUser,
+      };
+
+      const objId = "96";
+      ObjectId.mockImplementationOnce(() => {
+        return objId;
+      });
+
+      const error = {
+        errmsg: "Document failed validation",
+      };
+      updateOne.mockImplementationOnce(() => {
+        return Promise.reject(error);
+      });
+
+      muc.editUser(req, res)
+        .then((result) => {
+          expect(result).toBe(error);
+
+          expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(collection).toHaveBeenCalledTimes(1);
+          expect(collection).toHaveBeenCalledWith("users");
+
+          expect(bcrypt.hash).toHaveBeenCalledTimes(0);
+
+          expect(ObjectId).toHaveBeenCalledTimes(1);
+          expect(ObjectId).toHaveBeenCalledWith(userId);
+
+          expect(updateOne).toHaveBeenCalledTimes(1);
+          expect(updateOne).toHaveBeenCalledWith(
+            { _id: objId },
+            {
+              $set: {
+                ...updatedUser.data,
+              },
+            },
+            { upsert: true }
+          );
+
+          expect(send400Spy).toHaveBeenCalledTimes(1);
+          expect(send400Spy).toHaveBeenCalledWith(res, error.errmsg);
 
           done();
         });

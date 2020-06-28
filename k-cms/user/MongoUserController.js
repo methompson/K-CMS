@@ -119,6 +119,12 @@ class MongoUserController extends UserController {
       });
   }
 
+  /**
+   * Performs a search for a user based on their id.
+   *
+   * @param {Object} id ObjectId representation of a user's ID
+   * @returns {Promise} resolves to a document of a user's information
+   */
   getUserById(id) {
     const collection = this.db.instance.db("kcms").collection("users");
     return collection.findOne({
@@ -363,7 +369,7 @@ class MongoUserController extends UserController {
     let updatedUserId;
     let bodyErr;
 
-    // We get a body error, but save it as a string for later use. We want tohe initial error to be
+    // We get a body error, but save it as a string for later use. We want the initial error to be
     // access denied before we provide an invalid body error. If the body has everything, we can get
     // the updated user's ID and compare it in the next step.
     if ( !isObject(req.body)
@@ -419,28 +425,37 @@ class MongoUserController extends UserController {
 
     // We either use bcrypt to make a promise or manually make a promise.
     let p;
-    if ('password' in updatedUserData) {
+    if ('password' in updatedUserData || !adminPrivilege) {
 
-      if (updatedUserData.password.length < this.passwordLengthMin) {
+      if ('password' in updatedUserData
+        && isString(updatedUserData.password)
+        && updatedUserData.password.length < this.passwordLengthMin
+      ) {
         const err = "Password length is too short";
         send400Error(res, err);
         return Promise.resolve(err);
       }
 
       // If the user wants to update their password, their old password MUST be included
-      // in the request body so that we can authenticate the user.
-      if (!("oldPassword" in req.body.updatedUser.data)) {
+      // in the request body so that we can authenticate the user. We also check their old
+      // password to make sure it's correct. We only let a user update their password if they
+      // type in their current password too.
+      if (!("currentUserPassword" in req.body.updatedUser)) {
         const err = "Current User's Password Not Provided";
         send400Error(res, err);
         return Promise.resolve(err);
       }
 
       let currentUserMongoId;
-      try {
-        currentUserMongoId = ObjectId(currentUserId);
-      } catch (err) {
-        send400Error(res, invalidUserId);
-        return Promise.resolve(invalidUserId);
+      if (currentUserId === updatedUserId) {
+        currentUserMongoId = updatedUserMongoId;
+      } else {
+        try {
+          currentUserMongoId = ObjectId(currentUserId);
+        } catch (err) {
+          send400Error(res, invalidUserId);
+          return Promise.resolve(invalidUserId);
+        }
       }
 
       p = this.getUserById(currentUserMongoId)
@@ -448,30 +463,38 @@ class MongoUserController extends UserController {
           if (!result) {
             throw invalidCredentials;
           }
-          return bcrypt.compare(req.body.updatedUser.data.oldPassword, result.password);
+          return bcrypt.compare(req.body.updatedUser.currentUserPassword, result.password);
         })
         .then((result) => {
+          // This will be false if the passwords don't match
           if (!result) {
             throw invalidCredentials;
           }
 
-          return bcrypt.hash(updatedUserData.password, 12);
-        })
-        .then((result) => {
-          updatedUserData.password = result;
+          // Here, we process the new password if it's included in the edited user's info
+          if ('password' in updatedUserData) {
+            return bcrypt.hash(updatedUserData.password, 12)
+              .then((passResult) => {
+                updatedUserData.password = passResult;
+              });
+          }
+
+          return Promise.resolve();
         });
     } else {
       p = Promise.resolve();
     }
 
-    const collection = this.db.instance.db("kcms").collection("users");
-    return p.then(() => {
-      return collection.updateOne(
-        { _id: updatedUserMongoId },
-        { $set: { ...updatedUserData } },
-        { upsert: true }
-      );
-    })
+    return Promise.all([p])
+      .then(() => {
+        const collection = this.db.instance.db("kcms").collection("users");
+
+        return collection.updateOne(
+          { _id: updatedUserMongoId },
+          { $set: { ...updatedUserData } },
+          { upsert: true }
+        );
+      })
       .then((result) => {
         if (isObject(result)
           && 'modifiedCount' in result
@@ -495,7 +518,6 @@ class MongoUserController extends UserController {
         return error;
       })
       .catch((err) => {
-        console.log(err);
         if ( isObject(err)
           && 'errmsg' in err
           && isString(err.errmsg)
