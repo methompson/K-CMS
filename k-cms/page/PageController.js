@@ -35,6 +35,7 @@ class PageController {
     this.router.post('/edit-page', errorIfTokenDoesNotExist, (req, res) => { this.editPage(req, res); });
     this.router.post('/delete-page', errorIfTokenDoesNotExist, (req, res) => { this.deletePage(req, res); });
 
+    this.router.get('/get-page/:pageId', (req, res) => { this.getPageById(req, res); });
     this.router.get('/all-pages', (req, res) => { this.getAllPages(req, res); });
     this.router.get('/:slug', (req, res) => { this.getPageBySlug(req, res); });
   }
@@ -142,6 +143,7 @@ class PageController {
   }
 
   // Interfaces to be defined on a per-database basis
+  getPageById() {}
   getPageBySlug() {}
   getAllPages() {}
   addPage() {}

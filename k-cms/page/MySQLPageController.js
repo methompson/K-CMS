@@ -7,6 +7,7 @@ const {
   send404Error,
   send500Error,
   isObject,
+  isUndefined,
   isBoolean,
 } = require("../utilities");
 
@@ -54,6 +55,48 @@ class MySQLPageController extends PageController {
     // non-enabled pages). If they are not an editor, enabled is set to true
     if ( !('_authData' in req)
       || !req._authData
+      || !this.editors.includes(req._authData.userType)
+    ) {
+      query += " AND enabled = ?";
+      queryParams.push(true);
+    }
+
+    query += " LIMIT 1";
+
+    const promisePool = this.db.instance.promise();
+    return promisePool.execute(query, queryParams)
+      .then(([results]) => {
+        if (results.length > 0) {
+          res.status(200).json(results[0]);
+          return 200;
+        }
+
+        send404Error(res);
+        return 404;
+      })
+      .catch((err) => {
+        send500Error(res, "Database Error");
+
+        return err;
+      });
+  }
+
+  getPageById(req, res) {
+    if (!isObject(req)
+      || !isObject(req.params)
+      || isUndefined(req.params.pageId)
+    ) {
+      const err = "Invalid Page Data Sent";
+      send400Error(res, err);
+      return Promise.resolve(err);
+    }
+
+    let query = "SELECT id, enabled, name, slug, content, meta, dateUpdated, dateAdded FROM pages WHERE id = ?";
+    const queryParams = [req.params.pageId];
+
+    // This section determines if the user is an editor (someone who can see
+    // non-enabled pages). If they are not an editor, enabled is set to true
+    if ( !isUndefined(req._authData)
       || !this.editors.includes(req._authData.userType)
     ) {
       query += " AND enabled = ?";

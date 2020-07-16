@@ -6,6 +6,7 @@ const {
   send404Error,
   send500Error,
   isObject,
+  isUndefined,
   isBoolean,
   isNumber,
 } = require("../utilities");
@@ -74,6 +75,55 @@ class MongoPageController extends PageController {
         }
 
         res.status(200).json(result);
+        return 200;
+      })
+      .catch((err) => {
+        send500Error(res, "Database Error");
+
+        return err;
+      });
+  }
+
+  getPageById(req, res) {
+    if (!isObject(req)
+      || !isObject(req.params)
+      || isUndefined(req.params.pageId)
+    ) {
+      const err = "Invalid Page Data Sent";
+      send400Error(res, err);
+      return Promise.resolve(err);
+    }
+
+    let pageId;
+
+    try {
+      pageId = ObjectId(req.params.pageId);
+    } catch (err) {
+      const error = "Invalid Page Id";
+      send400Error(res, error);
+      return Promise.resolve(error);
+    }
+
+    const findParams = {
+      _id: pageId,
+    };
+
+    const collection = this.db.instance.db("kcms").collection("pages");
+    return collection.findOne(findParams)
+      .then((result) => {
+        if (!result) {
+          send404Error(res);
+          return 404;
+        }
+
+        const pageData = {
+          ...result,
+          id: result._id,
+        };
+
+        delete pageData._id;
+
+        res.status(200).json(pageData);
         return 200;
       })
       .catch((err) => {
