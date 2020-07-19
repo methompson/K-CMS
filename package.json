@@ -1,7 +1,7 @@
 {
   "name": "kcms",
   "version": "0.1.0",
-  "description": "A new CMS Module",
+  "description": "A CMS Module for building websites.",
   "main": "kcms",
   "scripts": {
     "test": "jest",
