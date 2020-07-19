@@ -4,7 +4,9 @@
 
 # Installation
 
-TODO
+```
+npm i kcms
+```
 
 # Features
 
@@ -14,7 +16,7 @@ Web pages are represented as a data structure that single page applications, lik
 
 KCMS is designed to be extensible via plugins that utilize lifecycle hooks. KCMS is also designed to provide simple user authentication and authorization.
 
-Currently KCMS uses MongoDB to store web and user data. MySQL support is planned for the future.
+Both MongoDB and MySQL are supported databases.
 
 # Basic Usage
 
@@ -63,6 +65,7 @@ const KCMSPlugin = require("kcms/plugin");
 
 // We make a new object.
 const myPlugin = new KCMSPlugin();
+
 // We have to add a function for each lifecycle hook.
 // The first argument is the life cycle hook. The second argument is a function that performs an action.
 myPlugin.addHook("test", (args) => {
