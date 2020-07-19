@@ -1,6 +1,6 @@
 {
   "name": "kcms",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A CMS Module for building websites.",
   "main": "kcms",
   "scripts": {
@@ -29,7 +29,7 @@
   "bugs": {
     "url": "https://github.com/methompson/KCMS/issues"
   },
-  "homepage": "https://github.com/methompson/KCMS#readme",
+  "homepage": "https://methompson.github.io/KCMS/",
   "devDependencies": {
     "eslint": "^6.8.0",
     "eslint-config-airbnb-base": "^14.1.0",
