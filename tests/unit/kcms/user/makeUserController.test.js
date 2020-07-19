@@ -1,14 +1,14 @@
 const { MongoClient } = require("mongodb");
 const { createPool } = require("mysql2");
 
-const { makeUserController } = require("../../../../k-cms/user/index");
-const PluginHandler = require("../../../../k-cms/plugin-handler");
-const MongoUserController = require("../../../../k-cms/user/MongoUserController");
-const MySQLUserController = require("../../../../k-cms/user/MySQLUserController");
+const { makeUserController } = require("../../../../kcms/user/index");
+const PluginHandler = require("../../../../kcms/plugin-handler");
+const MongoUserController = require("../../../../kcms/user/MongoUserController");
+const MySQLUserController = require("../../../../kcms/user/MySQLUserController");
 
-const endOnErrorMod = require("../../../../k-cms/utilities/endOnError");
+const endOnErrorMod = require("../../../../kcms/utilities/endOnError");
 
-jest.mock("../../../../k-cms/utilities/endOnError", () => {
+jest.mock("../../../../kcms/utilities/endOnError", () => {
   const endOnError = jest.fn(() => {
     // console.log(err);
   });

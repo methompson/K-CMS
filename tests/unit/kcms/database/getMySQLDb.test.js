@@ -1,9 +1,9 @@
 const mysql = require("mysql2");
 
-const { getMySQLDb } = require("../../../../k-cms/database/getMySQLDb");
-const endOnErrorMod = require("../../../../k-cms/utilities/endOnError");
+const { getMySQLDb } = require("../../../../kcms/database/getMySQLDb");
+const endOnErrorMod = require("../../../../kcms/utilities/endOnError");
 
-jest.mock("../../../../k-cms/utilities/endOnError", () => {
+jest.mock("../../../../kcms/utilities/endOnError", () => {
   const endOnError = jest.fn(() => {});
   return {
     endOnError,

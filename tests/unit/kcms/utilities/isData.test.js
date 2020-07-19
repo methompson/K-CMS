@@ -6,7 +6,7 @@ const {
   isBoolean,
   isFunction,
   isUndefined,
-} = require("../../../../k-cms/utilities/isData");
+} = require("../../../../kcms/utilities/isData");
 
 class MyClass {
   constructor() {

@@ -2,10 +2,10 @@ const express = require("express");
 const http = require("http");
 const { createPool, execute, Pool } = require("mysql2");
 
-const MySQLPageController = require("../../../../k-cms/page/MySQLPageController");
-const PluginHandler = require("../../../../k-cms/plugin-handler");
+const MySQLPageController = require("../../../../kcms/page/MySQLPageController");
+const PluginHandler = require("../../../../kcms/plugin-handler");
 
-const endModule = require("../../../../k-cms/utilities/endOnError");
+const endModule = require("../../../../kcms/utilities/endOnError");
 
 jest.mock("http", () => {
   const json = jest.fn(() => {});
@@ -23,7 +23,7 @@ jest.mock("http", () => {
   };
 });
 
-jest.mock("../../../../k-cms/utilities/endOnError", () => {
+jest.mock("../../../../kcms/utilities/endOnError", () => {
   const endOnError = jest.fn(() => {});
 
   return {
@@ -79,9 +79,10 @@ describe("MySQLPageController", () => {
   describe("Instantiation", () => {
     test("When a new MySQLPageController is instantiated, a database, a pluginHandler and a list of editors are added to the object's data. 5 routes are set", () => {
       mpc = new MySQLPageController(db, ph);
-      expect(router.get).toHaveBeenCalledTimes(2);
-      expect(router.get).toHaveBeenNthCalledWith(1, '/all-pages', expect.any(Function));
-      expect(router.get).toHaveBeenNthCalledWith(2, '/:slug', expect.any(Function));
+      expect(router.get).toHaveBeenCalledTimes(3);
+      expect(router.get).toHaveBeenNthCalledWith(1, '/get-page/:pageId', expect.any(Function));
+      expect(router.get).toHaveBeenNthCalledWith(2, '/all-pages', expect.any(Function));
+      expect(router.get).toHaveBeenNthCalledWith(3, '/:slug', expect.any(Function));
 
       expect(router.post).toHaveBeenCalledTimes(3);
       expect(router.post).toHaveBeenNthCalledWith(1, '/add-page', expect.any(Function), expect.any(Function));

@@ -2,10 +2,10 @@ const express = require("express");
 const http = require("http");
 const { createPool, execute, Pool } = require("mysql2");
 
-const MySQLBlogController = require("../../../../k-cms/blog/MySQLBlogController");
-const PluginHandler = require("../../../../k-cms/plugin-handler");
+const MySQLBlogController = require("../../../../kcms/blog/MySQLBlogController");
+const PluginHandler = require("../../../../kcms/plugin-handler");
 
-const endModule = require("../../../../k-cms/utilities/endOnError");
+const endModule = require("../../../../kcms/utilities/endOnError");
 
 jest.mock("http", () => {
   const json = jest.fn(() => {});
@@ -23,7 +23,7 @@ jest.mock("http", () => {
   };
 });
 
-jest.mock("../../../../k-cms/utilities/endOnError", () => {
+jest.mock("../../../../kcms/utilities/endOnError", () => {
   const endOnError = jest.fn(() => {});
 
   return {

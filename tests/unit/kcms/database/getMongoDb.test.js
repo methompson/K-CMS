@@ -1,9 +1,9 @@
 const { MongoClient } = require("mongodb");
 
-const { getMongoDb } = require("../../../../k-cms/database/getMongoDb");
-const endOnErrorMod = require("../../../../k-cms/utilities/endOnError");
+const { getMongoDb } = require("../../../../kcms/database/getMongoDb");
+const endOnErrorMod = require("../../../../kcms/utilities/endOnError");
 
-jest.mock("../../../../k-cms/utilities/endOnError", () => {
+jest.mock("../../../../kcms/utilities/endOnError", () => {
   const endOnError = jest.fn(() => {});
   return {
     endOnError,

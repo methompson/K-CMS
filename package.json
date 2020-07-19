@@ -1,8 +1,8 @@
 {
-  "name": "new-cms",
-  "version": "1.0.0",
+  "name": "kcms",
+  "version": "0.1.0",
   "description": "A new CMS Module",
-  "main": "k-cms",
+  "main": "kcms",
   "scripts": {
     "test": "jest",
     "clear-jest-cache": "jest --clearCache"

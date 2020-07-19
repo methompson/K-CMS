@@ -1,9 +1,9 @@
-const { makeDatabaseClient } = require("../../../../k-cms/database");
-const getMongoDbModule = require("../../../../k-cms/database/getMongoDb");
-const getMySQLDbModule = require("../../../../k-cms/database/getMySQLDb");
-const endOnErrorMod = require("../../../../k-cms/utilities/endOnError");
+const { makeDatabaseClient } = require("../../../../kcms/database");
+const getMongoDbModule = require("../../../../kcms/database/getMongoDb");
+const getMySQLDbModule = require("../../../../kcms/database/getMySQLDb");
+const endOnErrorMod = require("../../../../kcms/utilities/endOnError");
 
-jest.mock("../../../../k-cms/database/getMongoDb", () => {
+jest.mock("../../../../kcms/database/getMongoDb", () => {
   const client = {};
   const getMongo = jest.fn(() => { return client; });
   return {
@@ -12,7 +12,7 @@ jest.mock("../../../../k-cms/database/getMongoDb", () => {
   };
 });
 
-jest.mock("../../../../k-cms/database/getMySQLdb", () => {
+jest.mock("../../../../kcms/database/getMySQLdb", () => {
   const client = {};
   const getMysql = jest.fn(() => { return client; });
   return {
@@ -21,7 +21,7 @@ jest.mock("../../../../k-cms/database/getMySQLdb", () => {
   };
 });
 
-jest.mock("../../../../k-cms/utilities/endOnError", () => {
+jest.mock("../../../../kcms/utilities/endOnError", () => {
   const endOnError = jest.fn(() => {});
   return {
     endOnError,

@@ -1,7 +1,7 @@
-const { errorIfTokenDoesNotExist } = require("../../../../k-cms/utilities/errorIfTokenDoesNotExist");
-const httpErrors = require("../../../../k-cms/utilities/httpErrors");
+const { errorIfTokenDoesNotExist } = require("../../../../kcms/utilities/errorIfTokenDoesNotExist");
+const httpErrors = require("../../../../kcms/utilities/httpErrors");
 
-jest.mock("../../../../k-cms/utilities/httpErrors", () => {
+jest.mock("../../../../kcms/utilities/httpErrors", () => {
   const send401Error = jest.fn(() => {});
   return {
     send401Error,

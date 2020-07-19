@@ -1,9 +1,9 @@
 const express = require("express");
 
-const BlogController = require("../../../../k-cms/blog/BlogController");
-const PluginHandler = require("../../../../k-cms/plugin-handler");
+const BlogController = require("../../../../kcms/blog/BlogController");
+const PluginHandler = require("../../../../kcms/plugin-handler");
 
-const utilities = require("../../../../k-cms/utilities");
+const utilities = require("../../../../kcms/utilities");
 
 const longString = `1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
                     1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890

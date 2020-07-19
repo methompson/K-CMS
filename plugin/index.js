@@ -1,4 +1,4 @@
-const { isString, isFunction, isObject } = require("../k-cms/utilities");
+const { isString, isFunction, isObject } = require("../kcms/utilities");
 
 class KCMSPlugin {
   /**

@@ -13,7 +13,7 @@ const {
   testId,
   insertedId,
 } = require("mongodb");
-const endModule = require("../../../../k-cms/utilities/endOnError");
+const endModule = require("../../../../kcms/utilities/endOnError");
 
 jest.mock("http", () => {
   const json = jest.fn(() => {});
@@ -31,7 +31,7 @@ jest.mock("http", () => {
   };
 });
 
-jest.mock("../../../../k-cms/utilities/endOnError", () => {
+jest.mock("../../../../kcms/utilities/endOnError", () => {
   const endOnError = jest.fn(() => {});
 
   return {
@@ -41,8 +41,8 @@ jest.mock("../../../../k-cms/utilities/endOnError", () => {
 
 const { json, status } = http;
 
-const MongoBlogController = require("../../../../k-cms/blog/MongoBlogController");
-const PluginHandler = require("../../../../k-cms/plugin-handler");
+const MongoBlogController = require("../../../../kcms/blog/MongoBlogController");
+const PluginHandler = require("../../../../kcms/plugin-handler");
 
 const res = new http.ServerResponse();
 

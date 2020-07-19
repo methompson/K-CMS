@@ -1,4 +1,4 @@
-const checkSlug = require("../../../../k-cms/utilities/checkSlug");
+const checkSlug = require("../../../../kcms/utilities/checkSlug");
 
 describe("checkSlug", () => {
   test("checkSlug will return null if it is passed a string with no spaces and only lower case letters, numbers and hypens", () => {

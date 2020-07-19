@@ -1,10 +1,10 @@
 const { MongoClient } = require("mongodb");
 const { createPool } = require("mysql2");
 
-const { makeBlogController } = require("../../../../k-cms/blog");
-const MongoBlogController = require("../../../../k-cms/blog/MongoBlogController");
-const MySQLBlogController = require("../../../../k-cms/blog/MySQLBlogController");
-const PluginHandler = require("../../../../k-cms/plugin-handler");
+const { makeBlogController } = require("../../../../kcms/blog");
+const MongoBlogController = require("../../../../kcms/blog/MongoBlogController");
+const MySQLBlogController = require("../../../../kcms/blog/MySQLBlogController");
+const PluginHandler = require("../../../../kcms/plugin-handler");
 
 describe("makeBlogController", () => {
   let ph;

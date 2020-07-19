@@ -13,7 +13,7 @@ const {
   testId,
   insertedId,
 } = require("mongodb");
-const endModule = require("../../../../k-cms/utilities/endOnError");
+const endModule = require("../../../../kcms/utilities/endOnError");
 
 jest.mock("http", () => {
   const json = jest.fn(() => {});
@@ -31,7 +31,7 @@ jest.mock("http", () => {
   };
 });
 
-jest.mock("../../../../k-cms/utilities/endOnError", () => {
+jest.mock("../../../../kcms/utilities/endOnError", () => {
   const endOnError = jest.fn(() => {});
 
   return {
@@ -41,8 +41,8 @@ jest.mock("../../../../k-cms/utilities/endOnError", () => {
 
 const { json, status } = http;
 
-const MongoPageController = require("../../../../k-cms/page/MongoPageController");
-const PluginHandler = require("../../../../k-cms/plugin-handler");
+const MongoPageController = require("../../../../kcms/page/MongoPageController");
+const PluginHandler = require("../../../../kcms/plugin-handler");
 
 const res = new http.ServerResponse();
 
@@ -95,9 +95,10 @@ describe("MongoPageController", () => {
     test("When a new MongoPageController is instantiated, a database, a pluginHandler, editors and an authenticator are added to the object's data. 5 routes are set", () => {
       mpc = new MongoPageController(db, ph);
 
-      expect(router.get).toHaveBeenCalledTimes(2);
-      expect(router.get).toHaveBeenNthCalledWith(1, '/all-pages', expect.any(Function));
-      expect(router.get).toHaveBeenNthCalledWith(2, '/:slug', expect.any(Function));
+      expect(router.get).toHaveBeenCalledTimes(3);
+      expect(router.get).toHaveBeenNthCalledWith(1, '/get-page/:pageId', expect.any(Function));
+      expect(router.get).toHaveBeenNthCalledWith(2, '/all-pages', expect.any(Function));
+      expect(router.get).toHaveBeenNthCalledWith(3, '/:slug', expect.any(Function));
 
       expect(router.post).toHaveBeenCalledTimes(3);
       expect(router.post).toHaveBeenNthCalledWith(1, '/add-page', expect.any(Function), expect.any(Function));

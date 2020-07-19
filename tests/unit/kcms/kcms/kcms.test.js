@@ -20,25 +20,25 @@ const uuidv4 = require("uuid/v4");
 
 const { EventEmitter } = require("events");
 
-const KCMS = require("../../../../k-cms/kcms");
-const makeKCMS = require("../../../../k-cms");
+const KCMS = require("../../../../kcms/kcms");
+const makeKCMS = require("../../../../kcms");
 
 const KCMSPlugin = require("../../../../plugin/index");
 
-const PluginHandler = require("../../../../k-cms/plugin-handler");
-const userModule = require("../../../../k-cms/user");
-const pageModule = require("../../../../k-cms/page");
-const databaseModule = require("../../../../k-cms/database");
-const blogModule = require("../../../../k-cms/blog");
+const PluginHandler = require("../../../../kcms/plugin-handler");
+const userModule = require("../../../../kcms/user");
+const pageModule = require("../../../../kcms/page");
+const databaseModule = require("../../../../kcms/database");
+const blogModule = require("../../../../kcms/blog");
 
-const endOnErrorModule = require("../../../../k-cms/utilities/endOnError");
+const endOnErrorModule = require("../../../../kcms/utilities/endOnError");
 
 jest.mock("uuid/v4", () => {
   const v4 = jest.fn(() => { return "96"; });
   return v4;
 });
 
-jest.mock("../../../../k-cms/utilities/endOnError", () => {
+jest.mock("../../../../kcms/utilities/endOnError", () => {
   const endOnError = jest.fn(() => {});
   return {
     endOnError,
@@ -63,14 +63,14 @@ jest.mock("cors", () => {
   return corsFunc;
 });
 
-jest.mock("../../../../k-cms/utilities/endOnError", () => {
+jest.mock("../../../../kcms/utilities/endOnError", () => {
   const endOnError = jest.fn(() => {});
   return {
     endOnError,
   };
 });
 
-// jest.mock("../../../../k-cms/plugin-handler", () => {
+// jest.mock("../../../../kcms/plugin-handler", () => {
 //   // eslint-disable-next-line no-shadow
 //   function PluginHandler() {}
 //   PluginHandler.prototype.db = () => {};
@@ -78,7 +78,7 @@ jest.mock("../../../../k-cms/utilities/endOnError", () => {
 //   return PluginHandler;
 // });
 
-jest.mock("../../../../k-cms/user", () => {
+jest.mock("../../../../kcms/user", () => {
   const getUserRequestToken = jest.fn(() => {});
   const makeUserController = jest.fn(() => {
     return {
@@ -91,21 +91,21 @@ jest.mock("../../../../k-cms/user", () => {
   };
 });
 
-jest.mock("../../../../k-cms/blog", () => {
+jest.mock("../../../../kcms/blog", () => {
   const makeBlogController = jest.fn(() => {});
   return {
     makeBlogController,
   };
 });
 
-jest.mock("../../../../k-cms/page", () => {
+jest.mock("../../../../kcms/page", () => {
   const makePageController = jest.fn(() => {});
   return {
     makePageController,
   };
 });
 
-jest.mock("../../../../k-cms/database", () => {
+jest.mock("../../../../kcms/database", () => {
   const makeDatabaseClient = jest.fn(() => {});
   return {
     makeDatabaseClient,

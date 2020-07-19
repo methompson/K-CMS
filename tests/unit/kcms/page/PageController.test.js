@@ -1,9 +1,9 @@
 const express = require("express");
 
-const PageController = require("../../../../k-cms/page/PageController");
-const PluginHandler = require("../../../../k-cms/plugin-handler");
+const PageController = require("../../../../kcms/page/PageController");
+const PluginHandler = require("../../../../kcms/plugin-handler");
 
-const utilities = require("../../../../k-cms/utilities");
+const utilities = require("../../../../kcms/utilities");
 
 const longString = `1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
                     1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
@@ -32,9 +32,10 @@ describe("PageController", () => {
   describe("Instantiation", () => {
     test("When a new PageController is instantiated, a pluginHandler and editors are added to the object's data. 5 routes are set", () => {
       pc = new PageController(ph);
-      expect(router.get).toHaveBeenCalledTimes(2);
-      expect(router.get).toHaveBeenNthCalledWith(1, '/all-pages', expect.any(Function));
-      expect(router.get).toHaveBeenNthCalledWith(2, '/:slug', expect.any(Function));
+      expect(router.get).toHaveBeenCalledTimes(3);
+      expect(router.get).toHaveBeenNthCalledWith(1, '/get-page/:pageId', expect.any(Function));
+      expect(router.get).toHaveBeenNthCalledWith(2, '/all-pages', expect.any(Function));
+      expect(router.get).toHaveBeenNthCalledWith(3, '/:slug', expect.any(Function));
 
       expect(router.post).toHaveBeenCalledTimes(3);
       expect(router.post).toHaveBeenNthCalledWith(1, '/add-page', expect.any(Function), expect.any(Function));
@@ -64,12 +65,13 @@ describe("PageController", () => {
 
     test("The Router mock will save all of the data that was added in the constructor ", () => {
       expect(Object.keys(routes.post).length).toBe(3);
-      expect(Object.keys(routes.get).length).toBe(2);
+      expect(Object.keys(routes.get).length).toBe(3);
 
       expect('/add-page' in routes.post).toBe(true);
       expect('/edit-page' in routes.post).toBe(true);
       expect('/delete-page' in routes.post).toBe(true);
 
+      expect('/get-page/:pageId' in routes.get).toBe(true);
       expect('/all-pages' in routes.get).toBe(true);
       expect('/:slug' in routes.get).toBe(true);
     });

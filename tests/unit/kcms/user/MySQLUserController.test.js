@@ -4,15 +4,15 @@ const http = require("http");
 const jwt = require('jsonwebtoken');
 const mysql = require("mysql2");
 
-const utilities = require("../../../../k-cms/utilities");
+const utilities = require("../../../../kcms/utilities");
 
 const send400Spy = jest.spyOn(utilities, "send400Error");
 const send401Spy = jest.spyOn(utilities, "send401Error");
 const send404Spy = jest.spyOn(utilities, "send404Error");
 const send500Spy = jest.spyOn(utilities, "send500Error");
 
-const MySQLUserController = require("../../../../k-cms/user/MySQLUserController");
-const PluginHandler = require("../../../../k-cms/plugin-handler");
+const MySQLUserController = require("../../../../kcms/user/MySQLUserController");
+const PluginHandler = require("../../../../kcms/plugin-handler");
 
 const jwtSecret = "69";
 global.jwtSecret = jwtSecret;
