@@ -1,4 +1,4 @@
-# K-CMS
+# KCMS
 
 ### A simple, RESTful CMS API for Node.js & Express
 
@@ -8,19 +8,19 @@ TODO
 
 # Features
 
-The K-CMS module is designed to slot right into a Node.js Express application and provide a simple, RESTful API to allow users to build web content using their web browser.
+The KCMS module is designed to slot right into a Node.js Express application and provide a simple, RESTful API to allow users to build web content using their web browser.
 
 Web pages are represented as a data structure that single page applications, like Vue and React can consume and render.
 
-K-CMS is designed to be extensible via plugins that utilize lifecycle hooks. K-CMS is also designed to provide simple user authentication and authorization.
+KCMS is designed to be extensible via plugins that utilize lifecycle hooks. KCMS is also designed to provide simple user authentication and authorization.
 
-Currently K-CMS uses MongoDB to store web and user data. MySQL support is planned for the future.
+Currently KCMS uses MongoDB to store web and user data. MySQL support is planned for the future.
 
 # Basic Usage
 
 ```js
 const http = require('http');
-const makeKCMS = require("k-cms");
+const makeKCMS = require("kcms");
 
 // Create a CMS object. Pass mongodb login information as an option
 const cms = makeKCMS({
@@ -51,15 +51,15 @@ Page data can be retrieved using a series of URL end points. The URL end points 
 
 # Customization & Plugins
 
-K-CMS is designed with customization and Plugins in mind. Not everyone wants their web site to follow rigid guidelines. As such, some amount of customization is available for users.
+KCMS is designed with customization and Plugins in mind. Not everyone wants their web site to follow rigid guidelines. As such, some amount of customization is available for users.
 
 Some options allow for a user to customize their CMS, including the URLs of their end points.
 
 Plugins are meant to further extend the functionality of an application by allowing a user to tap into the lifecycle of the app and adding functionality to those specific functions. Below is an example of creating a simple Plugin.
 
 ```js
-// Import the Plugin class from k-cms
-const KCMSPlugin = require("k-cms/plugin");
+// Import the Plugin class from kcms
+const KCMSPlugin = require("kcms/plugin");
 
 // We make a new object.
 const myPlugin = new KCMSPlugin();
