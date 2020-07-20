@@ -1,6 +1,11 @@
 const bcrypt = require('bcryptjs');
 
+const { isUndefined } = require("../../kcms/utilities/isData");
+
 module.exports = function addAdminUser(mysqlPool, adminInfo) {
+  const firstName = isUndefined(adminInfo.firstName) ? "" : adminInfo.firstName;
+  const lastName = isUndefined(adminInfo.lastName) ? "" : adminInfo.lastName;
+
   const poolPromise = mysqlPool.promise();
   const now = new Date();
   const addAdminQuery = `
@@ -22,11 +27,11 @@ module.exports = function addAdminUser(mysqlPool, adminInfo) {
   return bcrypt.hash(adminInfo.password, 12)
     .then((hashedPassword) => {
       return poolPromise.execute(addAdminQuery, [
-        adminInfo.firstName,
-        adminInfo.lastName,
+        firstName,
+        lastName,
         adminInfo.username,
         adminInfo.email,
-        adminInfo.userType,
+        'superAdmin',
         hashedPassword,
         now,
         now,

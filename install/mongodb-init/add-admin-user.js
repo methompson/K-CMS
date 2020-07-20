@@ -1,7 +1,21 @@
 const bcrypt = require('bcryptjs');
 
-module.exports = (db, adminUserName, adminPassword, adminEmail) => {
+const { isUndefined } = require("../../kcms/utilities/isData");
+
+module.exports = (db, adminInfo) => {
   let collection;
+
+  const firstName = isUndefined(adminInfo.firstName) ? "" : adminInfo.firstName;
+  const lastName = isUndefined(adminInfo.lastName) ? "" : adminInfo.lastName;
+
+  const userData = {
+    firstName,
+    lastName,
+    username: adminInfo.username,
+    email: adminInfo.email,
+    userType: 'superAdmin',
+    enabled: true,
+  };
 
   return db.instance.db("kcms").createCollection("users", {
     validator: {
@@ -37,22 +51,24 @@ module.exports = (db, adminUserName, adminPassword, adminEmail) => {
       return collection.createIndex( { email: 1 }, { unique: true });
     })
     .then(() => {
-      return bcrypt.hash(adminPassword, 12);
+      return bcrypt.hash(adminInfo.password, 12);
     })
     .then((result) => {
-      console.log(result);
+      userData.password = result;
+
       return collection.updateOne(
         {
-          username: adminUserName,
+          username: userData.username,
         },
         {
-          $set: {
-            username: adminUserName,
-            password: result,
-            email: adminEmail,
-            userType: 'superAdmin',
-            enabled: true,
-          },
+          // $set: {
+          //   username: adminUserName,
+          //   password: result,
+          //   email: adminEmail,
+          //   userType: 'superAdmin',
+          //   enabled: true,
+          // },
+          $set: userData,
         },
         {
           upsert: true,

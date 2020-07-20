@@ -1,5 +1,5 @@
 const { MongoClient } = require('mongodb');
-const { endOnError, isObject } = require("../utilities");
+const { endOnError, isObject, isUndefined } = require("../utilities");
 
 /**
  * Creates a MongoDB client.
@@ -14,19 +14,21 @@ function getMongoDb(options) {
   }
 
   let mongoUrl = "";
-  if ('fullUrl' in options) {
+  if (!isUndefined(options.fullUrl)) {
     mongoUrl = options.fullUrl;
 
-  } else if ('username' in options
-          && 'password' in options
-          && 'url' in options
+  } else if (!isUndefined(options.username)
+          && !isUndefined(options.password)
+          && !isUndefined(options.url)
   ) {
     mongoUrl = `mongodb://${options.username}:${options.password}@${options.url}`;
 
-  } else if ('url' in options ) {
+  } else if (!isUndefined(options.url) ) {
     mongoUrl = `mongodb://${options.url}`;
 
-  } else if ('mongoInstance' in options && options.mongoInstance instanceof MongoClient) {
+  } else if (!isUndefined(options)
+    && options.mongoInstance instanceof MongoClient
+  ) {
     const client = options.mongoInstance;
     return client;
   }
