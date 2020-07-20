@@ -1,4 +1,4 @@
-const { makeDatabaseClient } = require("../../k-cms/database");
+const { makeDatabaseClient } = require("../../kcms/database");
 const addAdminUser = require("./add-admin-user");
 const setPages = require("./set-pages");
 
