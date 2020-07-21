@@ -67,7 +67,7 @@ class MongoBlogController extends BlogController {
       findParams.public = true;
     }
 
-    const collection = this.db.instance.db("kcms").collection("blogPosts");
+    const collection = this.db.instance.db(this.db.dbName).collection("blogPosts");
     return collection.findOne(findParams)
       .then((result) => {
         if (!result) {
@@ -105,7 +105,7 @@ class MongoBlogController extends BlogController {
       findParams.public = true;
     }
 
-    const collection = this.db.instance.db("kcms").collection("blogPosts");
+    const collection = this.db.instance.db(this.db.dbName).collection("blogPosts");
     return collection
       .find(findParams)
       .toArray()
@@ -153,7 +153,7 @@ class MongoBlogController extends BlogController {
 
     const now = new Date().getTime();
 
-    const collection = this.db.instance.db("kcms").collection("blogPosts");
+    const collection = this.db.instance.db(this.db.dbName).collection("blogPosts");
     const newBlogPost = {
       ...blogPostData,
       dateAdded: now,
@@ -290,7 +290,7 @@ class MongoBlogController extends BlogController {
     const { id } = blogPostData;
     delete setData.id;
 
-    const collection = this.db.instance.db("kcms").collection("blogPosts");
+    const collection = this.db.instance.db(this.db.dbName).collection("blogPosts");
     return collection.updateOne(
       {
         _id: ObjectId(id),
@@ -368,7 +368,7 @@ class MongoBlogController extends BlogController {
       return Promise.resolve(err);
     }
 
-    const collection = this.db.instance.db("kcms").collection("blogPosts");
+    const collection = this.db.instance.db(this.db.dbName).collection("blogPosts");
     return collection.deleteOne({
       _id: ObjectId(blogPostData.id),
     })

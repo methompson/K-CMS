@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 
-const { isUndefined } = require("../../kcms/utilities/isData");
+const { isUndefined } = require("../../utilities/isData");
 
 module.exports = (db, adminInfo) => {
   let collection;
@@ -17,7 +17,7 @@ module.exports = (db, adminInfo) => {
     enabled: true,
   };
 
-  return db.instance.db("kcms").createCollection("users", {
+  return db.instance.db(db.dbName).createCollection("users", {
     validator: {
       $jsonSchema: {
         bsonType: "object",
@@ -61,13 +61,6 @@ module.exports = (db, adminInfo) => {
           username: userData.username,
         },
         {
-          // $set: {
-          //   username: adminUserName,
-          //   password: result,
-          //   email: adminEmail,
-          //   userType: 'superAdmin',
-          //   enabled: true,
-          // },
           $set: userData,
         },
         {

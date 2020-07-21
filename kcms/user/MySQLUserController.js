@@ -10,6 +10,7 @@ const {
   isObject,
   isNumber,
   isString,
+  isUndefined,
   endOnError,
 } = require("../utilities");
 
@@ -444,10 +445,8 @@ class MySQLUserController extends UserController {
     // access denied before we provide an invalid body error. If the body has everything, we can get
     // the updated user's ID and compare it in the next step.
     if ( !isObject(req.body)
-      || !('updatedUser' in req.body)
       || !isObject(req.body.updatedUser)
       || !('id' in req.body.updatedUser)
-      || !('data' in req.body.updatedUser)
     ) {
       bodyErr = "User Data Not Provided";
     } else {
@@ -471,19 +470,21 @@ class MySQLUserController extends UserController {
     let updatedUserData;
     if (!adminPrivilege) {
       updatedUserData = {};
-      if ("password" in req.body.updatedUser.data) {
-        updatedUserData.password = req.body.updatedUser.data.password;
+      if (isString(req.body.updatedUser.password)) {
+        updatedUserData.password = req.body.updatedUser.password;
       }
-      if ("email" in req.body.updatedUser.data) {
-        updatedUserData.email = req.body.updatedUser.data.email;
+      if (isString(req.body.updatedUser.email)) {
+        updatedUserData.email = req.body.updatedUser.email;
       }
-      if ("userMeta" in req.body.updatedUser.data) {
-        updatedUserData.userMeta = req.body.updatedUser.data.userMeta;
+      if (isString(req.body.updatedUser.userMeta)) {
+        updatedUserData.userMeta = req.body.updatedUser.userMeta;
       }
     } else {
       updatedUserData = {
-        ...req.body.updatedUser.data,
+        ...req.body.updatedUser,
       };
+
+      delete updatedUserData.id;
     }
 
     // We start the promise chain here. We will add chains to the chain depending on who or what
@@ -507,7 +508,7 @@ class MySQLUserController extends UserController {
       // in the request body so that we can authenticate the user. We also check their old
       // password to make sure it's correct. We only let a user update their password if they
       // type in their current password too.
-      if (!("currentUserPassword" in req.body.updatedUser)) {
+      if (!isString(req.body.currentUserPassword)) {
         const err = "Current User's Password Not Provided";
         send400Error(res, err);
         return Promise.resolve(err);
@@ -520,7 +521,7 @@ class MySQLUserController extends UserController {
             throw invalidCredentials;
           }
 
-          return bcrypt.compare(req.body.updatedUser.currentUserPassword, result.password);
+          return bcrypt.compare(req.body.currentUserPassword, result.password);
         })
         .then((result) => {
           // This will be false if the passwords don't match
@@ -664,22 +665,21 @@ class MySQLUserController extends UserController {
 
     // Check that the appropriate data was sent to the function
     if ( !isObject(req.body)
-      || !('deletedUser' in req.body)
-      || !('id' in req.body.deletedUser)
+      || isUndefined(req.body.deletedUserId)
     ) {
       send400Error(res, userDataNotProvided);
       return Promise.resolve(userDataNotProvided);
     }
 
     // Check that the user isn't trying to delete themself and causing an issue
-    if (req.body.deletedUser.id === req._authData.id) {
+    if (req.body.deletedUserId === req._authData.id) {
       const err = "Cannot Delete Yourself";
       send400Error(res, err);
       return Promise.resolve(err);
     }
 
     const query = "DELETE FROM users WHERE id = ? LIMIT 1";
-    const queryParams = [req.body.deletedUser.id];
+    const queryParams = [req.body.deletedUserId];
 
     const promisePool = this.db.instance.promise();
     return promisePool.execute(query, queryParams)

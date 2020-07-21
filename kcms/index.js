@@ -18,7 +18,13 @@ function makeKCMS(options) {
   }
 
   const cms = new KCMS(options);
-  cms.initHandlersAndControllers(options);
+  cms.checkDbInstallation()
+    .then(() => {
+      cms.initHandlersAndControllers();
+    })
+    .catch(() => {
+      cms.initUninstalledState();
+    });
 
   return cms;
 }

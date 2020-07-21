@@ -10,7 +10,7 @@
  * @param {Iterator} iterator the migrations files array iterator
  * @param {Pool} mysqlPool MySQL connection pool
  */
-module.exports = function runMigrations(iterator, mysqlPool) {
+function runMigrations(iterator, mysqlPool) {
   const result = iterator.next();
 
   if (result.done) {
@@ -23,4 +23,6 @@ module.exports = function runMigrations(iterator, mysqlPool) {
       console.log(`Finished With ${result.value}`);
       return runMigrations(iterator, mysqlPool);
     });
-};
+}
+
+module.exports = runMigrations;

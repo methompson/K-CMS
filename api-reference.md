@@ -127,14 +127,12 @@ Example:
 
 ```json
 {
+	"currentUserPassword": "currentUserPassword",
 	"updatedUser": {
 		"id": "37",
-		"currentUserPassword": "currentUserPassword",
-		"data": {
-			"username": "updatedUserName",
-			"password": "updatedUserPassword",
-			"userType": "editor"
-		}
+		"username": "updatedUserName",
+		"password": "updatedUserPassword",
+		"userType": "editor"
 	}
 }
 ```
@@ -157,9 +155,7 @@ Example:
 
 ```json
 {
-	"deletedUser": {
-		"id": 29
-	}
+	"deletedUserId": "29"
 }
 ```
 
