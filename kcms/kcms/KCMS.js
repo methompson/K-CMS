@@ -146,7 +146,7 @@ class KCMS {
         }
 
         if (this.db.type === 'mysql') {
-          mysqlInit(this.db.instance, req.body.adminInfo)
+          mysqlInit(this.db, req.body.adminInfo)
             .then((result) => {
               console.log(result);
               return this.checkDbInstallation();

@@ -22,57 +22,11 @@ Both MongoDB and MySQL are supported databases for the back end of KCMS.
 npm i kcms
 ```
 
-### Run the installation Script for MySQL or MongoDb
-The database needs to be prepared for the application. For MySQl, a database and several tables are created. A super admin user is created afterward.
+### MySQL-Specific
 
-For MongoDb, a super admin user is created and an index is created for pages. The MongoDb indexs are made to enforce uniqueness for some fields.
+KCMS requires that you create a database in MySQL before you can install the application. The default database name is `kcms`, but you can define the database's name by passing a databaseName into the database configuration.
 
-### Installing the MySQL Database
-```js
-const mysqlInit = require("kcms/install/mysql-init");
-
-const adminInfo = {
-  firstName: 'admin',
-  lastName: 'admin',
-  username: 'admin',
-  email: 'admin@admin.com',
-  password: 'password',
-};
-
-const mysqlInfo = {
-  host: "localhost",
-  port: 3306,
-  databaseName: "kcms",
-  username: "db_user",
-  password: "db_password",
-};
-
-mysqlInit(mysqlInfo, adminInfo);
-```
-
-### Installing the MongoDb Database
-
-```js
-const mongoInit = require("./kcms/install/mongodb-init")
-
-const adminInfo = {
-  firstName: 'admin',
-  lastName: 'admin',
-  username: 'admin',
-  email: 'admin@admin.com',
-  password: 'password',
-};
-
-const mongoCredentials = {
-  username: 'db_user',
-  password: 'db_password',
-  url: 'localhost:27017',
-};
-
-mongoInit(mongoCredentials, adminInfo);
-```
-
-# Basic Usage
+### Setup the Project
 
 Creating and starting a KCMS application only requires creating a kcms object and having the node server listen for requests:
 
@@ -84,9 +38,10 @@ const makeKCMS = require("kcms");
 const kcms = makeKCMS({
   db: {
     mongodb: {
+      url: 'localhost:27017',
+      databaseName: "kcms",
       username: 'root',
       password: 'example',
-      url: 'localhost:27017',
     },
   },
 });
@@ -115,7 +70,31 @@ const kcms = makeKCMS({
 });
 ```
 
-The above will create a Express object and several routes that handle the following tasks:
+### Uninitialized State
+
+On first run, the application will be in an uninitialized state. All routes (except those defined by the user after creating the KCMS application) will send an HTTP 503 status code indicating that the database has not been installed. You will need to send a request to the installation route to configure and set up the KCMS application.
+
+### Install Route
+
+The install route is only available during the uninitialized state. The install route accepts administrator information and sets up all of the databases with the admin's information in mind.
+
+`POST /install`
+
+Available Parameters:
+
+| Name | Type | Required | Comments |
+| - | - | - | - |
+| firstName | String | no | |
+| lastName | String | no | |
+| username | String | yes | The user uses this to log in |
+| email | String | yes | |
+| password | String | yes | |
+
+On success, the application will send a 200 status and reset the routes.
+
+### End Result
+
+makeKCMS will create an Express object and several routes that handle the following tasks:
 
 * User authentication and authorization
 * Slug-based page retrieveal
@@ -124,7 +103,7 @@ The above will create a Express object and several routes that handle the follow
 
 Page data can be retrieved using a series of URL end points. The URL end points have default values, but can be customized based upon options passed when creating the CMS object.
 
-By default, all API end points are accessed via the /api/ path.
+By default, all API end points are accessed via the `/api/` path.
 
 [Read the API Reference](api-reference.md)
 
