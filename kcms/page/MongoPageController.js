@@ -66,7 +66,7 @@ class MongoPageController extends PageController {
       findParams.enabled = true;
     }
 
-    const collection = this.db.instance.db("kcms").collection("pages");
+    const collection = this.db.instance.db(this.db.dbName).collection("pages");
     return collection.findOne(findParams)
       .then((result) => {
         if (!result) {
@@ -108,7 +108,7 @@ class MongoPageController extends PageController {
       _id: pageId,
     };
 
-    const collection = this.db.instance.db("kcms").collection("pages");
+    const collection = this.db.instance.db(this.db.dbName).collection("pages");
     return collection.findOne(findParams)
       .then((result) => {
         if (!result) {
@@ -152,7 +152,7 @@ class MongoPageController extends PageController {
       findParams.enabled = true;
     }
 
-    const collection = this.db.instance.db("kcms").collection("pages");
+    const collection = this.db.instance.db(this.db.dbName).collection("pages");
     return collection
       .find(findParams)
       .toArray()
@@ -210,7 +210,7 @@ class MongoPageController extends PageController {
 
     const now = new Date().getTime();
 
-    const collection = this.db.instance.db("kcms").collection("pages");
+    const collection = this.db.instance.db(this.db.dbName).collection("pages");
     const newPage = {
       ...pageData,
       dateAdded: now,
@@ -339,7 +339,7 @@ class MongoPageController extends PageController {
     const { id } = pageData;
     delete setData.id;
 
-    const collection = this.db.instance.db("kcms").collection("pages");
+    const collection = this.db.instance.db(this.db.dbName).collection("pages");
     return collection.updateOne(
       {
         _id: ObjectId(id),
@@ -417,7 +417,7 @@ class MongoPageController extends PageController {
       return Promise.resolve(err);
     }
 
-    const collection = this.db.instance.db("kcms").collection("pages");
+    const collection = this.db.instance.db(this.db.dbName).collection("pages");
     return collection.deleteOne({
       _id: ObjectId(pageData.id),
     })

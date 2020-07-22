@@ -10,6 +10,7 @@ const {
   isObject,
   isNumber,
   isString,
+  isUndefined,
   endOnError,
 } = require("../utilities");
 
@@ -60,15 +61,14 @@ class MongoUserController extends UserController {
       || !('username' in req.body)
       || !('password' in req.body)
     ) {
-      const error = "User Data Not Provided";
       this.pluginHandler.runLifecycleHook('loginFailed');
-      send401Error(res, error);
-      return Promise.resolve(error);
+      send401Error(res, userDataNotProvided);
+      return Promise.resolve(userDataNotProvided);
     }
     const { username, password } = req.body;
     const userData = {};
 
-    const collection = this.db.instance.db("kcms").collection("users");
+    const collection = this.db.instance.db(this.db.dbName).collection("users");
     return collection.findOne({
       username,
     })
@@ -126,7 +126,7 @@ class MongoUserController extends UserController {
    * @returns {Promise} resolves to a document of a user's information
    */
   getUserById(id) {
-    const collection = this.db.instance.db("kcms").collection("users");
+    const collection = this.db.instance.db(this.db.dbName).collection("users");
     return collection.findOne({
       _id: id,
     });
@@ -208,7 +208,7 @@ class MongoUserController extends UserController {
       ? req.params.page
       : 1;
 
-    const collection = this.db.instance.db("kcms").collection("users");
+    const collection = this.db.instance.db(this.db.dbName).collection("users");
     return collection.find(
       {},
       {
@@ -289,7 +289,7 @@ class MongoUserController extends UserController {
       newUser.enabled = true;
     }
 
-    const collection = this.db.instance.db("kcms").collection("users");
+    const collection = this.db.instance.db(this.db.dbName).collection("users");
 
     // We've set a unique constraint on the username field, so we can't add a username
     // that already exists.
@@ -373,10 +373,8 @@ class MongoUserController extends UserController {
     // access denied before we provide an invalid body error. If the body has everything, we can get
     // the updated user's ID and compare it in the next step.
     if ( !isObject(req.body)
-      || !('updatedUser' in req.body)
       || !isObject(req.body.updatedUser)
       || !('id' in req.body.updatedUser)
-      || !('data' in req.body.updatedUser)
     ) {
       bodyErr = "User Data Not Provided";
     } else {
@@ -400,19 +398,21 @@ class MongoUserController extends UserController {
     let updatedUserData;
     if (!adminPrivilege) {
       updatedUserData = {};
-      if ("password" in req.body.updatedUser.data) {
-        updatedUserData.password = req.body.updatedUser.data.password;
+      if (isString(req.body.updatedUser.password)) {
+        updatedUserData.password = req.body.updatedUser.password;
       }
-      if ("email" in req.body.updatedUser.data) {
-        updatedUserData.email = req.body.updatedUser.data.email;
+      if (isString(req.body.updatedUser.email)) {
+        updatedUserData.email = req.body.updatedUser.email;
       }
-      if ("userMeta" in req.body.updatedUser.data) {
-        updatedUserData.userMeta = req.body.updatedUser.data.userMeta;
+      if (isString(req.body.updatedUser.userMeta)) {
+        updatedUserData.userMeta = req.body.updatedUser.userMeta;
       }
     } else {
       updatedUserData = {
-        ...req.body.updatedUser.data,
+        ...req.body.updatedUser,
       };
+
+      delete updatedUserData.id;
     }
 
     let updatedUserMongoId;
@@ -440,7 +440,8 @@ class MongoUserController extends UserController {
       // in the request body so that we can authenticate the user. We also check their old
       // password to make sure it's correct. We only let a user update their password if they
       // type in their current password too.
-      if (!("currentUserPassword" in req.body.updatedUser)) {
+      // if (!("currentUserPassword" in req.body.updatedUser)) {
+      if (!isString(req.body.currentUserPassword)) {
         const err = "Current User's Password Not Provided";
         send400Error(res, err);
         return Promise.resolve(err);
@@ -463,7 +464,7 @@ class MongoUserController extends UserController {
           if (!result) {
             throw invalidCredentials;
           }
-          return bcrypt.compare(req.body.updatedUser.currentUserPassword, result.password);
+          return bcrypt.compare(req.body.currentUserPassword, result.password);
         })
         .then((result) => {
           // This will be false if the passwords don't match
@@ -487,7 +488,7 @@ class MongoUserController extends UserController {
 
     return Promise.all([p])
       .then(() => {
-        const collection = this.db.instance.db("kcms").collection("users");
+        const collection = this.db.instance.db(this.db.dbName).collection("users");
 
         return collection.updateOne(
           { _id: updatedUserMongoId },
@@ -566,8 +567,7 @@ class MongoUserController extends UserController {
 
     // Check that the appropriate data was sent to the function
     if ( !isObject(req.body)
-      || !('deletedUser' in req.body)
-      || !('id' in req.body.deletedUser)
+      || isUndefined(req.body.deletedUserId)
     ) {
       const err = "User Data Not Provided";
       send400Error(res, err);
@@ -575,7 +575,7 @@ class MongoUserController extends UserController {
     }
 
     // Check that the user isn't trying to delete themself and causing an issue
-    if (req.body.deletedUser.id === req._authData.id) {
+    if (req.body.deletedUserId === req._authData.id) {
       const err = "Cannot Delete Yourself";
       send400Error(res, err);
       return Promise.resolve(err);
@@ -583,13 +583,13 @@ class MongoUserController extends UserController {
 
     let id;
     try {
-      id = ObjectId(req.body.deletedUser.id);
+      id = ObjectId(req.body.deletedUserId);
     } catch (err) {
       send400Error(res, invalidUserId);
       return Promise.resolve(invalidUserId);
     }
 
-    const collection = this.db.instance.db("kcms").collection("users");
+    const collection = this.db.instance.db(this.db.dbName).collection("users");
 
     return collection.deleteOne({
       _id: id,

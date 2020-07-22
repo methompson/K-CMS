@@ -3,7 +3,7 @@ const {
   isString,
   isNumber,
   isUndefined,
-} = require("../../kcms/utilities/isData");
+} = require("../../utilities/isData");
 
 function checkAdminInfo(adminInfo) {
   if (!isObject(adminInfo)) {

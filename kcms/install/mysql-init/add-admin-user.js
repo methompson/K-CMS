@@ -1,12 +1,12 @@
 const bcrypt = require('bcryptjs');
 
-const { isUndefined } = require("../../kcms/utilities/isData");
+const { isUndefined } = require("../../utilities/isData");
 
-module.exports = function addAdminUser(mysqlPool, adminInfo) {
+function addAdminUser(db, adminInfo) {
   const firstName = isUndefined(adminInfo.firstName) ? "" : adminInfo.firstName;
   const lastName = isUndefined(adminInfo.lastName) ? "" : adminInfo.lastName;
 
-  const poolPromise = mysqlPool.promise();
+  const poolPromise = db.instance.promise();
   const now = new Date();
   const addAdminQuery = `
     REPLACE INTO users (
@@ -37,4 +37,6 @@ module.exports = function addAdminUser(mysqlPool, adminInfo) {
         now,
       ]);
     });
-};
+}
+
+module.exports = addAdminUser;

@@ -16,20 +16,18 @@ const {
  * password
  * @param {Object} options
  */
-function getMySQLDb(options) {
+function getMySQLDb(options, dbName) {
   if (!isObject(options)) {
     endOnError("Improper Options Value Provided");
     return false;
   }
 
-  const host = "host" in options && isString(options.host) ? options.host : "";
-  const database = "databaseName" in options && isString(options.databaseName) ? options.databaseName : "";
-  const user = "username" in options && isString(options.username) ? options.username : "";
-  const password = "password" in options && isString(options.password) ? options.password : "";
-  const port = "port" in options && isNumber(options.port) ? options.port : 3306;
+  const host = isString(options.host) ? options.host : "";
+  const user = isString(options.username) ? options.username : "";
+  const password = isString(options.password) ? options.password : "";
+  const port = isNumber(options.port) ? options.port : 3306;
 
   if ( host.length === 0
-    || database.length === 0
     || user.length === 0
     || password.length === 0
   ) {
@@ -39,7 +37,7 @@ function getMySQLDb(options) {
 
   const pool = mysql.createPool({
     host,
-    database,
+    database: dbName,
     user,
     password,
     port,

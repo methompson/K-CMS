@@ -10,7 +10,7 @@ const runMigrations = require('./run-migrations');
  * turn using a dynamic require. The migrations are all asyncronous, so
  * we use the array's iterator to manually iterate through the array.
  */
-module.exports = function initTables(mysqlPool) {
+function initTables(db) {
   const directoryPath = path.join(__dirname, "migrations");
 
   return new Promise((resolve, reject) => {
@@ -23,10 +23,8 @@ module.exports = function initTables(mysqlPool) {
   })
     .then((files) => {
       const iterator = files[Symbol.iterator]();
-      return runMigrations(iterator, mysqlPool);
-    })
-    .catch((err) => {
-      console.log(err);
-      process.exit();
+      return runMigrations(iterator, db.instance);
     });
-};
+}
+
+module.exports = initTables;
