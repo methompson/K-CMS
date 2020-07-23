@@ -65,6 +65,7 @@ describe("MongoBlogController", () => {
   beforeEach(() => {
     const mc = new MongoClient();
     db = {
+      dbName: "kcmsTest",
       type: 'mongodb',
       instance: mc,
     };
@@ -149,7 +150,7 @@ describe("MongoBlogController", () => {
         .then((result) => {
           expect(result).toBe(200);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(findOne).toHaveBeenCalledTimes(1);
@@ -229,7 +230,7 @@ describe("MongoBlogController", () => {
           expect(result).toBe(404);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(findOne).toHaveBeenCalledTimes(1);
@@ -299,7 +300,7 @@ describe("MongoBlogController", () => {
           expect(err).toBe(error);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(findOne).toHaveBeenCalledTimes(1);
@@ -351,7 +352,7 @@ describe("MongoBlogController", () => {
           expect(result).toBe(200);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(findToArray).toHaveBeenCalledTimes(1);
@@ -428,7 +429,7 @@ describe("MongoBlogController", () => {
           expect(result).toBe(200);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(findToArray).toHaveBeenCalledTimes(1);
@@ -453,7 +454,7 @@ describe("MongoBlogController", () => {
           expect(err).toBe(errorText);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(findToArray).toHaveBeenCalledTimes(1);
@@ -508,7 +509,7 @@ describe("MongoBlogController", () => {
           expect(checkBlogSpy).toHaveBeenCalledTimes(1);
           expect(checkBlogSpy).toHaveBeenCalledWith(newBlog);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(insertOne).toHaveBeenCalledTimes(1);
@@ -717,7 +718,7 @@ describe("MongoBlogController", () => {
           expect(checkBlogSpy).toHaveBeenCalledWith(newBlog);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(insertOne).toHaveBeenCalledTimes(1);
@@ -772,7 +773,7 @@ describe("MongoBlogController", () => {
           expect(checkBlogSpy).toHaveBeenCalledWith(newBlog);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(insertOne).toHaveBeenCalledTimes(1);
@@ -828,7 +829,7 @@ describe("MongoBlogController", () => {
           expect(checkBlogSpy).toHaveBeenCalledWith(newBlog);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(insertOne).toHaveBeenCalledTimes(1);
@@ -882,7 +883,7 @@ describe("MongoBlogController", () => {
           expect(checkBlogSpy).toHaveBeenCalledWith(newBlog);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(insertOne).toHaveBeenCalledTimes(1);
@@ -937,7 +938,7 @@ describe("MongoBlogController", () => {
           expect(checkBlogSpy).toHaveBeenCalledWith(newBlog);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(insertOne).toHaveBeenCalledTimes(1);
@@ -988,7 +989,7 @@ describe("MongoBlogController", () => {
           expect(checkBlogSpy).toHaveBeenCalledWith(newBlog);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(insertOne).toHaveBeenCalledTimes(1);
@@ -1053,7 +1054,7 @@ describe("MongoBlogController", () => {
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(updateOne).toHaveBeenCalledTimes(1);
@@ -1280,7 +1281,7 @@ describe("MongoBlogController", () => {
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(updateOne).toHaveBeenCalledTimes(1);
@@ -1340,7 +1341,7 @@ describe("MongoBlogController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(updateOne).toHaveBeenCalledTimes(1);
@@ -1411,7 +1412,7 @@ describe("MongoBlogController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(updateOne).toHaveBeenCalledTimes(1);
@@ -1480,7 +1481,7 @@ describe("MongoBlogController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(updateOne).toHaveBeenCalledTimes(1);
@@ -1547,7 +1548,7 @@ describe("MongoBlogController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(updateOne).toHaveBeenCalledTimes(1);
@@ -1612,7 +1613,7 @@ describe("MongoBlogController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(updateOne).toHaveBeenCalledTimes(1);
@@ -1675,7 +1676,7 @@ describe("MongoBlogController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(deleteOne).toHaveBeenCalledTimes(1);
@@ -1837,7 +1838,7 @@ describe("MongoBlogController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(deleteOne).toHaveBeenCalledTimes(1);
@@ -1888,7 +1889,7 @@ describe("MongoBlogController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(deleteOne).toHaveBeenCalledTimes(1);
@@ -1939,7 +1940,7 @@ describe("MongoBlogController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(deleteOne).toHaveBeenCalledTimes(1);
@@ -1988,7 +1989,7 @@ describe("MongoBlogController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(deleteOne).toHaveBeenCalledTimes(1);
@@ -2035,7 +2036,7 @@ describe("MongoBlogController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("blogPosts");
           expect(deleteOne).toHaveBeenCalledTimes(1);

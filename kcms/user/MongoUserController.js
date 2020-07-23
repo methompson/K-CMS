@@ -404,7 +404,7 @@ class MongoUserController extends UserController {
       if (isString(req.body.updatedUser.email)) {
         updatedUserData.email = req.body.updatedUser.email;
       }
-      if (isString(req.body.updatedUser.userMeta)) {
+      if (isObject(req.body.updatedUser.userMeta)) {
         updatedUserData.userMeta = req.body.updatedUser.userMeta;
       }
     } else {
@@ -413,6 +413,12 @@ class MongoUserController extends UserController {
       };
 
       delete updatedUserData.id;
+    }
+
+    // If there's nothing to update, we'll send a 400 error.
+    if (Object.keys(updatedUserData).length <= 0) {
+      send400Error(res, userDataNotProvided);
+      return Promise.resolve(userDataNotProvided);
     }
 
     let updatedUserMongoId;

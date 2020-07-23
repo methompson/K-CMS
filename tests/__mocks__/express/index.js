@@ -18,6 +18,7 @@ const routerInit = jest.fn(() => {
 });
 
 Express.Router = routerInit;
+Express.RouterClass = Router;
 Express.test = test;
 
 module.exports = Express;

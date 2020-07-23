@@ -65,6 +65,7 @@ describe("MongoPageController", () => {
   beforeEach(() => {
     const mc = new MongoClient();
     db = {
+      dbName: "testKCMS",
       type: 'mongodb',
       instance: mc,
     };
@@ -150,7 +151,7 @@ describe("MongoPageController", () => {
         .then((result) => {
           expect(result).toBe(200);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(findOne).toHaveBeenCalledTimes(1);
@@ -230,7 +231,7 @@ describe("MongoPageController", () => {
           expect(result).toBe(404);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(findOne).toHaveBeenCalledTimes(1);
@@ -300,7 +301,7 @@ describe("MongoPageController", () => {
           expect(err).toBe(error);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(findOne).toHaveBeenCalledTimes(1);
@@ -370,7 +371,7 @@ describe("MongoPageController", () => {
           expect(result).toBe(200);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(findToArray).toHaveBeenCalledTimes(1);
@@ -447,7 +448,7 @@ describe("MongoPageController", () => {
           expect(result).toBe(200);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(findToArray).toHaveBeenCalledTimes(1);
@@ -474,7 +475,7 @@ describe("MongoPageController", () => {
           expect(err).toBe(errorText);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(findToArray).toHaveBeenCalledTimes(1);
@@ -530,7 +531,7 @@ describe("MongoPageController", () => {
           expect(checkPageSpy).toHaveBeenCalledTimes(1);
           expect(checkPageSpy).toHaveBeenCalledWith(newPage);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(insertOne).toHaveBeenCalledTimes(1);
@@ -731,7 +732,7 @@ describe("MongoPageController", () => {
           expect(checkPageSpy).toHaveBeenCalledWith(newPage);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(insertOne).toHaveBeenCalledTimes(1);
@@ -785,7 +786,7 @@ describe("MongoPageController", () => {
           expect(checkPageSpy).toHaveBeenCalledWith(newPage);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(insertOne).toHaveBeenCalledTimes(1);
@@ -840,7 +841,7 @@ describe("MongoPageController", () => {
           expect(checkPageSpy).toHaveBeenCalledWith(newPage);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(insertOne).toHaveBeenCalledTimes(1);
@@ -893,7 +894,7 @@ describe("MongoPageController", () => {
           expect(checkPageSpy).toHaveBeenCalledWith(newPage);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(insertOne).toHaveBeenCalledTimes(1);
@@ -947,7 +948,7 @@ describe("MongoPageController", () => {
           expect(checkPageSpy).toHaveBeenCalledWith(newPage);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(insertOne).toHaveBeenCalledTimes(1);
@@ -997,7 +998,7 @@ describe("MongoPageController", () => {
           expect(checkPageSpy).toHaveBeenCalledWith(newPage);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(insertOne).toHaveBeenCalledTimes(1);
@@ -1061,7 +1062,7 @@ describe("MongoPageController", () => {
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(updateOne).toHaveBeenCalledTimes(1);
@@ -1283,7 +1284,7 @@ describe("MongoPageController", () => {
           expect(extractSpy).toHaveBeenCalledTimes(1);
           expect(extractSpy).toHaveBeenCalledWith(req);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(updateOne).toHaveBeenCalledTimes(1);
@@ -1342,7 +1343,7 @@ describe("MongoPageController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(updateOne).toHaveBeenCalledTimes(1);
@@ -1412,7 +1413,7 @@ describe("MongoPageController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(updateOne).toHaveBeenCalledTimes(1);
@@ -1480,7 +1481,7 @@ describe("MongoPageController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(updateOne).toHaveBeenCalledTimes(1);
@@ -1546,7 +1547,7 @@ describe("MongoPageController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(updateOne).toHaveBeenCalledTimes(1);
@@ -1610,7 +1611,7 @@ describe("MongoPageController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(updateOne).toHaveBeenCalledTimes(1);
@@ -1673,7 +1674,7 @@ describe("MongoPageController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(deleteOne).toHaveBeenCalledTimes(1);
@@ -1835,7 +1836,7 @@ describe("MongoPageController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(deleteOne).toHaveBeenCalledTimes(1);
@@ -1886,7 +1887,7 @@ describe("MongoPageController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(deleteOne).toHaveBeenCalledTimes(1);
@@ -1937,7 +1938,7 @@ describe("MongoPageController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(deleteOne).toHaveBeenCalledTimes(1);
@@ -1986,7 +1987,7 @@ describe("MongoPageController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(deleteOne).toHaveBeenCalledTimes(1);
@@ -2033,7 +2034,7 @@ describe("MongoPageController", () => {
           expect(extractSpy).toHaveBeenCalledWith(req);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("pages");
           expect(deleteOne).toHaveBeenCalledTimes(1);

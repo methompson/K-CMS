@@ -782,7 +782,6 @@ describe("MySQLPageController", () => {
       pages[9].error = "Invalid Slug Length";
       pages[10].error = "Invalid Name Length";
 
-
       req._authData = {
         userType: 'admin',
       };

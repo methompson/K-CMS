@@ -22,6 +22,11 @@ function getMySQLDb(options, dbName) {
     return false;
   }
 
+  if (!isString(dbName)) {
+    endOnError("Database Name Not Provided");
+    return false;
+  }
+
   const host = isString(options.host) ? options.host : "";
   const user = isString(options.username) ? options.username : "";
   const password = isString(options.password) ? options.password : "";

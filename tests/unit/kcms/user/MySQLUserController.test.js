@@ -1592,19 +1592,16 @@ describe("MySQLUserController", () => {
       const userId = "69";
       const updatedUser = {
         id: userId,
-        currentUserPassword: "password",
-        data: {
-          username: "test user",
-          password: "first test password",
-          firstName: "Test",
-          lastName: "User",
-          email: "Test@test.test",
-          userMeta: {
-            sex: "male",
-          },
-          userType: "viewer",
-          enabled: true,
+        username: "test user",
+        password: "first test password",
+        firstName: "Test",
+        lastName: "User",
+        email: "Test@test.test",
+        userMeta: {
+          sex: "male",
         },
+        userType: "viewer",
+        enabled: true,
       };
 
       const hashPass = "hashed pass";
@@ -1621,19 +1618,20 @@ describe("MySQLUserController", () => {
         + "dateUpdated = ? WHERE id = ?";
 
       const queryParams = [
-        updatedUser.data.username,
+        updatedUser.username,
         hashPass,
-        updatedUser.data.firstName,
-        updatedUser.data.lastName,
-        updatedUser.data.email,
-        updatedUser.data.userType,
-        updatedUser.data.enabled,
-        JSON.stringify(updatedUser.data.userMeta),
+        updatedUser.firstName,
+        updatedUser.lastName,
+        updatedUser.email,
+        updatedUser.userType,
+        updatedUser.enabled,
+        JSON.stringify(updatedUser.userMeta),
         expect.any(Date),
         updatedUser.id,
       ];
 
       req.body = {
+        currentUserPassword: "password",
         updatedUser,
       };
 
@@ -1680,7 +1678,7 @@ describe("MySQLUserController", () => {
         });
     });
 
-    test("editUser will send a 200 code and run execute even if no data is passed", (done) => {
+    test("editUser will send a 400 no data in the updatedUser object", (done) => {
       req._authData = {
         userType: "admin",
       };
@@ -1688,49 +1686,26 @@ describe("MySQLUserController", () => {
       const userId = "69";
       const updatedUser = {
         id: userId,
-        data: {},
       };
-
-      const hashPass = "hashed pass";
-
-      const sqlQuery = "UPDATE users SET "
-        + "dateUpdated = ? WHERE id = ?";
-
-      const queryParams = [
-        expect.any(Date),
-        updatedUser.id,
-      ];
 
       req.body = {
         updatedUser,
       };
 
-      const queryResult = {
-        affectedRows: 1,
-      };
-      mysql.execute.mockImplementation(() => {
-        return Promise.resolve([queryResult]);
-      });
-
-      bcrypt.hash.mockImplementationOnce(() => {
-        return Promise.resolve(hashPass);
-      });
-
       muc.editUser(req, res)
         .then((result) => {
-          expect(result).toBe(200);
+          expect(result).toBe(userDataNotProvided);
 
-          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(1);
-          expect(mysql.execute).toHaveBeenCalledTimes(1);
-          expect(mysql.execute).toHaveBeenCalledWith(sqlQuery, queryParams);
+          expect(mysql.Pool.prototype.promise).toHaveBeenCalledTimes(0);
+          expect(mysql.execute).toHaveBeenCalledTimes(0);
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(0);
 
           expect(status).toHaveBeenCalledTimes(1);
-          expect(status).toHaveBeenCalledWith(200);
+          expect(status).toHaveBeenCalledWith(400);
           expect(json).toHaveBeenCalledTimes(1);
           expect(json).toHaveBeenCalledWith({
-            message: "User Updated Successfully",
+            error: userDataNotProvided,
           });
 
           done();
@@ -1745,11 +1720,9 @@ describe("MySQLUserController", () => {
       const userId = "69";
       const updatedUser = {
         id: userId,
-        data: {
-          username: "test user",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        userType: "viewer",
+        enabled: true,
       };
 
       const sqlQuery = "UPDATE users SET "
@@ -1759,9 +1732,9 @@ describe("MySQLUserController", () => {
         + "dateUpdated = ? WHERE id = ?";
 
       const queryParams = [
-        updatedUser.data.username,
-        updatedUser.data.userType,
-        updatedUser.data.enabled,
+        updatedUser.username,
+        updatedUser.userType,
+        updatedUser.enabled,
         expect.any(Date),
         updatedUser.id,
       ];
@@ -1808,13 +1781,10 @@ describe("MySQLUserController", () => {
 
       const updatedUser = {
         id: userId,
-        currentUserPassword: "password",
-        data: {
-          password: "test password",
-          email: "Test@test.test",
-          userMeta: {
-            sex: "male",
-          },
+        password: "test password",
+        email: "Test@test.test",
+        userMeta: {
+          sex: "male",
         },
       };
 
@@ -1828,13 +1798,14 @@ describe("MySQLUserController", () => {
 
       const queryParams = [
         hashPass,
-        updatedUser.data.email,
-        JSON.stringify(updatedUser.data.userMeta),
+        updatedUser.email,
+        JSON.stringify(updatedUser.userMeta),
         expect.any(Date),
         updatedUser.id,
       ];
 
       req.body = {
+        currentUserPassword: "password",
         updatedUser,
       };
 
@@ -1890,19 +1861,16 @@ describe("MySQLUserController", () => {
 
       const updatedUser = {
         id: userId,
-        currentUserPassword: "password",
-        data: {
-          username: "test user",
-          password: "test password",
-          firstName: "Test",
-          lastName: "User",
-          email: "Test@test.test",
-          userMeta: {
-            sex: "male",
-          },
-          userType: "viewer",
-          enabled: true,
+        username: "test user",
+        password: "test password",
+        firstName: "Test",
+        lastName: "User",
+        email: "Test@test.test",
+        userMeta: {
+          sex: "male",
         },
+        userType: "viewer",
+        enabled: true,
       };
 
       const hashPass = "hashed pass";
@@ -1915,13 +1883,14 @@ describe("MySQLUserController", () => {
 
       const queryParams = [
         hashPass,
-        updatedUser.data.email,
-        JSON.stringify(updatedUser.data.userMeta),
+        updatedUser.email,
+        JSON.stringify(updatedUser.userMeta),
         expect.any(Date),
         updatedUser.id,
       ];
 
       req.body = {
+        currentUserPassword: "password",
         updatedUser,
       };
 
@@ -1977,10 +1946,7 @@ describe("MySQLUserController", () => {
 
       const updatedUser = {
         id: userId,
-        currentUserPassword: "password",
-        data: {
-          password: "test password",
-        },
+        password: "test password",
       };
 
       const hashPass = "hashed pass";
@@ -1996,6 +1962,7 @@ describe("MySQLUserController", () => {
       ];
 
       req.body = {
+        currentUserPassword: "password",
         updatedUser,
       };
 
@@ -2051,12 +2018,9 @@ describe("MySQLUserController", () => {
 
       const updatedUser = {
         id: userId,
-        currentUserPassword: "password",
-        data: {
-          email: "Test@test.test",
-          userMeta: {
-            sex: "male",
-          },
+        email: "Test@test.test",
+        userMeta: {
+          sex: "male",
         },
       };
 
@@ -2066,13 +2030,14 @@ describe("MySQLUserController", () => {
         + "dateUpdated = ? WHERE id = ?";
 
       const queryParams = [
-        updatedUser.data.email,
-        JSON.stringify(updatedUser.data.userMeta),
+        updatedUser.email,
+        JSON.stringify(updatedUser.userMeta),
         expect.any(Date),
         updatedUser.id,
       ];
 
       req.body = {
+        currentUserPassword: "password",
         updatedUser,
       };
 
@@ -2124,11 +2089,9 @@ describe("MySQLUserController", () => {
 
       const updatedUser = {
         id: userId,
-        data: {
-          email: "Test@test.test",
-          userMeta: {
-            sex: "male",
-          },
+        email: "Test@test.test",
+        userMeta: {
+          sex: "male",
         },
       };
 
@@ -2163,16 +2126,14 @@ describe("MySQLUserController", () => {
 
       const updatedUser = {
         id: userId,
-        currentUserPassword: "password",
-        data: {
-          email: "Test@test.test",
-          userMeta: {
-            sex: "male",
-          },
+        email: "Test@test.test",
+        userMeta: {
+          sex: "male",
         },
       };
 
       req.body = {
+        currentUserPassword: "password",
         updatedUser,
       };
 
@@ -2207,16 +2168,14 @@ describe("MySQLUserController", () => {
 
       const updatedUser = {
         id: userId,
-        currentUserPassword: "password",
-        data: {
-          email: "Test@test.test",
-          userMeta: {
-            sex: "male",
-          },
+        email: "Test@test.test",
+        userMeta: {
+          sex: "male",
         },
       };
 
       req.body = {
+        currentUserPassword: "password",
         updatedUser,
       };
 
@@ -2256,12 +2215,10 @@ describe("MySQLUserController", () => {
       const userId = "69";
       const updatedUser = {
         id: userId,
-        data: {
-          username: "test user",
-          password: "test password",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        password: "test password",
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
@@ -2320,12 +2277,10 @@ describe("MySQLUserController", () => {
       };
 
       const updatedUser = {
-        data: {
-          username: "test user",
-          password: "test password",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        password: "test password",
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
@@ -2409,12 +2364,10 @@ describe("MySQLUserController", () => {
       const userId = "69";
       const updatedUser = {
         id: userId,
-        data: {
-          username: "test user",
-          password,
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        password,
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
@@ -2442,11 +2395,9 @@ describe("MySQLUserController", () => {
       const userId = "69";
       const updatedUser = {
         id: userId,
-        data: {
-          username: "test user",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        userType: "viewer",
+        enabled: true,
       };
 
       const sqlQuery = "UPDATE users SET "
@@ -2456,9 +2407,9 @@ describe("MySQLUserController", () => {
         + "dateUpdated = ? WHERE id = ?";
 
       const queryParams = [
-        updatedUser.data.username,
-        updatedUser.data.userType,
-        updatedUser.data.enabled,
+        updatedUser.username,
+        updatedUser.userType,
+        updatedUser.enabled,
         expect.any(Date),
         updatedUser.id,
       ];
@@ -2700,9 +2651,7 @@ describe("MySQLUserController", () => {
 
       const delId = 69;
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       const delResults = {
@@ -2740,9 +2689,7 @@ describe("MySQLUserController", () => {
 
       const delId = 69;
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       const delResults = {
@@ -2779,9 +2726,7 @@ describe("MySQLUserController", () => {
 
       const delId = 96;
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       muc.deleteUser(req, res)
@@ -2875,9 +2820,7 @@ describe("MySQLUserController", () => {
       };
 
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       const error = "Cannot Delete Yourself";
@@ -2905,9 +2848,7 @@ describe("MySQLUserController", () => {
 
       const delId = 96;
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       const error = {
@@ -2943,9 +2884,7 @@ describe("MySQLUserController", () => {
 
       const delId = 96;
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       mysql.execute.mockImplementationOnce(() => {
@@ -2976,9 +2915,7 @@ describe("MySQLUserController", () => {
 
       const delId = 96;
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       mysql.execute.mockImplementationOnce(() => {
@@ -3011,9 +2948,7 @@ describe("MySQLUserController", () => {
 
       const delId = 96;
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       mysql.execute.mockImplementationOnce(() => {
@@ -3046,9 +2981,7 @@ describe("MySQLUserController", () => {
 
       const delId = 96;
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       mysql.execute.mockImplementationOnce(() => {
@@ -3081,9 +3014,7 @@ describe("MySQLUserController", () => {
 
       const delId = 96;
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       mysql.execute.mockImplementationOnce(() => {

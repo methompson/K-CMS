@@ -33,8 +33,13 @@ const { getMongoDb } = getMongoDbModule;
 const { getMySQLDb } = getMySQLDbModule;
 
 describe("database", () => {
+  const dbName = "testDbName";
 
   describe("makeDatabaseClient", () => {
+
+    beforeEach(() => {
+      getMySQLDb.mockClear();
+    });
 
     test("When passing proper mongodb data to makeDatabaseClient, a mongoDb client will be returned in an object", () => {
       getMongoDb.mockClear();
@@ -43,30 +48,79 @@ describe("database", () => {
       };
 
       const expectation = {
+        dbName: "kcms",
         type: 'mongodb',
         instance: getMongoDbModule.client,
       };
       const result = makeDatabaseClient(dbOpt);
 
-      expect(result).toMatchObject(expectation);
+      expect(result).toStrictEqual(expectation);
       expect(getMongoDb).toHaveBeenCalledWith(dbOpt.mongodb);
       expect(getMongoDb).toHaveBeenCalledTimes(1);
     });
 
-    test("When passing proper mysql data to makeDatabaseClient, a mysql client will be returned in an object", () => {
+    test("When passing proper mongodb data to makeDatabaseClient with a database name, a mongoDb client will be returned in an object", () => {
       getMongoDb.mockClear();
       const dbOpt = {
-        mysql: {},
+        mongodb: {
+          databaseName: dbName,
+        },
       };
 
       const expectation = {
+        dbName,
+        type: 'mongodb',
+        instance: getMongoDbModule.client,
+      };
+      const result = makeDatabaseClient(dbOpt);
+
+      expect(result).toStrictEqual(expectation);
+      expect(getMongoDb).toHaveBeenCalledWith(dbOpt.mongodb);
+      expect(getMongoDb).toHaveBeenCalledTimes(1);
+    });
+
+    test("When passing acceptable data to getMySQLDb, a mysql client will be returned in an object and makeDatabaseClient will return an object containing information about the database plus an instance", () => {
+      getMongoDb.mockClear();
+      const dbOpt = {
+        mysql: {
+          host: "",
+          user: "",
+          password: "",
+        },
+      };
+
+      const expectation = {
+        dbName: "kcms",
         type: 'mysql',
         instance: getMySQLDbModule.client,
       };
       const result = makeDatabaseClient(dbOpt);
 
       expect(result).toMatchObject(expectation);
-      expect(getMySQLDb).toHaveBeenCalledWith(dbOpt.mysql);
+      expect(getMySQLDb).toHaveBeenCalledWith(dbOpt.mysql, "kcms");
+      expect(getMySQLDb).toHaveBeenCalledTimes(1);
+    });
+
+    test("When passing acceptable data to getMySQLDb with a dbName, a mysql client will be returned in an object and makeDatabaseClient will return an object containing information about the database plus an instance", () => {
+      getMongoDb.mockClear();
+      const dbOpt = {
+        mysql: {
+          host: "",
+          user: "",
+          password: "",
+          databaseName: dbName,
+        },
+      };
+
+      const expectation = {
+        dbName,
+        type: 'mysql',
+        instance: getMySQLDbModule.client,
+      };
+      const result = makeDatabaseClient(dbOpt);
+
+      expect(result).toMatchObject(expectation);
+      expect(getMySQLDb).toHaveBeenCalledWith(dbOpt.mysql, dbName);
       expect(getMySQLDb).toHaveBeenCalledTimes(1);
     });
 

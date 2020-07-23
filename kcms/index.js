@@ -1,6 +1,7 @@
 const uuidv4 = require("uuid/v4");
 
 const KCMS = require('./kcms');
+const checkInstallation = require("./kcms/checkInstallation");
 
 // const KCMSPlugin = require("./plugin");
 
@@ -18,13 +19,7 @@ function makeKCMS(options) {
   }
 
   const cms = new KCMS(options);
-  cms.checkDbInstallation()
-    .then(() => {
-      cms.initHandlersAndControllers();
-    })
-    .catch(() => {
-      cms.initUninstalledState();
-    });
+  checkInstallation(cms);
 
   return cms;
 }

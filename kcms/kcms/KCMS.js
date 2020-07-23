@@ -48,7 +48,7 @@ class KCMS {
     } else if (this.db.type === "mysql") {
       status = checkMySQLConnection(this.db, this.options.db.mysql.databaseName);
     } else {
-      status = null;
+      status = Promise.reject();
     }
 
     return status;

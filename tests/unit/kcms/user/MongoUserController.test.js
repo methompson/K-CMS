@@ -65,6 +65,7 @@ describe("MongoUserController", () => {
     ph = new PluginHandler();
     const mc = new MongoClient();
     db = {
+      dbName: "testKCMS",
       type: "mongodb",
       instance: mc,
     };
@@ -187,7 +188,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(200);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
           expect(findOne).toHaveBeenCalledTimes(1);
@@ -308,7 +309,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(invalidCredentials);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
           expect(findOne).toHaveBeenCalledTimes(1);
@@ -345,7 +346,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(error);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
           expect(findOne).toHaveBeenCalledTimes(1);
@@ -383,7 +384,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(invalidCredentials);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
           expect(findOne).toHaveBeenCalledTimes(1);
@@ -425,7 +426,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(error);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
           expect(findOne).toHaveBeenCalledTimes(1);
@@ -490,7 +491,7 @@ describe("MongoUserController", () => {
 
           expect(ObjectId).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
 
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
@@ -536,7 +537,7 @@ describe("MongoUserController", () => {
 
           expect(ObjectId).toHaveBeenCalledTimes(1);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
 
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
@@ -655,7 +656,7 @@ describe("MongoUserController", () => {
           expect(ObjectId).toHaveBeenCalledTimes(1);
           expect(ObjectId).toHaveBeenCalledWith(req.params.id);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
           expect(findOne).toHaveBeenCalledTimes(1);
@@ -697,7 +698,7 @@ describe("MongoUserController", () => {
           expect(ObjectId).toHaveBeenCalledTimes(1);
           expect(ObjectId).toHaveBeenCalledWith(req.params.id);
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
           expect(findOne).toHaveBeenCalledTimes(1);
@@ -773,7 +774,7 @@ describe("MongoUserController", () => {
           );
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -869,7 +870,7 @@ describe("MongoUserController", () => {
           });
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
           done();
@@ -925,7 +926,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(200);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -979,7 +980,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(200);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -1253,7 +1254,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(hashedPass);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -1303,7 +1304,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(error);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -1359,7 +1360,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(error);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -1415,7 +1416,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(error);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -1468,7 +1469,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(dbError);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -1521,7 +1522,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(dbError);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -1576,7 +1577,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(dbError);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -1633,7 +1634,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(error);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -1670,18 +1671,18 @@ describe("MongoUserController", () => {
 
       const updatedUserId = "79";
       const updatedUser = {
-        id: updatedUserId,
-        currentUserPassword: oldPassword,
-        data: {
-          username: "test user",
-          password: "test password",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        password: "test password",
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
-        updatedUser,
+        currentUserPassword: oldPassword,
+        updatedUser: {
+          id: updatedUserId,
+          ...updatedUser,
+        },
       };
 
       const objId = "96";
@@ -1720,12 +1721,12 @@ describe("MongoUserController", () => {
           expect(result).toBe(200);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
           expect(bcrypt.hash).toHaveBeenCalledTimes(1);
-          expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.data.password, 12);
+          expect(bcrypt.hash).toHaveBeenCalledWith(updatedUser.password, 12);
           expect(bcrypt.compare).toHaveBeenCalledTimes(1);
           expect(bcrypt.compare).toHaveBeenCalledWith(oldPassword, oldPassword);
 
@@ -1738,7 +1739,7 @@ describe("MongoUserController", () => {
             { _id: objId },
             {
               $set: {
-                ...updatedUser.data,
+                ...updatedUser,
                 password: hashPass,
               },
             },
@@ -1764,17 +1765,16 @@ describe("MongoUserController", () => {
       };
 
       const updatedUser = {
-        id: userId,
-        data: {
-          username: "test user",
-          // password: "test password",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
-        updatedUser,
+        updatedUser: {
+          ...updatedUser,
+          id: userId,
+        },
       };
 
       updateOne.mockImplementationOnce(() => {
@@ -1793,7 +1793,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(200);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -1805,7 +1805,7 @@ describe("MongoUserController", () => {
             { _id: objId },
             {
               $set: {
-                ...updatedUser.data,
+                ...updatedUser,
               },
             },
             { upsert: true }
@@ -1831,28 +1831,27 @@ describe("MongoUserController", () => {
 
       const currentUserPassword = "this is a password";
       const newPassword = "New Password";
-
-      const updatedUser = {
-        id: userId,
-        currentUserPassword,
-        data: {
-          email: "test@email.com",
-          password: newPassword,
-          userMeta: {
-            sex: "male",
-          },
-        },
-      };
-
       const hashPass = "hashed pass";
 
       const updatedUserData = {
-        ...updatedUser.data,
+        email: "test@email.com",
+        userMeta: {
+          sex: "male",
+        },
         password: hashPass,
       };
 
+      const updatedUser = {
+        ...updatedUserData,
+        id: userId,
+        password: newPassword,
+      };
+
       req.body = {
-        updatedUser,
+        currentUserPassword,
+        updatedUser: {
+          ...updatedUser,
+        },
       };
 
       const receivedPassword = "abc123987654";
@@ -1886,7 +1885,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(200);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -1932,27 +1931,25 @@ describe("MongoUserController", () => {
 
       const updatedUser = {
         id: userId,
-        currentUserPassword,
-        data: {
-          email: "test@email.com",
-          password: newPassword,
-          userType: "viewer",
-          enabled: true,
-          userMeta: {
-            sex: "male",
-          },
+        email: "test@email.com",
+        password: newPassword,
+        userType: "viewer",
+        enabled: true,
+        userMeta: {
+          sex: "male",
         },
       };
 
       const hashPass = "hashed pass";
 
       const updatedUserData = {
-        email: updatedUser.data.email,
+        email: updatedUser.email,
         password: hashPass,
-        userMeta: updatedUser.data.userMeta,
+        userMeta: updatedUser.userMeta,
       };
 
       req.body = {
+        currentUserPassword,
         updatedUser,
       };
 
@@ -1987,7 +1984,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(200);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -2033,10 +2030,7 @@ describe("MongoUserController", () => {
 
       const updatedUser = {
         id: userId,
-        currentUserPassword,
-        data: {
-          password: newPassword,
-        },
+        password: newPassword,
       };
 
       const hashPass = "hashed pass";
@@ -2046,6 +2040,7 @@ describe("MongoUserController", () => {
       };
 
       req.body = {
+        currentUserPassword,
         updatedUser,
       };
 
@@ -2080,7 +2075,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(200);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -2125,21 +2120,19 @@ describe("MongoUserController", () => {
 
       const updatedUser = {
         id: userId,
-        currentUserPassword,
-        data: {
-          email: "test@email.com",
-          userMeta: {
-            sex: "male",
-          },
+        email: "test@email.com",
+        userMeta: {
+          sex: "male",
         },
       };
 
       const updatedUserData = {
-        email: updatedUser.data.email,
-        userMeta: updatedUser.data.userMeta,
+        email: updatedUser.email,
+        userMeta: updatedUser.userMeta,
       };
 
       req.body = {
+        currentUserPassword,
         updatedUser,
       };
 
@@ -2170,7 +2163,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(200);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -2214,14 +2207,12 @@ describe("MongoUserController", () => {
 
       const updatedUser = {
         id: userId,
-        data: {
-          email: "test@email.com",
-          password: newPassword,
-          userType: "viewer",
-          enabled: true,
-          userMeta: {
-            sex: "male",
-          },
+        email: "test@email.com",
+        password: newPassword,
+        userType: "viewer",
+        enabled: true,
+        userMeta: {
+          sex: "male",
         },
       };
 
@@ -2272,19 +2263,17 @@ describe("MongoUserController", () => {
 
       const updatedUser = {
         id: userId,
-        currentUserPassword: "password",
-        data: {
-          email: "test@email.com",
-          password: newPassword,
-          userType: "viewer",
-          enabled: true,
-          userMeta: {
-            sex: "male",
-          },
+        email: "test@email.com",
+        password: newPassword,
+        userType: "viewer",
+        enabled: true,
+        userMeta: {
+          sex: "male",
         },
       };
 
       req.body = {
+        currentUserPassword: "password",
         updatedUser,
       };
 
@@ -2333,16 +2322,14 @@ describe("MongoUserController", () => {
 
       const updatedUser = {
         id: userId,
-        currentUserPassword,
-        data: {
-          email: "test@email.com",
-          userMeta: {
-            sex: "male",
-          },
+        email: "test@email.com",
+        userMeta: {
+          sex: "male",
         },
       };
 
       req.body = {
+        currentUserPassword,
         updatedUser,
       };
 
@@ -2394,12 +2381,10 @@ describe("MongoUserController", () => {
       const userId = "69";
       const updatedUser = {
         id: userId,
-        data: {
-          username: "test user",
-          password: "test password",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        password: "test password",
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
@@ -2443,6 +2428,8 @@ describe("MongoUserController", () => {
         updatedUser,
       };
 
+      console.log("Test Edit User");
+
       muc.editUser(req, res)
         .then((result) => {
           expect(result).toBe(userDataNotProvided);
@@ -2472,12 +2459,10 @@ describe("MongoUserController", () => {
       };
 
       const updatedUser = {
-        data: {
-          username: "test user",
-          password: "test password",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        password: "test password",
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
@@ -2582,12 +2567,10 @@ describe("MongoUserController", () => {
       const userId = "69";
       const updatedUser = {
         id: userId,
-        data: {
-          username: "test user",
-          password,
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        password,
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
@@ -2629,12 +2612,10 @@ describe("MongoUserController", () => {
       const userId = "69";
       const updatedUser = {
         id: userId,
-        data: {
-          username: "test user",
-          password: "test password",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        password: "test password",
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
@@ -2680,19 +2661,17 @@ describe("MongoUserController", () => {
 
       const updatedUser = {
         id: "79",
-        currentUserPassword: "abc",
-        data: {
-          email: "test@email.com",
-          password: newPassword,
-          userType: "viewer",
-          enabled: true,
-          userMeta: {
-            sex: "male",
-          },
+        email: "test@email.com",
+        password: newPassword,
+        userType: "viewer",
+        enabled: true,
+        userMeta: {
+          sex: "male",
         },
       };
 
       req.body = {
+        currentUserPassword: "abc",
         updatedUser,
       };
 
@@ -2738,16 +2717,16 @@ describe("MongoUserController", () => {
 
       const userId = "69";
       const updatedUser = {
-        id: userId,
-        data: {
-          username: "test user",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
-        updatedUser,
+        updatedUser: {
+          ...updatedUser,
+          id: userId,
+        },
       };
 
       const objId = "96";
@@ -2765,7 +2744,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(error);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -2779,7 +2758,7 @@ describe("MongoUserController", () => {
             { _id: objId },
             {
               $set: {
-                ...updatedUser.data,
+                ...updatedUser,
               },
             },
             { upsert: true }
@@ -2803,16 +2782,16 @@ describe("MongoUserController", () => {
 
       const userId = "69";
       const updatedUser = {
-        id: userId,
-        data: {
-          username: "test user",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
-        updatedUser,
+        updatedUser: {
+          ...updatedUser,
+          id: userId,
+        },
       };
 
       const objId = "96";
@@ -2832,7 +2811,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(error);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -2846,7 +2825,7 @@ describe("MongoUserController", () => {
             { _id: objId },
             {
               $set: {
-                ...updatedUser.data,
+                ...updatedUser,
               },
             },
             { upsert: true }
@@ -2870,16 +2849,16 @@ describe("MongoUserController", () => {
 
       const userId = "69";
       const updatedUser = {
-        id: userId,
-        data: {
-          username: "test user",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
-        updatedUser,
+        updatedUser: {
+          ...updatedUser,
+          id: userId,
+        },
       };
 
       const objId = "96";
@@ -2899,7 +2878,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(error);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -2913,7 +2892,7 @@ describe("MongoUserController", () => {
             { _id: objId },
             {
               $set: {
-                ...updatedUser.data,
+                ...updatedUser,
               },
             },
             { upsert: true }
@@ -2937,16 +2916,16 @@ describe("MongoUserController", () => {
 
       const userId = "69";
       const updatedUser = {
-        id: userId,
-        data: {
-          username: "test user",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
-        updatedUser,
+        updatedUser: {
+          ...updatedUser,
+          id: userId,
+        },
       };
 
       const objId = "96";
@@ -2966,7 +2945,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(error);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -2980,7 +2959,7 @@ describe("MongoUserController", () => {
             { _id: objId },
             {
               $set: {
-                ...updatedUser.data,
+                ...updatedUser,
               },
             },
             { upsert: true }
@@ -3000,16 +2979,16 @@ describe("MongoUserController", () => {
 
       const userId = "69";
       const updatedUser = {
-        id: userId,
-        data: {
-          username: "test user",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
-        updatedUser,
+        updatedUser: {
+          ...updatedUser,
+          id: userId,
+        },
       };
 
       const objId = "96";
@@ -3029,7 +3008,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(error);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -3043,7 +3022,7 @@ describe("MongoUserController", () => {
             { _id: objId },
             {
               $set: {
-                ...updatedUser.data,
+                ...updatedUser,
               },
             },
             { upsert: true }
@@ -3067,16 +3046,16 @@ describe("MongoUserController", () => {
 
       const userId = "69";
       const updatedUser = {
-        id: userId,
-        data: {
-          username: "test user",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
-        updatedUser,
+        updatedUser: {
+          ...updatedUser,
+          id: userId,
+        },
       };
 
       const objId = "96";
@@ -3093,7 +3072,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(dbError);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -3107,7 +3086,7 @@ describe("MongoUserController", () => {
             { _id: objId },
             {
               $set: {
-                ...updatedUser.data,
+                ...updatedUser,
               },
             },
             { upsert: true }
@@ -3131,16 +3110,16 @@ describe("MongoUserController", () => {
 
       const userId = "69";
       const updatedUser = {
-        id: userId,
-        data: {
-          username: "test user",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
-        updatedUser,
+        updatedUser: {
+          ...updatedUser,
+          id: userId,
+        },
       };
 
       const objId = "96";
@@ -3157,7 +3136,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(dbError);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -3171,7 +3150,7 @@ describe("MongoUserController", () => {
             { _id: objId },
             {
               $set: {
-                ...updatedUser.data,
+                ...updatedUser,
               },
             },
             { upsert: true }
@@ -3195,16 +3174,16 @@ describe("MongoUserController", () => {
 
       const userId = "69";
       const updatedUser = {
-        id: userId,
-        data: {
-          username: "test user",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
-        updatedUser,
+        updatedUser: {
+          ...updatedUser,
+          id: userId,
+        },
       };
 
       const objId = "96";
@@ -3223,7 +3202,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(dbError);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -3237,7 +3216,7 @@ describe("MongoUserController", () => {
             { _id: objId },
             {
               $set: {
-                ...updatedUser.data,
+                ...updatedUser,
               },
             },
             { upsert: true }
@@ -3261,16 +3240,16 @@ describe("MongoUserController", () => {
 
       const userId = "69";
       const updatedUser = {
-        id: userId,
-        data: {
-          username: "test user",
-          userType: "viewer",
-          enabled: true,
-        },
+        username: "test user",
+        userType: "viewer",
+        enabled: true,
       };
 
       req.body = {
-        updatedUser,
+        updatedUser: {
+          ...updatedUser,
+          id: userId,
+        },
       };
 
       const objId = "96";
@@ -3291,7 +3270,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(error);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -3305,7 +3284,7 @@ describe("MongoUserController", () => {
             { _id: objId },
             {
               $set: {
-                ...updatedUser.data,
+                ...updatedUser,
               },
             },
             { upsert: true }
@@ -3333,9 +3312,7 @@ describe("MongoUserController", () => {
 
       const delId = "69";
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       const objId = { id: delId };
@@ -3348,7 +3325,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(200);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -3376,9 +3353,7 @@ describe("MongoUserController", () => {
 
       const delId = "69";
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       muc.deleteUser(req, res)
@@ -3500,9 +3475,7 @@ describe("MongoUserController", () => {
       };
 
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       const error = "Cannot Delete Yourself";
@@ -3534,9 +3507,7 @@ describe("MongoUserController", () => {
 
       const delId = "69";
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       const objId = { id: delId };
@@ -3554,7 +3525,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(error);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -3583,9 +3554,7 @@ describe("MongoUserController", () => {
 
       const delId = "69";
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       const objId = { id: delId };
@@ -3602,7 +3571,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(dbError);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -3631,9 +3600,7 @@ describe("MongoUserController", () => {
 
       const delId = "69";
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       const objId = { id: delId };
@@ -3650,7 +3617,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(dbError);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -3679,9 +3646,7 @@ describe("MongoUserController", () => {
 
       const delId = "69";
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       const objId = { id: delId };
@@ -3700,7 +3665,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(dbError);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -3729,9 +3694,7 @@ describe("MongoUserController", () => {
 
       const delId = "69";
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       const objId = { id: delId };
@@ -3752,7 +3715,7 @@ describe("MongoUserController", () => {
           expect(result).toBe(error);
 
           expect(MongoClient.prototype.db).toHaveBeenCalledTimes(1);
-          expect(MongoClient.prototype.db).toHaveBeenCalledWith("kcms");
+          expect(MongoClient.prototype.db).toHaveBeenCalledWith(db.dbName);
           expect(collection).toHaveBeenCalledTimes(1);
           expect(collection).toHaveBeenCalledWith("users");
 
@@ -3781,9 +3744,7 @@ describe("MongoUserController", () => {
 
       const delId = "69";
       req.body = {
-        deletedUser: {
-          id: delId,
-        },
+        deletedUserId: delId,
       };
 
       const err = "New Error";

@@ -33,7 +33,7 @@ describe("getMySQLDb", () => {
       port,
     };
 
-    const result = getMySQLDb(options);
+    const result = getMySQLDb(options, databaseName);
     expect(result instanceof Pool).toBe(true);
     expect(result.options).toMatchObject({
       host,
@@ -50,12 +50,11 @@ describe("getMySQLDb", () => {
   test("getMySQLDb will return a Pool object if all essential options are provided to the function", () => {
     const options = {
       host,
-      databaseName,
       username,
       password,
     };
 
-    const result = getMySQLDb(options);
+    const result = getMySQLDb(options, databaseName);
     expect(result instanceof Pool).toBe(true);
     expect(result.options).toMatchObject({
       host,
@@ -78,12 +77,11 @@ describe("getMySQLDb", () => {
   test("getMySQLDb will run endOnError if the host argument is missing from options", () => {
     const options = {
       // host,
-      databaseName,
       username,
       password,
     };
 
-    getMySQLDb(options);
+    getMySQLDb(options, databaseName);
     expect(endOnError).toHaveBeenCalledTimes(1);
     expect(endOnError).toHaveBeenCalledWith("MySQL parameters not provided");
   });
@@ -91,12 +89,11 @@ describe("getMySQLDb", () => {
   test("getMySQLDb will run endOnError if the host argument is missing from options", () => {
     const options = {
       // host,
-      databaseName,
       username,
       password,
     };
 
-    getMySQLDb(options);
+    getMySQLDb(options, databaseName);
     expect(endOnError).toHaveBeenCalledTimes(1);
     expect(endOnError).toHaveBeenCalledWith("MySQL parameters not provided");
   });
@@ -104,25 +101,23 @@ describe("getMySQLDb", () => {
   test("getMySQLDb will run endOnError if the databaseName argument is missing from options", () => {
     const options = {
       host,
-      // databaseName,
       username,
       password,
     };
 
     getMySQLDb(options);
     expect(endOnError).toHaveBeenCalledTimes(1);
-    expect(endOnError).toHaveBeenCalledWith("MySQL parameters not provided");
+    expect(endOnError).toHaveBeenCalledWith("Database Name Not Provided");
   });
 
   test("getMySQLDb will run endOnError if the username argument is missing from options", () => {
     const options = {
       host,
-      databaseName,
       // username,
       password,
     };
 
-    getMySQLDb(options);
+    getMySQLDb(options, databaseName);
     expect(endOnError).toHaveBeenCalledTimes(1);
     expect(endOnError).toHaveBeenCalledWith("MySQL parameters not provided");
   });
@@ -130,12 +125,11 @@ describe("getMySQLDb", () => {
   test("getMySQLDb will run endOnError if the password argument is missing from options", () => {
     const options = {
       host,
-      databaseName,
       username,
       // password,
     };
 
-    getMySQLDb(options);
+    getMySQLDb(options, databaseName);
     expect(endOnError).toHaveBeenCalledTimes(1);
     expect(endOnError).toHaveBeenCalledWith("MySQL parameters not provided");
   });
