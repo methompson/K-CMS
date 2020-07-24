@@ -34,7 +34,7 @@ describe("UserController", () => {
   let router;
   let req;
   let res;
-  const next = () => {};
+  let next;
 
   beforeEach(() => {
     router = express.Router();
@@ -47,6 +47,8 @@ describe("UserController", () => {
 
     req = { request: "" };
     res = new http.ServerResponse();
+    next = () => {};
+
     ph = new PluginHandler();
     uc = new UserController(ph);
   });
@@ -265,7 +267,7 @@ describe("UserController", () => {
         callback(null, decoded);
       });
 
-      const next = jest.fn(() => {});
+      next = jest.fn(() => {});
 
       uc.getUserRequestToken(req, res, next)
         .then(() => {
@@ -288,7 +290,7 @@ describe("UserController", () => {
         callback("error", null);
       });
 
-      const next = jest.fn(() => {});
+      next = jest.fn(() => {});
 
       uc.getUserRequestToken(req, res, next)
         .then(() => {
@@ -308,7 +310,7 @@ describe("UserController", () => {
 
       jwt.verify.mockClear();
 
-      const next = jest.fn(() => {});
+      next = jest.fn(() => {});
 
       uc.getUserRequestToken(req, res, next)
         .then(() => {
@@ -327,7 +329,7 @@ describe("UserController", () => {
 
       jwt.verify.mockClear();
 
-      const next = jest.fn(() => {});
+      next = jest.fn(() => {});
 
       uc.getUserRequestToken(req, res, next)
         .then(() => {
@@ -343,7 +345,7 @@ describe("UserController", () => {
 
       jwt.verify.mockClear();
 
-      const next = jest.fn(() => {});
+      next = jest.fn(() => {});
 
       uc.getUserRequestToken(req, res, next)
         .then(() => {
