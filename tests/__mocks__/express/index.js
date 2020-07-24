@@ -13,8 +13,7 @@ const test = jest.fn(() => {
 });
 
 const routerInit = jest.fn(() => {
-  const r = new Router();
-  return r;
+  return Router;
 });
 
 Express.Router = routerInit;

@@ -34,11 +34,9 @@ describe("UserController", () => {
   let router;
   let req;
   let res;
+  const next = () => {};
 
   beforeEach(() => {
-    ph = new PluginHandler();
-    uc = new UserController(ph);
-
     router = express.Router();
     router.get.mockClear();
     router.post.mockClear();
@@ -47,13 +45,14 @@ describe("UserController", () => {
     json.mockClear();
     status.mockClear();
 
-    req = {};
+    req = { request: "" };
     res = new http.ServerResponse();
+    ph = new PluginHandler();
+    uc = new UserController(ph);
   });
 
   describe("Instantiation", () => {
     test("When a UserController is created, several parameters are saved in the constructor and several routes are added", () => {
-      uc = new UserController(ph);
       expect(uc.pluginHandler).toBe(ph);
       expect(uc.pluginHandler instanceof PluginHandler).toBe(true);
       expect(uc.userViewers).toEqual(expect.arrayContaining([
@@ -110,104 +109,85 @@ describe("UserController", () => {
   });
 
   describe("routes", () => {
-    let routes;
-    beforeEach(() => {
-      routes = uc.routes.getRoutes();
-    });
-
-    test("The Router mock will save all of the data that was added in the constructor ", () => {
-      expect(Object.keys(routes.post).length).toBe(4);
-      expect(Object.keys(routes.get).length).toBe(3);
-
-      expect('/login' in routes.post).toBe(true);
-      expect('/add-user' in routes.post).toBe(true);
-      expect('/edit-user' in routes.post).toBe(true);
-      expect('/delete-user' in routes.post).toBe(true);
-
-      expect('/get-user/:id' in routes.get).toBe(true);
-      expect('/all-users/:page*?' in routes.get).toBe(true);
-      expect('/get-user-types' in routes.get).toBe(true);
+    test("routes will return the router", () => {
+      expect(uc.routes).toBe(uc.router);
     });
 
     test("the /login route has one function.", () => {
-      const authSpy = jest.spyOn(uc, 'authenticateUserCredentials');
+      const anonyFunc = router.post.mock.calls[0][1];
 
-      const route = routes.post['/login'];
+      const methodSpy = jest.spyOn(uc, "authenticateUserCredentials")
+        .mockImplementationOnce(() => {});
 
-      route[0]();
-      expect(authSpy).toHaveBeenCalledTimes(1);
+      anonyFunc(req, res);
+      expect(methodSpy).toHaveBeenCalledTimes(1);
+      expect(methodSpy).toHaveBeenCalledWith(req, res);
     });
 
     test("the /add-user route has two functions. The second function runs addUser", () => {
-      const addUserSpy = jest.spyOn(uc, 'addUser');
+      const anonyFunc = router.post.mock.calls[1][2];
 
-      const route = routes.post['/add-user'];
-      req._authData = {};
+      const methodSpy = jest.spyOn(uc, "addUser")
+        .mockImplementationOnce(() => {});
 
-      expect(route[0] === utilities.errorIfTokenDoesNotExist).toBe(true);
-
-      route[1]();
-      expect(addUserSpy).toHaveBeenCalledTimes(1);
+      anonyFunc(req, res, next);
+      expect(methodSpy).toHaveBeenCalledTimes(1);
+      expect(methodSpy).toHaveBeenCalledWith(req, res, next);
     });
 
     test("the /edit-user route has two functions. The second function runs editUser", () => {
-      const editUserSpy = jest.spyOn(uc, 'editUser');
+      const anonyFunc = router.post.mock.calls[2][2];
 
-      const route = routes.post['/edit-user'];
-      req._authData = {};
+      const methodSpy = jest.spyOn(uc, "editUser")
+        .mockImplementationOnce(() => {});
 
-      expect(route[0] === utilities.errorIfTokenDoesNotExist).toBe(true);
-
-      route[1]();
-      expect(editUserSpy).toHaveBeenCalledTimes(1);
+      anonyFunc(req, res, next);
+      expect(methodSpy).toHaveBeenCalledTimes(1);
+      expect(methodSpy).toHaveBeenCalledWith(req, res, next);
     });
 
     test("the /delete-user route has two functions. The second function runs deleteUser", () => {
-      const delUserSpy = jest.spyOn(uc, 'deleteUser');
+      const anonyFunc = router.post.mock.calls[3][2];
 
-      const route = routes.post['/delete-user'];
-      req._authData = {};
+      const methodSpy = jest.spyOn(uc, "deleteUser")
+        .mockImplementationOnce(() => {});
 
-      expect(route[0] === utilities.errorIfTokenDoesNotExist).toBe(true);
-
-      route[1]();
-      expect(delUserSpy).toHaveBeenCalledTimes(1);
+      anonyFunc(req, res, next);
+      expect(methodSpy).toHaveBeenCalledTimes(1);
+      expect(methodSpy).toHaveBeenCalledWith(req, res, next);
     });
 
     test("the /get-user/:id route has two functions. The second function runs getUser", () => {
-      const getUserSpy = jest.spyOn(uc, 'getUser');
+      const anonyFunc = router.get.mock.calls[0][2];
 
-      const route = routes.get['/get-user/:id'];
-      req._authData = {};
+      const methodSpy = jest.spyOn(uc, "getUser")
+        .mockImplementationOnce(() => {});
 
-      expect(route[0] === utilities.errorIfTokenDoesNotExist).toBe(true);
-
-      route[1]();
-      expect(getUserSpy).toHaveBeenCalledTimes(1);
+      anonyFunc(req, res, next);
+      expect(methodSpy).toHaveBeenCalledTimes(1);
+      expect(methodSpy).toHaveBeenCalledWith(req, res, next);
     });
 
     test("the /all-users/:page*? route has two functions. The second function runs getAllUsers", () => {
-      const getUserSpy = jest.spyOn(uc, 'getAllUsers');
+      const anonyFunc = router.get.mock.calls[1][2];
 
-      const route = routes.get['/all-users/:page*?'];
-      req._authData = {};
+      const methodSpy = jest.spyOn(uc, "getAllUsers")
+        .mockImplementationOnce(() => {});
 
-      expect(route[0] === utilities.errorIfTokenDoesNotExist).toBe(true);
-
-      route[1]();
-      expect(getUserSpy).toHaveBeenCalledTimes(1);
+      anonyFunc(req, res, next);
+      expect(methodSpy).toHaveBeenCalledTimes(1);
+      expect(methodSpy).toHaveBeenCalledWith(req, res, next);
     });
 
     test("the /all-user-types route has two functions. The second function runs getUserTypes", () => {
-      const getUserSpy = jest.spyOn(uc, 'getUserTypes');
+      const anonyFunc = router.get.mock.calls[2][2];
 
-      const route = routes.get['/get-user-types'];
-      req._authData = {};
+      const methodSpy = jest.spyOn(uc, "getUserTypes")
+        .mockImplementationOnce(() => {});
 
-      expect(route[0] === utilities.errorIfTokenDoesNotExist).toBe(true);
-
-      route[1](req, res);
-      expect(getUserSpy).toHaveBeenCalledTimes(1);
+      anonyFunc(req, res, next);
+      expect(methodSpy).toHaveBeenCalledTimes(1);
+      expect(methodSpy).toHaveBeenCalledWith(req, res, next);
     });
 
   });

@@ -3,8 +3,6 @@ const express = require("express");
 const PageController = require("../../../../kcms/page/PageController");
 const PluginHandler = require("../../../../kcms/plugin-handler");
 
-const utilities = require("../../../../kcms/utilities");
-
 const longString = `1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
                     1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
                     1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
@@ -17,21 +15,22 @@ describe("PageController", () => {
   let ph;
   let router;
   let req;
+  let res;
 
   beforeEach(() => {
-    ph = new PluginHandler();
-    pc = new PageController(ph);
-
     router = express.Router();
     router.get.mockClear();
     router.post.mockClear();
     router.all.mockClear();
-    req = {};
+    req = { request: "" };
+    res = { response: "" };
+
+    ph = new PluginHandler();
+    pc = new PageController(ph);
   });
 
   describe("Instantiation", () => {
     test("When a new PageController is instantiated, a pluginHandler and editors are added to the object's data. 5 routes are set", () => {
-      pc = new PageController(ph);
       expect(router.get).toHaveBeenCalledTimes(3);
       expect(router.get).toHaveBeenNthCalledWith(1, '/get-page/:pageId', expect.any(Function));
       expect(router.get).toHaveBeenNthCalledWith(2, '/all-pages', expect.any(Function));
@@ -58,78 +57,74 @@ describe("PageController", () => {
   });
 
   describe("routes", () => {
-    let routes;
-    beforeEach(() => {
-      routes = pc.routes.getRoutes();
-    });
-
-    test("The Router mock will save all of the data that was added in the constructor ", () => {
-      expect(Object.keys(routes.post).length).toBe(3);
-      expect(Object.keys(routes.get).length).toBe(3);
-
-      expect('/add-page' in routes.post).toBe(true);
-      expect('/edit-page' in routes.post).toBe(true);
-      expect('/delete-page' in routes.post).toBe(true);
-
-      expect('/get-page/:pageId' in routes.get).toBe(true);
-      expect('/all-pages' in routes.get).toBe(true);
-      expect('/:slug' in routes.get).toBe(true);
+    test("routes will return the router", () => {
+      expect(pc.routes).toBe(pc.router);
     });
 
     test("the /add-page route has two functions. The second function runs addPage", () => {
-      const addPageSpy = jest.spyOn(pc, 'addPage');
+      const anonyFunc = router.post.mock.calls[0][2];
 
-      const route = routes.post['/add-page'];
-      req._authData = {};
+      const methodSpy = jest.spyOn(pc, "addPage")
+        .mockImplementationOnce(() => {});
 
-      expect(route[0] === utilities.errorIfTokenDoesNotExist).toBe(true);
-
-      route[1]();
-      expect(addPageSpy).toHaveBeenCalledTimes(1);
+      anonyFunc(req, res);
+      expect(methodSpy).toHaveBeenCalledTimes(1);
+      expect(methodSpy).toHaveBeenCalledWith(req, res);
     });
 
     test("the /edit-page route has two functions. The second function runs editPage", () => {
-      const editPageSpy = jest.spyOn(pc, 'editPage');
+      const anonyFunc = router.post.mock.calls[1][2];
 
-      const route = routes.post['/edit-page'];
-      req._authData = {};
+      const methodSpy = jest.spyOn(pc, "editPage")
+        .mockImplementationOnce(() => {});
 
-      expect(route[0] === utilities.errorIfTokenDoesNotExist).toBe(true);
-
-      route[1]();
-      expect(editPageSpy).toHaveBeenCalledTimes(1);
+      anonyFunc(req, res);
+      expect(methodSpy).toHaveBeenCalledTimes(1);
+      expect(methodSpy).toHaveBeenCalledWith(req, res);
     });
 
     test("the /delete-page route has two functions. The second function runs deletePage", () => {
-      const deletePageSpy = jest.spyOn(pc, 'deletePage');
+      const anonyFunc = router.post.mock.calls[2][2];
 
-      const route = routes.post['/delete-page'];
-      req._authData = {};
+      const methodSpy = jest.spyOn(pc, "deletePage")
+        .mockImplementationOnce(() => {});
 
-      expect(route[0] === utilities.errorIfTokenDoesNotExist).toBe(true);
+      anonyFunc(req, res);
+      expect(methodSpy).toHaveBeenCalledTimes(1);
+      expect(methodSpy).toHaveBeenCalledWith(req, res);
+    });
 
-      route[1]();
-      expect(deletePageSpy).toHaveBeenCalledTimes(1);
+    test("the /get-page/:pageId route has one function and it runs getPageById", () => {
+      const anonyFunc = router.get.mock.calls[0][1];
+
+      const methodSpy = jest.spyOn(pc, "getPageById")
+        .mockImplementationOnce(() => {});
+
+      anonyFunc(req, res);
+      expect(methodSpy).toHaveBeenCalledTimes(1);
+      expect(methodSpy).toHaveBeenCalledWith(req, res);
     });
 
     test("the /all-pages route has one function and it runs getAllPages", () => {
-      const getPageSpy = jest.spyOn(pc, 'getAllPages');
+      const anonyFunc = router.get.mock.calls[1][1];
 
-      const route = routes.get['/all-pages'];
-      req._authData = {};
+      const methodSpy = jest.spyOn(pc, "getAllPages")
+        .mockImplementationOnce(() => {});
 
-      route[0]();
-      expect(getPageSpy).toHaveBeenCalledTimes(1);
+      anonyFunc(req, res);
+      expect(methodSpy).toHaveBeenCalledTimes(1);
+      expect(methodSpy).toHaveBeenCalledWith(req, res);
     });
 
     test("the /:slug route has one function and it runs getPageBySlug", () => {
-      const getPageSpy = jest.spyOn(pc, 'getPageBySlug');
+      const anonyFunc = router.get.mock.calls[2][1];
 
-      const route = routes.get['/:slug'];
-      req._authData = {};
+      const methodSpy = jest.spyOn(pc, "getPageBySlug")
+        .mockImplementationOnce(() => {});
 
-      route[0]();
-      expect(getPageSpy).toHaveBeenCalledTimes(1);
+      anonyFunc(req, res);
+      expect(methodSpy).toHaveBeenCalledTimes(1);
+      expect(methodSpy).toHaveBeenCalledWith(req, res);
     });
 
   });

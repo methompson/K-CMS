@@ -32,6 +32,11 @@ const databaseModule = require("../../../../kcms/database");
 const blogModule = require("../../../../kcms/blog");
 
 const endOnErrorModule = require("../../../../kcms/utilities/endOnError");
+const checkInstallation = require('../../../../kcms/kcms/checkInstallation');
+const {
+  checkMongoDbConnection,
+  checkMySQLConnection,
+} = require("../../../../kcms/database/checkConnection");
 
 jest.mock("uuid/v4", () => {
   const v4 = jest.fn(() => { return "96"; });
@@ -70,14 +75,6 @@ jest.mock("../../../../kcms/utilities/endOnError", () => {
   };
 });
 
-// jest.mock("../../../../kcms/plugin-handler", () => {
-//   // eslint-disable-next-line no-shadow
-//   function PluginHandler() {}
-//   PluginHandler.prototype.db = () => {};
-
-//   return PluginHandler;
-// });
-
 jest.mock("../../../../kcms/user", () => {
   const getUserRequestToken = jest.fn(() => {});
   const makeUserController = jest.fn(() => {
@@ -112,6 +109,25 @@ jest.mock("../../../../kcms/database", () => {
   };
 });
 
+jest.mock("../../../../kcms/database/checkConnection", () => {
+  const checkMongo = jest.fn(async () => {});
+  const checkMySQL = jest.fn(async () => {});
+  return {
+    checkMongoDbConnection: checkMongo,
+    checkMySQLConnection: checkMySQL,
+  };
+});
+
+const mongoInit = require("../../../../kcms/install/mongodb-init");
+const mysqlInit = require("../../../../kcms/install/mysql-init");
+
+jest.mock("../../../../kcms/install/mongodb-init", () => {
+  return jest.fn(async () => {});
+});
+jest.mock("../../../../kcms/install/mysql-init", () => {
+  return jest.fn(async () => {});
+});
+
 const { makeDatabaseClient } = databaseModule;
 const { makeUserController, getUserRequestToken } = userModule;
 const { makePageController } = pageModule;
@@ -123,9 +139,20 @@ const { RouterClass } = express;
 describe("KCMS Class", () => {
   const e = express();
   let cms;
+  const routerUse = RouterClass.use;
+  const routerPost = RouterClass.post;
+
+  const json = jest.fn(() => {});
+  const status = jest.fn(() => {
+    return { json };
+  });
+  const res = { status };
 
   beforeEach(() => {
-    RouterClass.prototype.use.mockClear();
+    json.mockClear();
+    status.mockClear();
+    routerUse.mockClear();
+    routerPost.mockClear();
     e.use.mockClear();
     bodyParser.json().mockClear();
     cors().mockClear();
@@ -141,6 +168,10 @@ describe("KCMS Class", () => {
         return db;
       });
 
+      const app = express();
+      const useSpy = jest.spyOn(app, "use");
+      useSpy.mockClear();
+
       const opt = {
         db: {},
       };
@@ -148,6 +179,34 @@ describe("KCMS Class", () => {
 
       expect(cms.app instanceof EventEmitter).toBe(true);
       expect(cms.db).toBe(db);
+
+      expect(useSpy).toHaveBeenCalledTimes(1);
+      expect(useSpy).toHaveBeenCalledWith(expect.any(Function));
+
+      expect(cms.router).toBe(null);
+
+      const useAnonymousFunction = useSpy.mock.calls[0][0];
+      useAnonymousFunction({}, res, {});
+      expect(status).toHaveBeenCalledTimes(1);
+      expect(status).toHaveBeenCalledWith(500);
+      expect(json).toHaveBeenCalledTimes(1);
+      expect(json).toHaveBeenCalledWith({
+        error: "Server not Properly Initialized",
+      });
+
+      // const routerSpy = jest.spyOn(cms, "router")
+      //   .mockImplementationOnce(() => {});
+
+      // expect(routerSpy).toHaveBeenCalledTimes(0);
+
+      // const useAnonymousFunction = useSpy[0][0];
+
+      // const req = { request: "" };
+      // const res = { response: "" };
+      // const next = { next: "" };
+      // useAnonymousFunction(req, res, next);
+      // expect(routerSpy).toHaveBeenCalledTimes(0);
+      // expect(routerSpy).toHaveBeenCalledWith(req, res, next);
     });
 
     test("KCMS Constructor will run endOnError if no options object is sent", () => {
@@ -191,7 +250,6 @@ describe("KCMS Class", () => {
   });
 
   describe("initHandlersAndControllers", () => {
-
     beforeEach(() => {
       makeUserController.mockClear();
       makePageController.mockClear();
@@ -240,12 +298,18 @@ describe("KCMS Class", () => {
 
           expect(cms.pluginHandler instanceof PluginHandler).toBe(true);
 
-          // expect(e.use).toHaveBeenCalledTimes(3);
-          expect(RouterClass.prototype.use).toHaveBeenCalledTimes(3);
+          expect(routerUse).toHaveBeenCalledTimes(3);
 
-          expect(RouterClass.prototype.use).toHaveBeenNthCalledWith(1, '/api', jsonFunc, corsFunc, expect.any(Function));
-          expect(RouterClass.prototype.use).toHaveBeenNthCalledWith(2, '/api/user', userRoutes);
-          expect(RouterClass.prototype.use).toHaveBeenNthCalledWith(3, '/api/pages', pageRoutes);
+          expect(routerUse).toHaveBeenNthCalledWith(1, '/api', jsonFunc, corsFunc, expect.any(Function));
+          expect(routerUse).toHaveBeenNthCalledWith(2, '/api/user', userRoutes);
+          expect(routerUse).toHaveBeenNthCalledWith(3, '/api/pages', pageRoutes);
+
+          const anonymousUseFunction = routerUse.mock.calls[0][3];
+          const req = { request: {} };
+          const next = () => {};
+          anonymousUseFunction(req, res, next);
+          expect(getUserRequestToken).toHaveBeenCalledTimes(1);
+          expect(getUserRequestToken).toHaveBeenCalledWith(req, res, next);
 
           expect(cms.userController).toBe(userController);
           expect(cms.pageController).toBe(pageController);
@@ -285,9 +349,9 @@ describe("KCMS Class", () => {
 
       cms.initHandlersAndControllers(opt)
         .then(() => {
-          expect(RouterClass.prototype.use).toHaveBeenNthCalledWith(1, '/testBase', jsonFunc, corsFunc, expect.any(Function));
-          expect(RouterClass.prototype.use).toHaveBeenNthCalledWith(2, '/testBase/userTest', userRoutes);
-          expect(RouterClass.prototype.use).toHaveBeenNthCalledWith(3, '/testBase/pageTest', pageRoutes);
+          expect(routerUse).toHaveBeenNthCalledWith(1, '/testBase', jsonFunc, corsFunc, expect.any(Function));
+          expect(routerUse).toHaveBeenNthCalledWith(2, '/testBase/userTest', userRoutes);
+          expect(routerUse).toHaveBeenNthCalledWith(3, '/testBase/pageTest', pageRoutes);
           done();
         });
     });
@@ -485,11 +549,11 @@ describe("KCMS Class", () => {
         .then(() => {
           expect(cms.blogController).toBe(blogController);
 
-          expect(RouterClass.prototype.use).toHaveBeenCalledTimes(4);
-          expect(RouterClass.prototype.use).toHaveBeenNthCalledWith(1, '/api', jsonFunc, corsFunc, expect.any(Function));
-          expect(RouterClass.prototype.use).toHaveBeenNthCalledWith(2, '/api/user', userRoutes);
-          expect(RouterClass.prototype.use).toHaveBeenNthCalledWith(3, '/api/pages', pageRoutes);
-          expect(RouterClass.prototype.use).toHaveBeenNthCalledWith(4, '/api/theBlogTest', blogRoutes);
+          expect(routerUse).toHaveBeenCalledTimes(4);
+          expect(routerUse).toHaveBeenNthCalledWith(1, '/api', jsonFunc, corsFunc, expect.any(Function));
+          expect(routerUse).toHaveBeenNthCalledWith(2, '/api/user', userRoutes);
+          expect(routerUse).toHaveBeenNthCalledWith(3, '/api/pages', pageRoutes);
+          expect(routerUse).toHaveBeenNthCalledWith(4, '/api/theBlogTest', blogRoutes);
 
           done();
         });
@@ -570,13 +634,646 @@ describe("KCMS Class", () => {
         .then(() => {
           let undef;
           expect(cms.blogController).toBe(undef);
-          expect(RouterClass.prototype.use).toHaveBeenCalledTimes(3);
+          expect(routerUse).toHaveBeenCalledTimes(3);
 
           done();
         });
     });
   });
 
+  describe("checkDbInstallation", () => {
+    let opt;
+    const dbName = "kcmsTest";
+
+    beforeEach(() => {
+      checkMongoDbConnection.mockClear();
+      checkMySQLConnection.mockClear();
+    });
+
+    function makeCMS(type) {
+      const db = {
+        type,
+      };
+      makeDatabaseClient.mockImplementationOnce(() => {
+        return db;
+      });
+
+      opt = {
+        db: {},
+      };
+
+      opt.db[type] = {
+        databaseName: dbName,
+      };
+      return new KCMS(opt);
+    }
+
+    test("When the database type is mongodb, checkDbInstallation will run checkMongoDbConnection and return the status from that function", (done) => {
+      cms = makeCMS('mongodb');
+
+      checkMongoDbConnection.mockImplementationOnce(() => {
+        return Promise.resolve();
+      });
+
+      cms.checkDbInstallation()
+        .then(() => {
+          expect(checkMongoDbConnection).toHaveBeenCalledTimes(1);
+          expect(checkMongoDbConnection).toHaveBeenCalledWith(cms.db, cms.options.db.mongodb.databaseName);
+          done();
+        });
+    });
+
+    test("When the database type is mongodb, checkDbInstallation will run checkMongoDbConnection and return the status from that function, even when the status rejects", (done) => {
+      cms = makeCMS('mongodb');
+
+      checkMongoDbConnection.mockImplementationOnce(() => {
+        return Promise.reject();
+      });
+
+      cms.checkDbInstallation()
+        .catch(() => {
+          expect(checkMongoDbConnection).toHaveBeenCalledTimes(1);
+          expect(checkMongoDbConnection).toHaveBeenCalledWith(cms.db, cms.options.db.mongodb.databaseName);
+          done();
+        });
+    });
+
+    test("When the database type is mysql, checkDbInstallation will run checkMySQLConnection and return the status from that function", (done) => {
+      cms = makeCMS('mysql');
+
+      checkMySQLConnection.mockImplementationOnce(() => {
+        return Promise.resolve();
+      });
+
+      cms.checkDbInstallation()
+        .then(() => {
+          expect(checkMySQLConnection).toHaveBeenCalledTimes(1);
+          expect(checkMySQLConnection).toHaveBeenCalledWith(cms.db, cms.options.db.mysql.databaseName);
+          done();
+        });
+    });
+
+    test("When the database type is mysql, checkDbInstallation will run checkMySQLConnection and return the status from that function, even when the status rejects", (done) => {
+      cms = makeCMS('mysql');
+
+      checkMySQLConnection.mockImplementationOnce(() => {
+        return Promise.reject();
+      });
+
+      cms.checkDbInstallation()
+        .catch(() => {
+          expect(checkMySQLConnection).toHaveBeenCalledTimes(1);
+          expect(checkMySQLConnection).toHaveBeenCalledWith(cms.db, cms.options.db.mysql.databaseName);
+          done();
+        });
+    });
+
+    test("If the database type is neither mysql nor mongodb, checkDbInstallation will always throw an error", (done) => {
+      // We'll use several databases that we might support in the future
+      const cms1 = makeCMS('postgres');
+      const cms2 = makeCMS('dynamodb');
+      const cms3 = makeCMS('redis');
+      const cms4 = makeCMS('sqlite');
+      const cms5 = makeCMS('cassandra');
+      const cms6 = makeCMS('mariadb');
+
+      const p1 = cms1.checkDbInstallation()
+        .then(() => { expect(true).toBe(false); done(); }) // This should not be reached
+        .catch(() => { expect(true).toBe(true); }); // This will be reached
+      const p2 = cms2.checkDbInstallation()
+        .then(() => { expect(true).toBe(false); done(); }) // This should not be reached
+        .catch(() => { expect(true).toBe(true); }); // This will be reached
+      const p3 = cms3.checkDbInstallation()
+        .then(() => { expect(true).toBe(false); done(); }) // This should not be reached
+        .catch(() => { expect(true).toBe(true); }); // This will be reached
+      const p4 = cms4.checkDbInstallation()
+        .then(() => { expect(true).toBe(false); done(); }) // This should not be reached
+        .catch(() => { expect(true).toBe(true); }); // This will be reached
+      const p5 = cms5.checkDbInstallation()
+        .then(() => { expect(true).toBe(false); done(); }) // This should not be reached
+        .catch(() => { expect(true).toBe(true); }); // This will be reached
+      const p6 = cms6.checkDbInstallation()
+        .then(() => { expect(true).toBe(false); done(); }) // This should not be reached
+        .catch(() => { expect(true).toBe(true); }); // This will be reached
+
+      Promise.all([p1, p2, p3, p4, p5, p6])
+        .then(() => {
+          // p1 through p6 should all fail, meaning that we should reach this point after all of the catch statements
+          done();
+        });
+
+    });
+  });
+
+  describe("initUninstalledState", () => {
+    let opt;
+    const dbName = "kcmsTest";
+
+    function makeCMS(type) {
+      const db = {
+        type,
+      };
+      makeDatabaseClient.mockImplementationOnce(() => {
+        return db;
+      });
+
+      opt = {
+        db: {},
+      };
+
+      opt.db[type] = {
+        databaseName: dbName,
+      };
+      return new KCMS(opt);
+    }
+
+    test("initUninstalledState will create a router and add 1 post route and 1 use route then assign said router to this.router. The anonymous functions will either call methods in the class or send a response", () => {
+      const useSpy = jest.spyOn(express(), "use");
+      useSpy.mockClear();
+
+      cms = makeCMS('mysql');
+      cms.initUninstalledState();
+
+      expect(routerUse).toHaveBeenCalledTimes(1);
+      expect(routerUse).toHaveBeenCalledWith(expect.any(Function));
+      expect(routerPost).toHaveBeenCalledTimes(1);
+      expect(routerPost).toHaveBeenCalledWith(
+        "/install",
+        bodyParser.json(),
+        cors(),
+        expect.any(Function)
+      );
+
+      const routerSpy = jest.spyOn(cms, "router");
+
+      const appUseAnonymousFunction = useSpy.mock.calls[0][0];
+      const req = { request: "" };
+      const next = { next: "" };
+      appUseAnonymousFunction(req, res, next);
+
+      expect(routerSpy).toHaveBeenCalledTimes(1);
+      expect(routerSpy).toHaveBeenCalledWith(req, res, next);
+
+      const postAnonymousFunction = routerPost.mock.calls[0][3];
+      const initDbSpy = jest.spyOn(cms, "initDatabases")
+        .mockImplementationOnce(() => {});
+
+      postAnonymousFunction();
+      expect(initDbSpy).toHaveBeenCalledTimes(1);
+
+      const useAnonymousFunction = routerUse.mock.calls[0][0];
+
+      useAnonymousFunction({}, res);
+      expect(status).toHaveBeenCalledTimes(1);
+      expect(status).toHaveBeenCalledWith(503);
+      expect(json).toHaveBeenCalledTimes(1);
+      expect(json).toHaveBeenCalledWith({
+        error: "The Database is not installed nor configured",
+      });
+    });
+  });
+
+  describe("initDatabases", () => {
+    let opt;
+    const dbName = "kcmsTest";
+
+    beforeEach(() => {
+      mongoInit.mockClear();
+      mysqlInit.mockClear();
+    });
+
+    function makeCMS(type) {
+      const db = {
+        type,
+      };
+      makeDatabaseClient.mockImplementationOnce(() => {
+        return db;
+      });
+
+      opt = {
+        db: {},
+      };
+
+      opt.db[type] = {
+        databaseName: dbName,
+      };
+      return new KCMS(opt);
+    }
+
+    test("If the request doesn't have a body, initDatabases will throw an error and return a 400 status", (done) => {
+      cms = makeCMS("mongodb");
+      const checkDbSpy = jest.spyOn(cms, "checkDbInstallation")
+        .mockImplementationOnce(async () => {});
+      const initSpy = jest.spyOn(cms, "initHandlersAndControllers")
+        .mockImplementationOnce(async () => {});
+
+      const req = {};
+
+      const error = "Required data not provided";
+
+      cms.initDatabases(req, res)
+        .catch((result) => {
+          expect(result).toBe(error);
+          expect(mongoInit).toHaveBeenCalledTimes(0);
+          expect(mysqlInit).toHaveBeenCalledTimes(0);
+          expect(checkDbSpy).toHaveBeenCalledTimes(0);
+          expect(initSpy).toHaveBeenCalledTimes(0);
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error,
+          });
+          done();
+        });
+    });
+
+    test("If the request has a body, but no adminInfo initDatabases will throw an error and return a 400 status", (done) => {
+      cms = makeCMS("mongodb");
+      const checkDbSpy = jest.spyOn(cms, "checkDbInstallation")
+        .mockImplementationOnce(async () => {});
+      const initSpy = jest.spyOn(cms, "initHandlersAndControllers")
+        .mockImplementationOnce(async () => {});
+
+      const req = {
+        body: {},
+      };
+
+      const error = "Required data not provided";
+
+      cms.initDatabases(req, res)
+        .catch((result) => {
+          expect(result).toBe(error);
+          expect(mongoInit).toHaveBeenCalledTimes(0);
+          expect(mysqlInit).toHaveBeenCalledTimes(0);
+          expect(checkDbSpy).toHaveBeenCalledTimes(0);
+          expect(initSpy).toHaveBeenCalledTimes(0);
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error,
+          });
+          done();
+        });
+    });
+
+    test("If the request has a body & adminInfo, but the database type is not supported, the function will throw an error and send a 400 status", (done) => {
+      cms = makeCMS("postgres");
+      const checkDbSpy = jest.spyOn(cms, "checkDbInstallation")
+        .mockImplementationOnce(async () => {});
+      const initSpy = jest.spyOn(cms, "initHandlersAndControllers")
+        .mockImplementationOnce(async () => {});
+
+      const req = {
+        body: {
+          adminInfo: {},
+        },
+      };
+
+      const error = "Database Type Not Supported";
+
+      cms.initDatabases(req, res)
+        .catch((err) => {
+          expect(err).toBe(error);
+          expect(mongoInit).toHaveBeenCalledTimes(0);
+          expect(mysqlInit).toHaveBeenCalledTimes(0);
+          expect(checkDbSpy).toHaveBeenCalledTimes(0);
+          expect(initSpy).toHaveBeenCalledTimes(0);
+          expect(status).toHaveBeenCalledTimes(1);
+          expect(status).toHaveBeenCalledWith(400);
+          expect(json).toHaveBeenCalledTimes(1);
+          expect(json).toHaveBeenCalledWith({
+            error,
+          });
+          done();
+        });
+    });
+
+    describe("mongodb", () => {
+      test("Success will run mongoInit, checkDbInstallation and initHandlersAndControllers, then send a 200 status", (done) => {
+        cms = makeCMS("mongodb");
+        const checkDbSpy = jest.spyOn(cms, "checkDbInstallation")
+          .mockImplementationOnce(async () => {});
+        const initSpy = jest.spyOn(cms, "initHandlersAndControllers")
+          .mockImplementationOnce(async () => {});
+
+        const req = {
+          body: {
+            adminInfo: {},
+          },
+        };
+
+        cms.initDatabases(req, res)
+          .then((result) => {
+            expect(result).toBe(200);
+            expect(mongoInit).toHaveBeenCalledTimes(1);
+            expect(mongoInit).toHaveBeenCalledWith(cms.db, req.body.adminInfo);
+            expect(checkDbSpy).toHaveBeenCalledTimes(1);
+            expect(initSpy).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(200);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({});
+            done();
+          });
+      });
+
+      test("If mongoInit throws an error, checkDbInstallation won't run and initHandlersAndControllers won't run. A 400 error will be thrown.", (done) => {
+        cms = makeCMS("mongodb");
+        const checkDbSpy = jest.spyOn(cms, "checkDbInstallation")
+          .mockImplementationOnce(async () => {});
+        const initSpy = jest.spyOn(cms, "initHandlersAndControllers")
+          .mockImplementationOnce(async () => {});
+
+        const error = "test error";
+        mongoInit.mockImplementationOnce(() => {
+          return Promise.reject(error);
+        });
+
+        const req = {
+          body: {
+            adminInfo: {},
+          },
+        };
+
+        cms.initDatabases(req, res)
+          .then((result) => {
+            expect(result).toBe(error);
+            expect(mongoInit).toHaveBeenCalledTimes(1);
+            expect(mongoInit).toHaveBeenCalledWith(cms.db, req.body.adminInfo);
+            expect(checkDbSpy).toHaveBeenCalledTimes(0);
+            expect(initSpy).toHaveBeenCalledTimes(0);
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(400);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error,
+            });
+            done();
+          });
+      });
+
+      test("If checkDbInstallation throws an error, initHandlersAndControllers won't run. A 400 error will be thrown.", (done) => {
+        cms = makeCMS("mongodb");
+        const error = "test error";
+
+        const checkDbSpy = jest.spyOn(cms, "checkDbInstallation")
+          .mockImplementationOnce(async () => {
+            throw error;
+          });
+        const initSpy = jest.spyOn(cms, "initHandlersAndControllers")
+          .mockImplementationOnce(async () => {});
+
+        const req = {
+          body: {
+            adminInfo: {},
+          },
+        };
+
+        cms.initDatabases(req, res)
+          .then((result) => {
+            expect(result).toBe(error);
+            expect(mongoInit).toHaveBeenCalledTimes(1);
+            expect(mongoInit).toHaveBeenCalledWith(cms.db, req.body.adminInfo);
+            expect(checkDbSpy).toHaveBeenCalledTimes(1);
+            expect(initSpy).toHaveBeenCalledTimes(0);
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(400);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error,
+            });
+            done();
+          });
+      });
+
+      test("If initHandlersAndControllers throws an error, a 400 error will be thrown.", (done) => {
+        cms = makeCMS("mongodb");
+        const error = "test error";
+
+        const checkDbSpy = jest.spyOn(cms, "checkDbInstallation")
+          .mockImplementationOnce(async () => {});
+        const initSpy = jest.spyOn(cms, "initHandlersAndControllers")
+          .mockImplementationOnce(async () => {
+            throw error;
+          });
+
+        const req = {
+          body: {
+            adminInfo: {},
+          },
+        };
+
+        cms.initDatabases(req, res)
+          .then((result) => {
+            expect(result).toBe(error);
+            expect(mongoInit).toHaveBeenCalledTimes(1);
+            expect(mongoInit).toHaveBeenCalledWith(cms.db, req.body.adminInfo);
+            expect(checkDbSpy).toHaveBeenCalledTimes(1);
+            expect(initSpy).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(400);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error,
+            });
+            done();
+          });
+      });
+
+    });
+
+    describe("mysql", () => {
+      test("Success will run mysqlInit, checkDbInstallation and initHandlersAndControllers, then send a 200 status", (done) => {
+        cms = makeCMS("mysql");
+        const checkDbSpy = jest.spyOn(cms, "checkDbInstallation")
+          .mockImplementationOnce(async () => {});
+        const initSpy = jest.spyOn(cms, "initHandlersAndControllers")
+          .mockImplementationOnce(async () => {});
+
+        const req = {
+          body: {
+            adminInfo: {},
+          },
+        };
+
+        cms.initDatabases(req, res)
+          .then((result) => {
+            expect(result).toBe(200);
+            expect(mysqlInit).toHaveBeenCalledTimes(1);
+            expect(mysqlInit).toHaveBeenCalledWith(cms.db, req.body.adminInfo);
+            expect(checkDbSpy).toHaveBeenCalledTimes(1);
+            expect(initSpy).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(200);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({});
+            done();
+          });
+      });
+
+      test("If mysqlInit throws an error, checkDbInstallation won't run and initHandlersAndControllers won't run. A 400 error will be thrown.", (done) => {
+        cms = makeCMS("mysql");
+        const checkDbSpy = jest.spyOn(cms, "checkDbInstallation")
+          .mockImplementationOnce(async () => {});
+        const initSpy = jest.spyOn(cms, "initHandlersAndControllers")
+          .mockImplementationOnce(async () => {});
+
+        const error = "test error";
+        mysqlInit.mockImplementationOnce(() => {
+          return Promise.reject(error);
+        });
+
+        const req = {
+          body: {
+            adminInfo: {},
+          },
+        };
+
+        cms.initDatabases(req, res)
+          .then((result) => {
+            expect(result).toBe(error);
+            expect(mysqlInit).toHaveBeenCalledTimes(1);
+            expect(mysqlInit).toHaveBeenCalledWith(cms.db, req.body.adminInfo);
+            expect(checkDbSpy).toHaveBeenCalledTimes(0);
+            expect(initSpy).toHaveBeenCalledTimes(0);
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(400);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error,
+            });
+            done();
+          });
+      });
+
+      test("If checkDbInstallation throws an error, initHandlersAndControllers won't run. A 400 error will be thrown.", (done) => {
+        cms = makeCMS("mysql");
+        const error = "test error";
+
+        const checkDbSpy = jest.spyOn(cms, "checkDbInstallation")
+          .mockImplementationOnce(async () => {
+            throw error;
+          });
+        const initSpy = jest.spyOn(cms, "initHandlersAndControllers")
+          .mockImplementationOnce(async () => {});
+
+        const req = {
+          body: {
+            adminInfo: {},
+          },
+        };
+
+        cms.initDatabases(req, res)
+          .then((result) => {
+            expect(result).toBe(error);
+            expect(mysqlInit).toHaveBeenCalledTimes(1);
+            expect(mysqlInit).toHaveBeenCalledWith(cms.db, req.body.adminInfo);
+            expect(checkDbSpy).toHaveBeenCalledTimes(1);
+            expect(initSpy).toHaveBeenCalledTimes(0);
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(400);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error,
+            });
+            done();
+          });
+      });
+
+      test("If initHandlersAndControllers throws an error, a 400 error will be thrown.", (done) => {
+        cms = makeCMS("mysql");
+        const error = "test error";
+
+        const checkDbSpy = jest.spyOn(cms, "checkDbInstallation")
+          .mockImplementationOnce(async () => {});
+        const initSpy = jest.spyOn(cms, "initHandlersAndControllers")
+          .mockImplementationOnce(async () => {
+            throw error;
+          });
+
+        const req = {
+          body: {
+            adminInfo: {},
+          },
+        };
+
+        cms.initDatabases(req, res)
+          .then((result) => {
+            expect(result).toBe(error);
+            expect(mysqlInit).toHaveBeenCalledTimes(1);
+            expect(mysqlInit).toHaveBeenCalledWith(cms.db, req.body.adminInfo);
+            expect(checkDbSpy).toHaveBeenCalledTimes(1);
+            expect(initSpy).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledTimes(1);
+            expect(status).toHaveBeenCalledWith(400);
+            expect(json).toHaveBeenCalledTimes(1);
+            expect(json).toHaveBeenCalledWith({
+              error,
+            });
+            done();
+          });
+      });
+    });
+  });
+
+});
+
+describe("checkInstallation", () => {
+  test("If checkDbInstallation resolves, initHandlersAndControllers will be run and initUninstalledState will not be run", (done) => {
+    const db = {};
+    makeDatabaseClient.mockImplementationOnce(() => {
+      return db;
+    });
+
+    const opt = {
+      db: {},
+    };
+    const cms = new KCMS(opt);
+
+    jest.spyOn(cms, "checkDbInstallation")
+      .mockImplementationOnce(() => {
+        return Promise.resolve();
+      });
+
+    const initHandlerSpy = jest.spyOn(cms, "initHandlersAndControllers");
+    const initUninstalledSpy = jest.spyOn(cms, "initUninstalledState");
+
+    checkInstallation(cms)
+      .then(() => {
+        expect(initHandlerSpy).toHaveBeenCalledTimes(1);
+        expect(initUninstalledSpy).toHaveBeenCalledTimes(0);
+        done();
+      });
+  });
+
+  test("If checkDbInstallation rejects, initUninstalledState will be run and initHandlersAndControllers will not be run", (done) => {
+    const db = {};
+    makeDatabaseClient.mockImplementationOnce(() => {
+      return db;
+    });
+
+    const opt = {
+      db: {},
+    };
+    const cms = new KCMS(opt);
+
+    jest.spyOn(cms, "checkDbInstallation")
+      .mockImplementationOnce(() => {
+        return Promise.reject();
+      });
+
+    const initHandlerSpy = jest.spyOn(cms, "initHandlersAndControllers");
+    const initUninstalledSpy = jest.spyOn(cms, "initUninstalledState");
+
+    checkInstallation(cms)
+      .then(() => {
+        expect(initHandlerSpy).toHaveBeenCalledTimes(0);
+        expect(initUninstalledSpy).toHaveBeenCalledTimes(1);
+        done();
+      });
+  });
 });
 
 describe("makeKCMS", () => {

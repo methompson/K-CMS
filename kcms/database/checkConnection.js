@@ -1,7 +1,7 @@
 const { Pool }  = require("mysql2");
 const { MongoClient } = require("mongodb");
 
-function checkMongoDbConnection(db) {
+function checkMongoDbConnection(db, dbName) {
   if (!(db.instance instanceof MongoClient)) {
     return Promise.reject("Invalid Database Instance");
   }

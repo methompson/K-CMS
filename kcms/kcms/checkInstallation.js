@@ -1,5 +1,5 @@
 function checkInstallation(cms) {
-  cms.checkDbInstallation()
+  return cms.checkDbInstallation()
     .then(() => {
       cms.initHandlersAndControllers();
     })

@@ -3,8 +3,6 @@ const express = require("express");
 const BlogController = require("../../../../kcms/blog/BlogController");
 const PluginHandler = require("../../../../kcms/plugin-handler");
 
-const utilities = require("../../../../kcms/utilities");
-
 const longString = `1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
                     1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
                     1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
@@ -17,21 +15,22 @@ describe("BlogController", () => {
   let ph;
   let router;
   let req;
+  let res;
 
   beforeEach(() => {
-    ph = new PluginHandler();
-    bc = new BlogController(ph);
-
     router = express.Router();
     router.get.mockClear();
     router.post.mockClear();
     router.all.mockClear();
-    req = {};
+    req = { request: "" };
+    res = { response: "" };
+
+    ph = new PluginHandler();
+    bc = new BlogController(ph);
   });
 
   describe("Instantiation", () => {
     test("When a new BlogController is instantiated, a pluginHandler and editors are added to the object's data. 5 routes are set", () => {
-      bc = new BlogController(ph);
       expect(router.get).toHaveBeenCalledTimes(2);
       expect(router.get).toHaveBeenNthCalledWith(1, '/all-blog-posts', expect.any(Function));
       expect(router.get).toHaveBeenNthCalledWith(2, '/:slug', expect.any(Function));
@@ -57,77 +56,63 @@ describe("BlogController", () => {
   });
 
   describe("routes", () => {
-    let routes;
-    beforeEach(() => {
-      routes = bc.routes.getRoutes();
-    });
-
-    test("The Router mock will save all of the data that was added in the constructor ", () => {
-      expect(Object.keys(routes.post).length).toBe(3);
-      expect(Object.keys(routes.get).length).toBe(2);
-
-      expect('/add-blog-post' in routes.post).toBe(true);
-      expect('/edit-blog-post' in routes.post).toBe(true);
-      expect('/delete-blog-post' in routes.post).toBe(true);
-
-      expect('/all-blog-posts' in routes.get).toBe(true);
-      expect('/:slug' in routes.get).toBe(true);
+    test("routes will return the router", () => {
+      expect(bc.routes).toBe(bc.router);
     });
 
     test("the /add-blog-post route has two functions. The second function runs addBlogPost", () => {
-      const addBlogPostSpy = jest.spyOn(bc, 'addBlogPost');
+      const addBlogPostFunc = router.post.mock.calls[0][2];
 
-      const route = routes.post['/add-blog-post'];
-      req._authData = {};
+      const addBlogPostSpy = jest.spyOn(bc, "addBlogPost")
+        .mockImplementationOnce(() => {});
 
-      expect(route[0] === utilities.errorIfTokenDoesNotExist).toBe(true);
-
-      route[1]();
+      addBlogPostFunc(req, res);
       expect(addBlogPostSpy).toHaveBeenCalledTimes(1);
+      expect(addBlogPostSpy).toHaveBeenCalledWith(req, res);
     });
 
     test("the /edit-blog-post route has two functions. The second function runs editBlogPost", () => {
-      const editBlogPostSpy = jest.spyOn(bc, 'editBlogPost');
+      const editBlogPostFunc = router.post.mock.calls[1][2];
 
-      const route = routes.post['/edit-blog-post'];
-      req._authData = {};
+      const editBlogPostSpy = jest.spyOn(bc, "editBlogPost")
+        .mockImplementationOnce(() => {});
 
-      expect(route[0] === utilities.errorIfTokenDoesNotExist).toBe(true);
-
-      route[1]();
+      editBlogPostFunc(req, res);
       expect(editBlogPostSpy).toHaveBeenCalledTimes(1);
+      expect(editBlogPostSpy).toHaveBeenCalledWith(req, res);
     });
 
     test("the /delete-blog-post route has two functions. The second function runs deleteBlogPost", () => {
-      const deleteBlogPostSpy = jest.spyOn(bc, 'deleteBlogPost');
+      const deleteBlogPostFunc = router.post.mock.calls[2][2];
 
-      const route = routes.post['/delete-blog-post'];
-      req._authData = {};
+      const deleteBlogPostSpy = jest.spyOn(bc, "deleteBlogPost")
+        .mockImplementationOnce(() => {});
 
-      expect(route[0] === utilities.errorIfTokenDoesNotExist).toBe(true);
-
-      route[1]();
+      deleteBlogPostFunc(req, res);
       expect(deleteBlogPostSpy).toHaveBeenCalledTimes(1);
+      expect(deleteBlogPostSpy).toHaveBeenCalledWith(req, res);
     });
 
     test("the /all-blog-posts route has one function and it runs getAllBlogPosts", () => {
-      const getBlogSpy = jest.spyOn(bc, 'getAllBlogPosts');
+      const allBlogPostFunc = router.get.mock.calls[0][1];
 
-      const route = routes.get['/all-blog-posts'];
-      req._authData = {};
+      const allBlogPostSpy = jest.spyOn(bc, "getAllBlogPosts")
+        .mockImplementationOnce(() => {});
 
-      route[0]();
-      expect(getBlogSpy).toHaveBeenCalledTimes(1);
+      allBlogPostFunc(req, res);
+      expect(allBlogPostSpy).toHaveBeenCalledTimes(1);
+      expect(allBlogPostSpy).toHaveBeenCalledWith(req, res);
     });
 
     test("the /:slug route has one function and it runs getBlogPostBySlug", () => {
-      const getBlogSpy = jest.spyOn(bc, 'getBlogPostBySlug');
+      const slugGetFunc = router.get.mock.calls[1][1];
 
-      const route = routes.get['/:slug'];
-      req._authData = {};
+      const slugGetSpy = jest.spyOn(bc, "getBlogPostBySlug")
+        .mockImplementationOnce(() => {});
 
-      route[0]();
-      expect(getBlogSpy).toHaveBeenCalledTimes(1);
+      slugGetFunc(req, res);
+      expect(slugGetSpy).toHaveBeenCalledTimes(1);
+      expect(slugGetSpy).toHaveBeenCalledWith(req, res);
     });
 
   });

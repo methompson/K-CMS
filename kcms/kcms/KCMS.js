@@ -35,6 +35,13 @@ class KCMS {
     this.router = null;
 
     this.app.use((req, res, next) => {
+      if (!this.router) {
+        res.status(500).json({
+          error: "Server not Properly Initialized",
+        });
+        return;
+      }
+
       this.router(req, res, next);
     });
 
@@ -44,7 +51,7 @@ class KCMS {
   checkDbInstallation() {
     let status;
     if (this.db.type === 'mongodb') {
-      status = checkMongoDbConnection(this.db, this.options.db.mongodb);
+      status = checkMongoDbConnection(this.db, this.options.db.mongodb.databaseName);
     } else if (this.db.type === "mysql") {
       status = checkMySQLConnection(this.db, this.options.db.mysql.databaseName);
     } else {
@@ -117,52 +124,7 @@ class KCMS {
       bodyParser.json(),
       cors(),
       (req, res) => {
-        if (!isObject(req.body)
-          || !isObject(req.body.adminInfo)
-        ) {
-          res.status(400).json({
-            error: "Required data not provided",
-          });
-          return;
-        }
-
-        if (this.db.type === 'mongodb') {
-          mongoInit(this.db, req.body.adminInfo)
-            .then(() => {
-              console.log("Checking db installation");
-              return this.checkDbInstallation();
-            })
-            .then(() => {
-              return this.initHandlersAndControllers();
-            })
-            .then(() => {
-              res.status(200).json({});
-            })
-            .catch((err) => {
-              res.status(400).json({
-                error: err,
-              });
-            });
-        }
-
-        if (this.db.type === 'mysql') {
-          mysqlInit(this.db, req.body.adminInfo)
-            .then((result) => {
-              console.log(result);
-              return this.checkDbInstallation();
-            })
-            .then(() => {
-              return this.initHandlersAndControllers();
-            })
-            .then(() => {
-              res.status(200).json({});
-            })
-            .catch((err) => {
-              res.status(400).json({
-                error: err,
-              });
-            });
-        }
+        this.initDatabases(req, res);
       }
     );
 
@@ -174,6 +136,65 @@ class KCMS {
 
     this.router = router;
     console.log("Uninstalled State");
+  }
+
+  initDatabases(req, res) {
+    if (!isObject(req.body)
+      || !isObject(req.body.adminInfo)
+    ) {
+      res.status(400).json({
+        error: "Required data not provided",
+      });
+      return Promise.reject("Required data not provided");
+    }
+
+    if (this.db.type === 'mongodb') {
+      return mongoInit(this.db, req.body.adminInfo)
+        .then(() => {
+          return this.checkDbInstallation();
+        })
+        .then(() => {
+          return this.initHandlersAndControllers();
+        })
+        .then(() => {
+          res.status(200).json({});
+          return 200;
+        })
+        .catch((err) => {
+          res.status(400).json({
+            error: err,
+          });
+
+          return err;
+        });
+    }
+
+    if (this.db.type === 'mysql') {
+      return mysqlInit(this.db, req.body.adminInfo)
+        .then(() => {
+          return this.checkDbInstallation();
+        })
+        .then(() => {
+          return this.initHandlersAndControllers();
+        })
+        .then(() => {
+          res.status(200).json({});
+          return 200;
+        })
+        .catch((err) => {
+          res.status(400).json({
+            error: err,
+          });
+
+          return err;
+        });
+    }
+
+    const error = "Database Type Not Supported";
+    res.status(400).json({
+      error,
+    });
+    return Promise.reject(error);
   }
 }
 
