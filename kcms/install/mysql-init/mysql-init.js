@@ -3,6 +3,7 @@ const addAdminUser = require("./add-admin-user");
 const { checkAdminInfo } = require("../utilities");
 
 function mysqlInit(db, adminInfo) {
+  console.log("mysqlInit");
   const adminErr = checkAdminInfo(adminInfo);
 
   if (adminErr) {

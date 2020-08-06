@@ -124,7 +124,10 @@ class KCMS {
       bodyParser.json(),
       cors(),
       (req, res) => {
-        this.initDatabases(req, res);
+        this.initDatabases(req, res)
+          .catch((err) => {
+            console.log(err);
+          });
       }
     );
 

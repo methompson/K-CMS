@@ -1,36 +1,46 @@
-module.exports = function addUserMeta(mysqlPool) {
-  const poolPromise = mysqlPool.promise();
+const { Migration } = require("../migration");
 
-  const columnNameQuery = `
-    SELECT COLUMN_NAME
-    FROM INFORMATION_SCHEMA.COLUMNS
-    WHERE TABLE_NAME = 'users'
-  `;
+class MyMigration extends Migration {
+  doMigration(mysqlPool) {
+    if (!this.isPoolValid(mysqlPool)) {
+      return Promise.reject("Invalid MySQL Pool Object");
+    }
 
-  const addColumnQuery = `
-    ALTER TABLE users
-      ADD dateAdded DATETIME NOT NULL
-  `;
+    const poolPromise = mysqlPool.promise();
 
-  return poolPromise.execute(columnNameQuery)
-    .then(( [rows] ) => {
-      // const [rows] = result;
+    const columnNameQuery = `
+      SELECT COLUMN_NAME
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_NAME = 'users'
+    `;
 
-      let included = false;
-      rows.forEach((row) => {
-        if (row.COLUMN_NAME === 'dateAdded') {
-          included = true;
-        }
-      });
+    const addColumnQuery = `
+      ALTER TABLE users
+        ADD dateAdded DATETIME NOT NULL
+    `;
 
-      if (included) {
-        return Promise.resolve();
-      }
+    return poolPromise.execute(columnNameQuery)
+      .then(( [rows] ) => {
+        // const [rows] = result;
 
-      console.log("Adding User Date Added");
-      return poolPromise.execute(addColumnQuery)
-        .then(( [addRows] ) => {
-          console.log(addRows);
+        let included = false;
+        rows.forEach((row) => {
+          if (row.COLUMN_NAME === 'dateAdded') {
+            included = true;
+          }
         });
-    });
-};
+
+        if (included) {
+          return Promise.resolve();
+        }
+
+        console.log("Adding User Date Added");
+        return poolPromise.execute(addColumnQuery)
+          .then(( [addRows] ) => {
+            console.log(addRows);
+          });
+      });
+  }
+}
+
+module.exports = MyMigration;

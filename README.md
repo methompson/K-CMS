@@ -26,7 +26,7 @@ npm i kcms
 
 KCMS requires that you create a database in MySQL before you can install the application. The default database name is `kcms`, but you can define the database's name by passing a databaseName into the database configuration.
 
-### Setup the Project
+### Set Up the Project
 
 Creating and starting a KCMS application only requires creating a kcms object and having the node server listen for requests:
 
@@ -89,6 +89,19 @@ Available Parameters:
 | username | String | yes | The user uses this to log in |
 | email | String | yes | |
 | password | String | yes | |
+
+Example:
+```json
+{
+    "adminInfo": {
+        "firstName": "admin",
+        "lastName": "admin",
+        "username": "admin",
+        "email": "admin@ad.min",
+        "password": "password"
+    }
+}
+```
 
 On success, the application will send a 200 status and reset the routes.
 

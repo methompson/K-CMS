@@ -96,7 +96,7 @@ class MySQLPageController extends PageController {
 
     // This section determines if the user is an editor (someone who can see
     // non-enabled pages). If they are not an editor, enabled is set to true
-    if ( !isUndefined(req._authData)
+    if ( isUndefined(req._authData)
       || !this.editors.includes(req._authData.userType)
     ) {
       query += " AND enabled = ?";
