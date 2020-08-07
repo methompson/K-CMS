@@ -10,6 +10,7 @@ const {
   isBoolean,
   isObject,
   checkSlug,
+  isUndefined,
 } = require("../utilities");
 
 class PageController {
@@ -51,7 +52,9 @@ class PageController {
    * @param {Object} authToken The decoded JWT authorization token
    */
   checkAllowedUsersForSiteMod(authToken) {
-    if (!isObject(authToken) || !('userType' in authToken)) {
+    if (!isObject(authToken)
+      || !isString(authToken.userType)
+    ) {
       return false;
     }
 
@@ -67,9 +70,7 @@ class PageController {
    */
   extractPageData(req) {
     if ( !isObject(req)
-      || !('body' in req)
       || !isObject(req.body)
-      || !('page' in req.body)
     ) {
       return null;
     }
@@ -87,10 +88,10 @@ class PageController {
   checkPageData(pageData) {
     // First we'll check that the required parameters actually exist.
     if ( !isObject(pageData)
-      || !('name' in pageData)
-      || !('enabled' in pageData)
-      || !('slug' in pageData)
-      || !('content' in pageData)
+      || isUndefined(pageData.name)
+      || isUndefined(pageData.enabled)
+      || isUndefined(pageData.slug)
+      || isUndefined(pageData.content)
     ) {
       return "Invalid Parameters Sent";
     }
