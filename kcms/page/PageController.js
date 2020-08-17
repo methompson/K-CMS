@@ -71,6 +71,7 @@ class PageController {
   extractPageData(req) {
     if ( !isObject(req)
       || !isObject(req.body)
+      || !isObject(req.body.page)
     ) {
       return null;
     }

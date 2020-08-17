@@ -816,7 +816,7 @@ describe("KCMS Class", () => {
 
       const postAnonymousFunction = routerPost.mock.calls[0][3];
       const initDbSpy = jest.spyOn(cms, "initDatabases")
-        .mockImplementationOnce(() => {});
+        .mockImplementationOnce(async () => {});
 
       postAnonymousFunction();
       expect(initDbSpy).toHaveBeenCalledTimes(1);

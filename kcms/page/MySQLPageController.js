@@ -190,8 +190,8 @@ class MySQLPageController extends PageController {
       return Promise.resolve(pageErr);
     }
 
-    const meta = 'meta' in pageData
-      ? pageData.meta
+    const meta = isObject(pageData.meta)
+      ? { ...pageData.meta }
       : {};
 
     const now = new Date();
