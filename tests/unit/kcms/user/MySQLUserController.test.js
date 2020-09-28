@@ -193,7 +193,7 @@ describe("MySQLUserController", () => {
           expect(jwt.sign).toHaveBeenCalledTimes(1);
           expect(jwt.sign).toHaveBeenCalledWith(
             {
-              id: userData.id,
+              id: userData.id.toString(10),
               username: userData.username,
               userType: userData.userType,
             },

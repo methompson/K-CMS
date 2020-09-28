@@ -14,7 +14,7 @@ const makeDatabaseClient = (options) => {
     return false;
   }
 
-  if ("mongodb" in options) {
+  if (isObject(options.mongodb)) {
     const instance = getMongoDb(options.mongodb);
     const dbName = isString(options.mongodb.databaseName)
       && options.mongodb.databaseName.length > 0
@@ -28,7 +28,7 @@ const makeDatabaseClient = (options) => {
     };
   }
 
-  if ('mysql' in options) {
+  if (isObject(options.mysql)) {
     const dbName = isString(options.mysql.databaseName)
       && options.mysql.databaseName.length > 0
       ? options.mysql.databaseName

@@ -609,38 +609,45 @@ describe("MongoBlogController", () => {
       };
 
       const blogs = [];
-      for (let x = 0; x <= 12; ++x) {
+      for (let x = 0; x <= 15; ++x) {
         blogs[x] = { blogPost: { ...newBlog } };
       }
 
       delete blogs[0].blogPost.name;
-      delete blogs[1].blogPost.public;
-      delete blogs[2].blogPost.draft;
+      delete blogs[1].blogPost.draft;
+      delete blogs[2].blogPost.public;
       delete blogs[3].blogPost.slug;
       delete blogs[4].blogPost.content;
+
       blogs[5].blogPost.slug = "(*&^%";
       blogs[6].blogPost.slug = "";
       blogs[7].blogPost.slug = longString;
       blogs[8].blogPost.name = "";
       blogs[9].blogPost.name = longString;
-      blogs[10].blogPost.public = "true";
-      blogs[11].blogPost.draft = "true";
-      blogs[12].blogPost.content = "true";
+      blogs[10].blogPost.draft = "true";
+      blogs[11].blogPost.draft = 1;
+      blogs[12].blogPost.public = "true";
+      blogs[13].blogPost.public = 1;
+      blogs[14].blogPost.content = "true";
+      blogs[15].blogPost.content = {};
 
-      blogs[0].error = "Invalid Parameters Sent";
-      blogs[1].error = "Invalid Parameters Sent";
-      blogs[2].error = "Invalid Parameters Sent";
-      blogs[3].error = "Invalid Parameters Sent";
-      blogs[4].error = "Invalid Parameters Sent";
+      blogs[0].error = "Invalid Name Type";
+      blogs[1].error = "Invalid Blog Post Data (draft)";
+      blogs[2].error = "Invalid Blog Post Data (public)";
+      blogs[3].error = "Invalid Slug Type";
+      blogs[4].error = "Invalid Blog Post Data (content)";
 
       blogs[5].error = "Invalid Characters in Slug";
       blogs[6].error = "Invalid Slug Length";
       blogs[7].error = "Invalid Slug Length";
       blogs[8].error = "Invalid Name Length";
       blogs[9].error = "Invalid Name Length";
-      blogs[10].error = "Invalid Blog Post Data (public)";
+      blogs[10].error = "Invalid Blog Post Data (draft)";
       blogs[11].error = "Invalid Blog Post Data (draft)";
-      blogs[12].error = "Invalid Blog Post Data";
+      blogs[12].error = "Invalid Blog Post Data (public)";
+      blogs[13].error = "Invalid Blog Post Data (public)";
+      blogs[14].error = "Invalid Blog Post Data (content)";
+      blogs[15].error = "Invalid Blog Post Data (content)";
 
       req._authData = {
         userType: 'admin',

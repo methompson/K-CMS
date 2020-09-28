@@ -787,11 +787,11 @@ describe("MySQLBlogController", () => {
       blogs[14].blogPost.content = "true";
       blogs[15].blogPost.content = {};
 
-      blogs[0].error = "Invalid Parameters Sent";
-      blogs[1].error = "Invalid Parameters Sent";
-      blogs[2].error = "Invalid Parameters Sent";
-      blogs[3].error = "Invalid Parameters Sent";
-      blogs[4].error = "Invalid Parameters Sent";
+      blogs[0].error = "Invalid Name Type";
+      blogs[1].error = "Invalid Blog Post Data (draft)";
+      blogs[2].error = "Invalid Blog Post Data (public)";
+      blogs[3].error = "Invalid Slug Type";
+      blogs[4].error = "Invalid Blog Post Data (content)";
 
       blogs[5].error = "Invalid Characters in Slug";
       blogs[6].error = "Invalid Slug Length";
@@ -802,9 +802,8 @@ describe("MySQLBlogController", () => {
       blogs[11].error = "Invalid Blog Post Data (draft)";
       blogs[12].error = "Invalid Blog Post Data (public)";
       blogs[13].error = "Invalid Blog Post Data (public)";
-      blogs[14].error = "Invalid Blog Post Data";
-      blogs[15].error = "Invalid Blog Post Data";
-
+      blogs[14].error = "Invalid Blog Post Data (content)";
+      blogs[15].error = "Invalid Blog Post Data (content)";
 
       req._authData = {
         userType: 'admin',

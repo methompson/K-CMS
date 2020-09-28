@@ -93,6 +93,8 @@ class MySQLUserController extends UserController {
           ...rows[0],
         };
 
+        userData.id = userData.id.toString(10);
+
         const dbPass = userData.password;
 
         delete userData.password;

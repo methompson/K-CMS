@@ -7,6 +7,7 @@ const {
   isBoolean,
   isObject,
   checkSlug,
+  isArray,
 } = require("../utilities");
 
 class BlogController {
@@ -74,13 +75,7 @@ class BlogController {
   }
 
   checkBlogData(blogData) {
-    if (!isObject(blogData)
-      || !('name' in blogData)
-      || !('slug' in blogData)
-      || !('draft' in blogData)
-      || !('public' in blogData)
-      || !('content' in blogData)
-    ) {
+    if (!isObject(blogData)) {
       return "Invalid Parameters Sent";
     }
 
@@ -102,8 +97,8 @@ class BlogController {
       return "Invalid Blog Post Data (public)";
     }
 
-    if (!Array.isArray(blogData.content)) {
-      return "Invalid Blog Post Data";
+    if (!isArray(blogData.content)) {
+      return "Invalid Blog Post Data (content)";
     }
 
     return null;

@@ -215,11 +215,11 @@ describe("BlogController", () => {
       delete pd4.content;
       delete pd5.draft;
 
-      expect(bc.checkBlogData(pd1)).toBe("Invalid Parameters Sent");
-      expect(bc.checkBlogData(pd2)).toBe("Invalid Parameters Sent");
-      expect(bc.checkBlogData(pd3)).toBe("Invalid Parameters Sent");
-      expect(bc.checkBlogData(pd4)).toBe("Invalid Parameters Sent");
-      expect(bc.checkBlogData(pd5)).toBe("Invalid Parameters Sent");
+      expect(bc.checkBlogData(pd1)).toBe("Invalid Name Type");
+      expect(bc.checkBlogData(pd2)).toBe("Invalid Blog Post Data (public)");
+      expect(bc.checkBlogData(pd3)).toBe("Invalid Slug Type");
+      expect(bc.checkBlogData(pd4)).toBe("Invalid Blog Post Data (content)");
+      expect(bc.checkBlogData(pd5)).toBe("Invalid Blog Post Data (draft)");
     });
 
     test("checkBlogData will return specific errors if the blogData values aren't the right type", () => {
@@ -248,7 +248,7 @@ describe("BlogController", () => {
       expect(bc.checkBlogData(pd1)).toBe("Invalid Name Type");
       expect(bc.checkBlogData(pd2)).toBe("Invalid Blog Post Data (public)");
       expect(bc.checkBlogData(pd3)).toBe("Invalid Slug Type");
-      expect(bc.checkBlogData(pd4)).toBe("Invalid Blog Post Data");
+      expect(bc.checkBlogData(pd4)).toBe("Invalid Blog Post Data (content)");
       expect(bc.checkBlogData(pd5)).toBe("Invalid Name Length");
       expect(bc.checkBlogData(pd6)).toBe("Invalid Name Length");
       expect(bc.checkBlogData(pd7)).toBe("Invalid Slug Length");
